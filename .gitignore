@@ -1,0 +1,44 @@
+# deps
+node_modules/
+
+# expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# native builds
+/apps/mobile/ios/
+/apps/mobile/android/
+*.hprof
+
+# build output
+build/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# editor / os
+.DS_Store
+*.log
+npm-debug.log*
+.idea/
+
+# Firebase app config — never commit these
+apps/mobile/firebase/google-services.json
+apps/mobile/firebase/GoogleService-Info.plist
+
+# Firebase emulator
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

@@ -1,0 +1,22 @@
+{
+  "name": "loop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Loop \u2014 gamified, haptic expense tracking and group settlement",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "mobile": "npm run start --workspace=@loop/mobile",
+    "mobile:android": "npm run android --workspace=@loop/mobile",
+    "mobile:ios": "npm run ios --workspace=@loop/mobile",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "mobile:tunnel": "npm run start:tunnel --workspace=@loop/mobile"
+  }
+}

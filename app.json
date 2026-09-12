@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "68db0e92-f8a2-46e2-a1f6-7c13bb5f7d0e"
+      }
+    },
+    "android": {
+      "package": "com.getter.loop"
+    }
+  }
+}

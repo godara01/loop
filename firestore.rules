@@ -1,0 +1,108 @@
+rules_version = '2';
+
+// Loop — see docs/11-firebase.md.
+//
+// The trust boundary in one sentence: a user may write their own expenses,
+// categories, settings and check-ins; they may NOT write anything that could be
+// inflated for gain. Coins, the wallet and every rollup are written only by
+// Cloud Functions, which bypass these rules.
+//
+// These rules are code and are tested like code. Do not edit them without
+// updating the emulator suite that covers them.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isLocalDate(value) {
+      return value is string && value.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    // The category catalogue is shipped, not user-generated.
+    match /catalog/{document=**} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid);
+      // Account deletion goes through a Function that clears the whole subtree.
+      allow delete: if false;
+
+      match /settings/{doc} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /categories/{categoryId} {
+        allow read: if isOwner(uid);
+        allow write: if isOwner(uid)
+          && request.resource.data.slug is string
+          && request.resource.data.slug.size() <= 12;
+      }
+
+      match /expenses/{expenseId} {
+        allow read: if isOwner(uid);
+
+        // A float or a negative amount reaching Firestore is a corruption that
+        // survives every client-side fix, so it is rejected here as well.
+        allow create, update: if isOwner(uid)
+          && request.resource.data.amountMinor is int
+          && request.resource.data.amountMinor > 0
+          && request.resource.data.currency is string
+          && isLocalDate(request.resource.data.localDate)
+          && request.resource.data.categoryId is string;
+
+        // Deletion is soft — an update setting deletedAt. Hard deletes are a
+        // scheduled Function's job.
+        allow delete: if false;
+      }
+
+      match /pendingExpenses/{pendingId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // The document id IS the local date, which is what makes a check-in
+      // idempotent. Create-only: an editable check-in is a rewritable streak.
+      match /checkIns/{localDate} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isLocalDate(localDate);
+        allow update, delete: if false;
+      }
+
+      // Everything below is server-authoritative. Clients read, never write.
+      match /streak/{doc}         { allow read: if isOwner(uid); allow write: if false; }
+      match /wallet/{doc}         { allow read: if isOwner(uid); allow write: if false; }
+      match /coinLedger/{entryId} { allow read: if isOwner(uid); allow write: if false; }
+      match /dailyRollups/{date}  { allow read: if isOwner(uid); allow write: if false; }
+      match /monthlyRollups/{m}   { allow read: if isOwner(uid); allow write: if false; }
+
+      match /groupIndex/{groupId} { allow read: if isOwner(uid); allow write: if isOwner(uid); }
+      match /devices/{deviceId}   { allow read, write: if isOwner(uid); }
+    }
+
+    // Groups — v1.1. Defined now so the shape is fixed and testable; no client
+    // writes groups in v1.
+    match /groups/{groupId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
+      allow write: if false;
+
+      match /balances/{uid} {
+        allow read: if signedIn() && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+        allow write: if false;
+      }
+    }
+
+    // Anything not matched above is denied. Keep it that way.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
