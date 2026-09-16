@@ -182,6 +182,30 @@ degraded mode rather than hanging on a network call.
   design ([07-haptics.md](07-haptics.md)).
 - Crashlytics gets the error; the user gets a sentence.
 
+## Dev-build-only hazards
+
+Two things about a **development build** that are invisible in the design file
+and absent from a release build, discovered building the entry sheet
+([03-expenses.md](03-expenses.md#implementation-notes)):
+
+- **The top-right corner is claimed by Expo's floating "open dev menu" button**
+  on every dev build. It sits above the app's own views and swallows taps meant
+  for anything underneath it. Keep interactive controls — especially icon-only
+  ones — out of roughly the top-right 70×70dp of every screen, or place them
+  lower in the layout entirely. The entry sheet's duplicate/delete actions moved
+  from the header's top-right into their own row for exactly this reason.
+- **`edgeToEdgeEnabled: true` (in `app.json`) disables Android's automatic
+  resize-on-keyboard behaviour.** A fixed footer below a scrollable region — a
+  Save button, say — can end up rendered behind the keyboard with nothing able
+  to scroll it into view. Wrap any screen with that shape in
+  `KeyboardAvoidingView` (`behavior="height"` on Android, `"padding"` on iOS)
+  rather than relying on the OS to resize the window.
+
+Both are easy to miss in an emulator screenshot taken with the keyboard closed,
+and easy to miss in Expo Go (whose dev menu button behaves differently) — they
+only show up once a real flow types into a field or taps that corner. The
+Maestro flows in `e2e/flows/` caught both live.
+
 ## Testing
 
 | Layer | How |

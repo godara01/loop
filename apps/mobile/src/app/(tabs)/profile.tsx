@@ -22,6 +22,8 @@ const EVENTS: HapticEvent[] = [
   'splitConfirm',
   'settleSuccess',
   'streakAdvance',
+  'expenseSaved',
+  'destructive',
   'toggleOn',
   'toggleOff',
   'warning',

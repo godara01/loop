@@ -50,6 +50,17 @@ export function todayISO(now: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * The device-local calendar date of an instant — the key every day-wise view,
+ * streak and ledger group uses. A ₹200 coffee at 00:30 IST belongs to that IST
+ * day, not to the previous UTC one.
+ */
+export function localDateOf(instant: string | Date): string {
+  const date = typeof instant === 'string' ? new Date(instant) : instant;
+  if (Number.isNaN(date.getTime())) throw new Error(`Invalid instant: ${String(instant)}`);
+  return todayISO(date);
+}
+
 function daysBetween(fromISO: string, toISO: string): number {
   const from = Date.parse(`${fromISO}T00:00:00Z`);
   const to = Date.parse(`${toISO}T00:00:00Z`);

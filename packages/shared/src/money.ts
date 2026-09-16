@@ -28,6 +28,11 @@ export const CURRENCY_SYMBOL: Record<CurrencyCode, string> = {
   JPY: '¥',
 };
 
+/** How many minor-unit digits a currency has: 2 for INR, 0 for JPY. */
+export function minorDigits(currency: CurrencyCode): number {
+  return MINOR_DIGITS[currency];
+}
+
 export function money(minor: number, currency: CurrencyCode): Money {
   if (!Number.isInteger(minor)) {
     throw new Error(`Money.minor must be an integer, got ${minor}`);

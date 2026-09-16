@@ -59,6 +59,8 @@ export default function RootLayout() {
                   contentStyle: { backgroundColor: colors.background },
                 }}>
                 <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="expense/new" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="expense/[id]" options={{ presentation: 'modal' }} />
               </Stack>
             </SettingsProvider>
           </BootstrapProvider>

@@ -22,9 +22,12 @@ import {
 import { deleteDoc, doc, getDoc, setDoc, setLogLevel, updateDoc } from 'firebase/firestore';
 
 import { seedEssentialCategories } from '../../packages/shared/src/categories';
+import { newPersonalExpense, softDeleteExpense } from '../../packages/shared/src/expenses';
+import { money } from '../../packages/shared/src/money';
 import {
   DEFAULT_SETTINGS,
   categoryToDoc,
+  expenseToDoc,
   newProfile,
   profileToDoc,
   settingsToDoc,
@@ -140,6 +143,21 @@ describe('expenses', () => {
 
   it('accepts a well-formed expense', async () => {
     await assertSucceeds(setDoc(ref(), validExpense()));
+  });
+
+  it('accepts an expense and its soft delete exactly as the app writes them', async () => {
+    const expense = newPersonalExpense({
+      id: 'e-1',
+      uid: ALICE,
+      total: money(12000, 'INR'),
+      categoryId: 'cat-food',
+      description: 'Filter coffee',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+    });
+    await assertSucceeds(setDoc(ref(), expenseToDoc(expense)));
+    await assertSucceeds(setDoc(ref(), expenseToDoc(softDeleteExpense(expense, NOW))));
   });
 
   it('rejects a fractional amount — money is never a float', async () => {

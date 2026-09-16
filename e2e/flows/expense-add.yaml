@@ -1,0 +1,61 @@
+# Add a ₹120 FOOD expense and verify it on Orbit, in the Ledger, and on the
+# server. See docs/03-expenses.md#add-expense.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+- assertVisible:
+    id: "screen-orbit"
+
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-2"
+- tapOn:
+    id: "pad-key-0"
+- assertVisible:
+    text: "₹120"
+
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-description"
+- inputText: "Coffee"
+- tapOn:
+    id: "entry-save"
+
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+- assertVisible:
+    text: "₹120.00"
+
+- tapOn:
+    id: "tab-activity"
+- assertVisible:
+    id: "screen-ledger"
+- assertVisible:
+    text: "TODAY"
+- assertVisible:
+    text: "₹120.00"
+
+# The server, not just the screen, has to have it — offline-first means the UI
+# can lie about nothing.
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "expenses"
+- assertTrue: ${output.docs.length == 1}
+- assertTrue: ${output.docs[0].amountMinor == 12000}
+- assertTrue: ${output.docs[0].currency == "INR"}
+- assertTrue: ${output.docs[0].categoryId == "cat-food"}
+- assertTrue: ${output.docs[0].source == "manual"}
+- assertTrue: ${output.docs[0].deletedAt == null}

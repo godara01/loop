@@ -1,0 +1,33 @@
+# Dirty input must be defended: closing the sheet after typing an amount
+# prompts before throwing it away. See docs/03-expenses.md#discarding.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-5"
+
+- tapOn:
+    id: "entry-close"
+- assertVisible:
+    text: "Discard this expense?"
+- tapOn:
+    text: "Discard"
+
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "expenses"
+- assertTrue: ${output.docs.length == 0}

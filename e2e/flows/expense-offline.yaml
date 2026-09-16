@@ -1,0 +1,63 @@
+# The whole point of Firestore's offline cache: this must work with no network
+# at all, and sync silently once it returns. See docs/00-product.md and
+# docs/11-firebase.md#offline-and-optimistic-writes.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+# toggleAirplaneMode is the form that actually parses in this Maestro build;
+# the device starts online, so one toggle takes it offline.
+- toggleAirplaneMode
+
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-7"
+- tapOn:
+    id: "pad-key-5"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-description"
+- inputText: "Offline snack"
+- tapOn:
+    id: "entry-save"
+
+# No spinner, no error — the write applies to the local cache immediately.
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+- assertVisible:
+    text: "₹75.00"
+
+- tapOn:
+    id: "tab-activity"
+- assertVisible:
+    text: "Offline snack"
+- assertVisible:
+    text: "OFFLINE"
+
+- toggleAirplaneMode
+
+# Wait for the UI itself to confirm reconnection — grounded in a real signal,
+# not a blind sleep — before checking the server.
+- extendedWaitUntil:
+    notVisible:
+      text: "OFFLINE"
+    timeout: 15000
+
+# The definitive check: the LOCAL emulator server, reached over the network,
+# actually received the write once connectivity returned.
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "expenses"
+- assertTrue: ${output.docs.length == 1}
+- assertTrue: ${output.docs[0].amountMinor == 7500}
+- assertTrue: ${output.docs[0].description == "Offline snack"}

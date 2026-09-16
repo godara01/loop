@@ -77,6 +77,15 @@ airplane mode, they're still there. Wipe data, reinstall, they come back.
 
 ### M3 — The core loop 🎯
 
+> **Done — 2026-09-16.** Verified on `Loop_API35` against the local emulator
+> suite: `expense-add`, `expense-discard`, `expense-edit-delete-undo` and
+> `expense-offline` all pass, twice consecutively (flake check), plus a
+> 5,000-expense ledger scroll with no crash. `mock.ts` and the Squads screen are
+> deleted. Two cross-cutting bugs found and fixed along the way — see
+> [03-expenses.md](03-expenses.md#implementation-notes) and
+> [10-architecture.md](10-architecture.md#dev-build-only-hazards).
+
+
 **Goal:** the app becomes genuinely useful. **Start dogfooding here.**
 
 - Expense entry sheet: amount pad, category strip, date, save

@@ -38,6 +38,10 @@ export type HapticEvent =
   | 'settleSuccess'
   /** A streak day is banked. */
   | 'streakAdvance'
+  /** An expense is committed to the ledger. */
+  | 'expenseSaved'
+  /** A soft delete or archive is confirmed. */
+  | 'destructive'
   /** Toggle switches. */
   | 'toggleOn'
   | 'toggleOff'
@@ -103,6 +107,13 @@ async function runIOS(event: HapticEvent): Promise<void> {
       await Haptics.impactAsync(ImpactFeedbackStyle.Medium);
       await wait(70);
       return Haptics.impactAsync(ImpactFeedbackStyle.Heavy);
+    case 'expenseSaved':
+      return Haptics.notificationAsync(NotificationFeedbackType.Success);
+    case 'destructive':
+      // A warning, then the weight of it landing.
+      await Haptics.notificationAsync(NotificationFeedbackType.Warning);
+      await wait(90);
+      return Haptics.impactAsync(ImpactFeedbackStyle.Heavy);
     case 'toggleOn':
       return Haptics.impactAsync(ImpactFeedbackStyle.Rigid);
     case 'toggleOff':
@@ -140,6 +151,10 @@ async function runAndroid(event: HapticEvent): Promise<void> {
       await Haptics.impactAsync(ImpactFeedbackStyle.Light);
       await wait(80);
       return Haptics.impactAsync(ImpactFeedbackStyle.Heavy);
+    case 'expenseSaved':
+      return Haptics.performAndroidHapticsAsync(AndroidHaptics.Confirm);
+    case 'destructive':
+      return Haptics.performAndroidHapticsAsync(AndroidHaptics.Reject);
     case 'toggleOn':
       return Haptics.performAndroidHapticsAsync(AndroidHaptics.Toggle_On);
     case 'toggleOff':

@@ -3,6 +3,7 @@ export * from './split';
 export * from './settle';
 export * from './streak';
 export * from './categories';
+export * from './expenses';
 export * from './coins';
 export * from './insights';
 export * from './types';

@@ -167,6 +167,25 @@ silently. Haptic: `warning` on the prompt, `tap` on discard.
 Future-dated expenses are rejected outright in v1 — there is no forecasting, and
 allowing them would corrupt "today's spend" on the Orbit screen.
 
+## Implementation notes (Phase 1)
+
+**The check-in does not share a batch with the expense.** The original plan
+here batched them together, but check-ins are create-only in the security rules
+([11-firebase.md](11-firebase.md)) — a *second* expense on the same day would
+try to create an already-existing check-in document and fail the whole batch,
+taking the expense down with it. The expense write stands alone; the check-in
+and coins follow from the `onExpenseWrite` Cloud Function in Phase 4
+([13-build-plan.md](13-build-plan.md)). Until that Function exists, saving an
+expense does not yet bank a streak day.
+
+**The entry sheet needs `KeyboardAvoidingView`, not just a bounded
+`ScrollView`.** `app.json` sets `edgeToEdgeEnabled: true`, which stops Android
+from auto-resizing the window when the keyboard opens — so a fixed footer
+button (Save) can end up rendered off-screen, below the keyboard, with no
+scroll able to reach it. Any screen with a fixed element below a text input
+needs this. See [10-architecture.md](10-architecture.md#dev-build-only-hazards)
+for the second, unrelated hazard this surfaced.
+
 ## Acceptance criteria
 
 - [ ] Cold launch → saved expense in under 10s, measured on a mid-range Android.

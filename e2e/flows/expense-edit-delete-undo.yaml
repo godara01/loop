@@ -1,0 +1,102 @@
+# Edit changes the amount in place; delete is soft and offers undo; undo
+# restores exactly what was there. See docs/03-expenses.md#edit-expense and
+# #delete.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+# Log ₹200 FOOD "Lunch".
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-2"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-description"
+- inputText: "Lunch"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+- tapOn:
+    id: "tab-activity"
+- assertVisible:
+    text: "Lunch"
+
+# Edit: 200 -> 250.
+- tapOn:
+    text: "Lunch"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- assertVisible:
+    text: "₹200.00"
+- longPressOn:
+    id: "pad-key-backspace"
+- tapOn:
+    id: "pad-key-2"
+- tapOn:
+    id: "pad-key-5"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "entry-save"
+
+- extendedWaitUntil:
+    visible:
+      id: "screen-ledger"
+    timeout: 15000
+- assertVisible:
+    text: "₹250.00"
+- assertNotVisible:
+    text: "₹200.00"
+
+# Delete, see the undo offer, and use it.
+- tapOn:
+    text: "Lunch"
+- extendedWaitUntil:
+    visible:
+      id: "entry-delete"
+    timeout: 15000
+- tapOn:
+    id: "entry-delete"
+- assertVisible:
+    text: "Delete this expense?"
+- tapOn:
+    text: "Delete"
+
+- extendedWaitUntil:
+    visible:
+      id: "snackbar"
+    timeout: 15000
+- assertNotVisible:
+    text: "Lunch"
+- tapOn:
+    id: "snackbar-undo"
+- assertVisible:
+    text: "Lunch"
+- assertVisible:
+    text: "₹250.00"
+
+# One document throughout: deleted then undeleted, never duplicated.
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "expenses"
+- assertTrue: ${output.docs.length == 1}
+- assertTrue: ${output.docs[0].amountMinor == 25000}
+- assertTrue: ${output.docs[0].deletedAt == null}

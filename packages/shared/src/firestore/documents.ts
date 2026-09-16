@@ -19,9 +19,10 @@
 
 import type { Category, CategoryIcon, CategoryKind } from '../categories';
 import type { PeriodKind } from '../insights';
-import { CURRENCY_SYMBOL, type CurrencyCode } from '../money';
+import { CURRENCY_SYMBOL, type CurrencyCode, money } from '../money';
+import type { SplitMode } from '../split';
 import { CATEGORY_COLOR_TOKENS } from '../theme';
-import type { UserProfile, UserSettings } from '../types';
+import type { Expense, ExpenseSource, UserProfile, UserSettings } from '../types';
 import { firestorePaths } from './paths';
 
 export class DocumentShapeError extends Error {
@@ -242,4 +243,125 @@ export function parseSettings(uid: string, data: unknown): UserSettings {
 
 export function settingsToDoc(settings: UserSettings, updatedAt: string): SettingsDoc {
   return { ...settings, updatedAt };
+}
+
+// ── Expenses ───────────────────────────────────────────────────────────────
+
+export interface AllocationDoc {
+  readonly memberId: string;
+  readonly amountMinor: number;
+}
+
+/**
+ * Money is flattened to `amountMinor` + `currency` because the security rules
+ * check `amountMinor is int` directly — a nested map would put the one
+ * invariant that matters most out of the rules' reach.
+ */
+export interface ExpenseDoc {
+  readonly amountMinor: number;
+  readonly currency: CurrencyCode;
+  readonly categoryId: string;
+  readonly description: string;
+  readonly note: string | null;
+  readonly occurredAt: string;
+  readonly localDate: string;
+  readonly source: ExpenseSource;
+  readonly receiptPath: string | null;
+  readonly pendingId: string | null;
+  readonly groupId: string | null;
+  readonly paidBy: string;
+  readonly splitMode: SplitMode;
+  readonly allocations: readonly AllocationDoc[];
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly deletedAt: string | null;
+}
+
+const EXPENSE_SOURCES: readonly ExpenseSource[] = ['manual', 'sms', 'shared', 'group'];
+const SPLIT_MODES: readonly SplitMode[] = ['even', 'shares', 'exact', 'percentage'];
+const LOCAL_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A string that may legitimately be empty, such as an expense description. */
+function anyString(path: string, d: Fields, field: string): string {
+  const value = d[field];
+  if (typeof value !== 'string') throw new DocumentShapeError(path, field, 'must be a string');
+  return value;
+}
+
+function localDate(path: string, d: Fields, field: string): string {
+  const value = d[field];
+  if (typeof value !== 'string' || !LOCAL_DATE.test(value)) {
+    throw new DocumentShapeError(path, field, 'must be a YYYY-MM-DD date');
+  }
+  return value;
+}
+
+export function expenseToDoc(expense: Expense): ExpenseDoc {
+  return {
+    amountMinor: expense.total.minor,
+    currency: expense.total.currency,
+    categoryId: expense.categoryId,
+    description: expense.description,
+    note: expense.note,
+    occurredAt: expense.occurredAt,
+    localDate: expense.localDate,
+    source: expense.source,
+    receiptPath: expense.receiptPath,
+    pendingId: expense.pendingId,
+    groupId: expense.groupId,
+    paidBy: expense.paidBy,
+    splitMode: expense.splitMode,
+    allocations: expense.allocations.map((a) => ({ memberId: a.memberId, amountMinor: a.amount.minor })),
+    createdAt: expense.createdAt,
+    updatedAt: expense.updatedAt,
+    deletedAt: expense.deletedAt,
+  };
+}
+
+export function parseExpense(uid: string, expenseId: string, data: unknown): Expense {
+  const path = firestorePaths.expense(uid, expenseId);
+  const d = record(path, '(document)', data);
+
+  const currency = oneOf(path, d, 'currency', CURRENCIES);
+  const amountMinor = integer(path, d, 'amountMinor');
+  if (amountMinor <= 0) throw new DocumentShapeError(path, 'amountMinor', 'must be greater than zero');
+
+  const rawAllocations = d.allocations;
+  if (!Array.isArray(rawAllocations) || rawAllocations.length === 0) {
+    throw new DocumentShapeError(path, 'allocations', 'must be a non-empty array');
+  }
+  const allocations = rawAllocations.map((raw: unknown, index: number) => {
+    const entryPath = `${path}#allocations[${index}]`;
+    const entry = record(path, `allocations[${index}]`, raw);
+    return {
+      memberId: text(entryPath, entry, 'memberId'),
+      amount: money(integer(entryPath, entry, 'amountMinor'), currency),
+    };
+  });
+  const allocated = allocations.reduce((sum, a) => sum + a.amount.minor, 0);
+  if (allocated !== amountMinor) {
+    // The ledger must balance. Rendering an unbalanced expense would put a wrong
+    // number on screen and, later, into settlement.
+    throw new DocumentShapeError(path, 'allocations', `sum to ${allocated}, but amountMinor is ${amountMinor}`);
+  }
+
+  return {
+    id: expenseId,
+    total: money(amountMinor, currency),
+    categoryId: text(path, d, 'categoryId'),
+    description: anyString(path, d, 'description'),
+    note: d.note === null || d.note === undefined ? null : anyString(path, d, 'note'),
+    occurredAt: instant(path, d, 'occurredAt'),
+    localDate: localDate(path, d, 'localDate'),
+    source: oneOf(path, d, 'source', EXPENSE_SOURCES),
+    receiptPath: optionalText(path, d, 'receiptPath'),
+    pendingId: optionalText(path, d, 'pendingId'),
+    groupId: optionalText(path, d, 'groupId'),
+    paidBy: text(path, d, 'paidBy'),
+    splitMode: oneOf(path, d, 'splitMode', SPLIT_MODES),
+    allocations,
+    createdAt: instant(path, d, 'createdAt'),
+    updatedAt: instant(path, d, 'updatedAt'),
+    deletedAt: optionalInstant(path, d, 'deletedAt'),
+  };
 }

@@ -1,0 +1,7 @@
+# A clean slate: no app data on the device, no data in the local emulators.
+# This wipes the local Firebase emulator dataset — never a real project.
+appId: com.getter.loop
+---
+- clearState
+- runScript: ../scripts/reset-backend.js
+- assertTrue: ${output.reset == true}

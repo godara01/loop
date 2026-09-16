@@ -1,0 +1,21 @@
+# Opens the Loop dev build against Metro and waits until the app is past the
+# bootstrap gate. Every flow starts here.
+appId: com.getter.loop
+---
+- stopApp
+- openLink: "exp+loop://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# First launch after a clear shows Expo's developer-menu introduction.
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- runFlow:
+    when:
+      visible: "Close"
+    commands:
+      - tapOn: "Close"
+- extendedWaitUntil:
+    visible:
+      id: "tab-dock"
+    timeout: 120000
