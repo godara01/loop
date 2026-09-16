@@ -94,7 +94,7 @@ the wrong moment — right after a write, offline.
 | Persisted domain data (expenses, categories, groups, coins) | **Firestore + its offline cache**, read through repository hooks | One source of truth, realtime, offline-durable |
 | Auth session, current user profile | **`AuthProvider`** context over the Firebase Auth listener | Read by everything, changes rarely |
 | Cross-screen client state (entry draft, insight period, filters) | **Zustand** slices in `core/state` | Small, no boilerplate, no provider tree, easy to persist |
-| Device preferences (haptics, keep-it-plain, last period) | **Zustand persisted to MMKV**, mirrored to Firestore `settings` | Must be readable before Firestore is warm |
+| Device preferences (haptics, keep-it-plain, last period) | **Firestore `settings/app`** through `SettingsProvider`, which also mirrors `hapticsEnabled` into the haptic module | Firestore's cache is already warm inside the bootstrap gate, so a second on-device store would add a native dependency and a rebuild for nothing. Add MMKV only when something must be read *before* the gate — nothing is yet |
 | Ephemeral UI (open sheet, focused field) | `useState` in the component | Not worth lifting |
 | Derived money, splits, insights | **Pure functions in `packages/shared`**, memoised on `(inputs)` | Testable without a device or emulator |
 

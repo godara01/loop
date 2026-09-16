@@ -7,3 +7,4 @@ export * from './coins';
 export * from './insights';
 export * from './types';
 export * from './theme';
+export * from './firestore';

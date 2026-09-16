@@ -55,6 +55,15 @@ data, updated to the new shapes.
 
 ### M2 — Firebase spine
 
+> **Done — 2026-09-13.** Verified on the `Loop_API35` emulator against the local
+> emulator suite. First launch creates one anonymous user, a profile, and exactly
+> 8 category documents in a single batch. Force-stopping and relaunching in airplane
+> mode restores the session and all 8 categories, marked OFFLINE, with no JS
+> errors. On reconnecting they flip to SYNCED within ~2 s, still 8 documents with
+> identical ids and timestamps (no re-seed). The haptics setting persists through
+> `settings/app` across a relaunch. Rules suite: 28 tests. Decisions are recorded
+> in [11-firebase.md](11-firebase.md#decisions-made-while-building-m2).
+
 **Goal:** real identity and real persistence, with one visible feature proving it.
 
 - `core/firebase/*`, converters, path builders, `AuthProvider`, bootstrap gate
@@ -124,6 +133,10 @@ approve-vs-dismiss ratio — below 70% means tighten the parser, not ship it.
 - Rollup Functions + `rebuildRollups`, once there's enough data to need them
 - App Check enforced, account deletion Function, CSV export
 - Crashlytics, perf pass at 3,000 expenses, empty states, accessibility
+- **Physical-device haptic pass** — every event in [07-haptics.md](07-haptics.md)
+  felt and tuned on a mid-range Android, and an iPhone once enrolled. Deferred to
+  here on purpose: emulators do not vibrate, and tuning the feel of half-built
+  interactions is wasted effort
 - Store listings, privacy policy, data-safety form
 
 ## Sequencing notes worth arguing about
@@ -149,7 +162,9 @@ compiling and keep their tests green. Do not start them ([09](09-roadmap.md)).
 ## Definition of done, per milestone
 
 1. `npm run typecheck` and `npm test` pass
-2. Installed on a physical Android **and** iPhone, exercised by hand
+2. Exercised by hand on the **Android emulator** ([14-environment-setup.md](14-environment-setup.md))
 3. The feature works in airplane mode
-4. Its acceptance criteria in the relevant doc are ticked
-5. Docs updated in the same PR if reality diverged from them
+4. Every new interaction calls its haptic event from [07-haptics.md](07-haptics.md).
+   *Feeling* them on a physical device is batched into M8, not done per milestone
+5. Its acceptance criteria in the relevant doc are ticked
+6. Docs updated in the same PR if reality diverged from them

@@ -62,9 +62,12 @@ tokens in `theme.ts` rather than re-deriving colors by eye.
 ## Commands
 
 ```bash
-npm run mobile          # start the dev server
-npm run mobile:android  # start and open on Android
-npm run typecheck       # all workspaces
+npm run firebase:emulators  # local Auth + Firestore; the app uses them per apps/mobile/.env
+npm run mobile              # start the dev server
+npm run emulator            # boot the Loop_API35 emulator and connect it to Metro
+npm run typecheck           # all workspaces
+npm test                    # unit tests (packages/shared)
+npm run test:rules          # security rules on a throwaway Firestore emulator (:8085)
 ```
 
 ## Environment notes
@@ -73,5 +76,9 @@ This machine has no Android SDK and JDK 25 (React Native's Gradle wants JDK 17).
 Development runs on an **EAS development build, not Expo Go** — the native
 Firebase SDK and the Android SMS module both require it. All native builds go
 through EAS; iOS builds require EAS since this is Linux.
+
+Features are tested on the Android emulator (`Loop_API35`, SDK in
+`~/Android/Sdk`), not in a browser: `@react-native-firebase` is native-only.
+Haptics are wired in with every feature but only felt on a physical device in M8.
 
 Backend work runs against the Firebase Emulator Suite by default.

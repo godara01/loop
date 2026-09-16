@@ -104,11 +104,18 @@ the JS thread with `runOnJS(haptic)('dragTick')`.
 
 ## Testing
 
-Simulators do not vibrate. Every tactile change MUST be verified on:
+**Wire haptics in as features are built; verify them at the end.** Every new
+interaction calls its semantic event the day it is written, so nothing is
+retrofitted. But emulators do not vibrate, and tuning the feel of interactions
+that are still changing is wasted effort — so the physical-device pass happens
+once, in M8 ([13-build-plan.md](13-build-plan.md)), on:
 
 1. A physical iPhone (the reference feel), and
 2. A physical **mid-range Android** — this is where the feel is hardest to get
    right and where most users are.
+
+Until then, the only per-feature haptic requirement is that the right event is
+called at the right moment, which is reviewable in code.
 
 The **You** screen keeps a debug list of every `HapticEvent` (already present in
 [`profile.tsx`](../apps/mobile/src/app/%28tabs%29/profile.tsx)) so a device can be

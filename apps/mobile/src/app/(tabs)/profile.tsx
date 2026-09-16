@@ -1,10 +1,12 @@
-import { colors, layout, space, type } from '@loop/shared';
-import { useState } from 'react';
+import { categoryColors, colors, layout, space, type } from '@loop/shared';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card, MonoTag, Perforation } from '@/components/ui/surface';
-import { firebaseStatus } from '@/core/firebase/status';
+import { firebase } from '@/core/firebase/client';
+import { useSession } from '@/core/providers/bootstrap-provider';
+import { useSettings } from '@/core/providers/settings-provider';
+import { useCategories } from '@/features/categories';
 import { StreakCapsule } from '@/components/ui/streak-capsule';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { type HapticEvent, haptic, setHapticsEnabled } from '@/lib/haptics';
@@ -28,9 +30,19 @@ const EVENTS: HapticEvent[] = [
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const [hapticsOn, setHapticsOn] = useState(true);
-  // Native modules cannot change at runtime, so this is read once.
-  const [firebase] = useState(firebaseStatus);
+  const { settings, update: updateSettings } = useSettings();
+  const { uid, profile } = useSession();
+  const { projectId, usingEmulators } = firebase();
+  const categories = useCategories();
+
+  const syncTag =
+    categories.status !== 'ready'
+      ? null
+      : categories.snapshot.hasPendingWrites
+        ? ({ label: 'syncing', tone: 'social' } as const)
+        : categories.snapshot.fromCache
+          ? ({ label: 'offline', tone: 'muted' } as const)
+          : ({ label: 'synced', tone: 'credit' } as const);
 
   return (
     <ScrollView
@@ -43,7 +55,7 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.eyebrow}>YOU</Text>
-          <Text style={styles.title}>Sanket</Text>
+          <Text style={styles.title}>{profile.displayName}</Text>
         </View>
         <StreakCapsule days={12} />
       </View>
@@ -57,11 +69,12 @@ export default function ProfileScreen() {
             </Text>
           </View>
           <Switch
-            value={hapticsOn}
+            value={settings.hapticsEnabled}
             onValueChange={(next) => {
-              setHapticsOn(next);
+              updateSettings({ hapticsEnabled: next });
+              // Apply synchronously as well: the provider's mirror runs after render,
+              // and the confirmation below must fire against the new value.
               setHapticsEnabled(next);
-              // Fire after enabling so the user feels the confirmation.
               if (next) haptic('toggleOn');
             }}
             trackColor={{ false: colors.input, true: colors.credit }}
@@ -70,26 +83,57 @@ export default function ProfileScreen() {
         </View>
       </Card>
 
-      <Text style={styles.sectionTitle}>Build</Text>
-      <Text style={styles.sectionHint}>
-        The native Firebase SDK is only present in a development build. In Expo Go
-        this reads NOT LINKED, and that is expected — see docs/13-build-plan.md.
-      </Text>
+      <Text style={styles.sectionTitle}>Account</Text>
 
       <Card>
         <View style={styles.row}>
           <View style={styles.info}>
             <Text style={styles.label}>Firebase</Text>
-            <Text style={styles.hint}>
-              {firebase.linked
-                ? `project ${firebase.projectId ?? 'unknown'}`
-                : 'native module not present in this binary'}
-            </Text>
+            <Text style={styles.hint}>project {projectId ?? 'unknown'}</Text>
           </View>
-          <MonoTag tone={firebase.linked ? 'credit' : 'debit'}>
-            {firebase.linked ? 'linked' : 'not linked'}
+          <MonoTag tone={usingEmulators ? 'social' : 'credit'}>
+            {usingEmulators ? 'emulator' : 'live'}
           </MonoTag>
         </View>
+        <Perforation />
+        <View style={styles.row}>
+          <View style={styles.info}>
+            <Text style={styles.label}>You</Text>
+            <Text style={styles.mono}>{uid.slice(0, 12)}…</Text>
+          </View>
+          <MonoTag>{profile.isAnonymous ? 'anonymous' : 'linked'}</MonoTag>
+        </View>
+      </Card>
+
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Categories</Text>
+        {syncTag ? <MonoTag tone={syncTag.tone}>{syncTag.label}</MonoTag> : null}
+      </View>
+
+      <Card>
+        {categories.status === 'loading' ? (
+          <Text style={styles.hint}>Loading…</Text>
+        ) : categories.status === 'error' ? (
+          <Text style={styles.hint}>{categories.message}</Text>
+        ) : (
+          <>
+            <View style={styles.tagWrap}>
+              {categories.snapshot.categories
+                .filter((category) => category.archivedAt === null)
+                .map((category) => (
+                  <MonoTag key={category.id} tint={categoryColors[category.colorToken].tint}>
+                    {category.slug}
+                  </MonoTag>
+                ))}
+            </View>
+            <Text style={[styles.hint, styles.countLine]}>
+              {categories.snapshot.categories.length} categories
+              {categories.snapshot.invalid.length > 0
+                ? ` · ${categories.snapshot.invalid.length} unreadable`
+                : ''}
+            </Text>
+          </>
+        )}
       </Card>
 
       <Text style={styles.sectionTitle}>Haptic bench</Text>
@@ -143,4 +187,13 @@ const styles = StyleSheet.create({
   sectionHint: { ...type.bodySm, color: colors.textMuted, marginBottom: space.xs },
   event: { ...type.monoMd, color: colors.text },
   testButton: { minWidth: 92 },
+  mono: { ...type.monoMd, color: colors.textMuted },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: space.sm,
+  },
+  tagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  countLine: { marginTop: space.md },
 });

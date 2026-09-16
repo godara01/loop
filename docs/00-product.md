@@ -100,9 +100,10 @@ Development runs on an **EAS development build, not Expo Go** — the native
 Firebase SDK and the SMS module both require it
 ([10-architecture.md](10-architecture.md#build-and-workflow-consequence)).
 
-Haptics must be verified on a physical mid-range Android before any tactile
-change is merged — simulators do not vibrate and OEM motors differ wildly. See
-[07-haptics.md](07-haptics.md#testing).
+Features are tested on the **Android emulator**. Haptic events are wired in as
+each interaction is built, but emulators do not vibrate, so feeling and tuning
+them on a physical mid-range Android is batched into one pass during hardening —
+see [07-haptics.md](07-haptics.md#testing).
 
 **One feature is platform-asymmetric**: SMS capture cannot exist on iOS, because
 Apple provides no API for it at any entitlement level. iOS reaches the same inbox

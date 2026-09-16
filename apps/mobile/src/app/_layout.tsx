@@ -16,9 +16,13 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useCallback } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import { AuthProvider } from '@/core/providers/auth-provider';
+import { BootstrapProvider } from '@/core/providers/bootstrap-provider';
+import { SettingsProvider } from '@/core/providers/settings-provider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,25 +37,32 @@ export default function RootLayout() {
     JetBrainsMono_700Bold,
   });
 
-  useEffect(() => {
-    // Hide the splash once type is ready — the display numerals are the first
-    // thing the eye lands on, so we never flash a fallback face.
-    if (fontsLoaded || fontError) void SplashScreen.hideAsync();
-  }, [fontsLoaded, fontError]);
+  // The splash comes down when the bootstrap gate has something to show — not
+  // when fonts load — so launch never flashes an empty screen between the two.
+  const hideSplash = useCallback(() => {
+    void SplashScreen.hideAsync();
+  }, []);
 
+  // Display numerals are the first thing the eye lands on; never render a fallback face.
   if (!fontsLoaded && !fontError) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaProvider>
         <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.background },
-          }}>
-          <Stack.Screen name="(tabs)" />
-        </Stack>
+        <AuthProvider>
+          <BootstrapProvider onSettled={hideSplash}>
+            <SettingsProvider>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: colors.background },
+                }}>
+                <Stack.Screen name="(tabs)" />
+              </Stack>
+            </SettingsProvider>
+          </BootstrapProvider>
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

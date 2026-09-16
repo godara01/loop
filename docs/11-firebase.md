@@ -67,15 +67,16 @@ Paths are built by `core/db/paths.ts` — never string-concatenated at a call si
 
 ```
 users/{uid}                             Profile doc: displayName, currency,
-                                        onboardedAt, createdAt, updatedAt
-  settings/{singleton}                  haptics, keepItPlain, insightsPeriod
-  wallet/{singleton}                    coinBalance, updatedAt   ← Function-written
-  streak/{singleton}                    current, longest, lastLoggedOn
+                                        onboardedAt, categoriesSeededAt,
+                                        createdAt, updatedAt
+  settings/app                          hapticsEnabled, keepItPlain, insightsPeriod
+  wallet/main                           coinBalance, updatedAt   ← Function-written
+  streak/main                           current, longest, lastLoggedOn
 
   categories/{categoryId}               slug, name, iconRef, colorToken, kind,
                                         sortOrder, archivedAt
   expenses/{expenseId}                  amountMinor, currency, categoryId,
-                                        description, note, occurredAt (Timestamp),
+                                        description, note, occurredAt (ISO, UTC),
                                         localDate ('YYYY-MM-DD'), receiptPath,
                                         source ('manual'|'sms'|'group'),
                                         groupId (null in v1), deletedAt
@@ -90,9 +91,9 @@ users/{uid}                             Profile doc: displayName, currency,
   groupIndex/{groupId}                  Denormalised membership index for "my groups"
   devices/{deviceId}                    FCM token, platform, lastSeenAt
 
-catalog/categories/{slug}               Global catalogue: name, icon, logoUrl,
-                                        colorToken, group. Read-only to clients
-catalog/meta/{singleton}                version, updatedAt
+catalog/meta                            version, updatedAt
+catalog/categories/entries/{slug}       Global catalogue: name, icon, logoUrl,
+                                        colorToken, section. Read-only to clients
 
 groups/{groupId}                        v1.1 — name, currency, memberIds[],
                                         members{uid: role}, createdBy, archivedAt
@@ -265,6 +266,49 @@ tests gate the deploy.
 
 Local development runs against the **Emulator Suite** by default; pointing a dev
 build at prod requires an explicit flag.
+
+## Decisions made while building M2
+
+Recorded here because each one is easy to "fix" back into a bug.
+
+**Paths come from one module.** `packages/shared/src/firestore/paths.ts` builds
+every path. Call sites never concatenate strings, and the rules tests import the
+same builders, so the tests check the paths the app actually writes.
+
+**Singleton documents use fixed ids.** `settings/app`, `wallet/main` and
+`streak/main`, so reading one never needs a query. An earlier draft of this doc
+wrote `catalog/categories/{slug}`, which is not a valid document path (a document
+path needs an even number of segments). The catalogue lives at
+`catalog/categories/entries/{slug}`.
+
+**Timestamps are ISO-8601 strings made on the device, not server timestamps.**
+A server timestamp reads as `null` in the local snapshot until the write syncs,
+and every document must be complete and renderable the moment it is written
+offline. `toISOString()` always emits UTC with a `Z`, so these strings also sort
+correctly as text, which is what ordering expenses by `occurredAt` relies on.
+
+**Converters validate and throw.** `packages/shared/src/firestore/documents.ts`
+turns documents into domain types and raises `DocumentShapeError`, naming the
+path and field, on anything malformed. Reads are strict about types and enums and
+lenient about lengths, so tightening a length limit later can't make existing
+data unreadable. The category repository skips a malformed document and reports
+it, so one bad document doesn't take down the whole list.
+
+**A brand-new install needs the network exactly once.** Anonymous sign-in has to
+reach Firebase Auth to get a uid. After that the session is restored from disk,
+offline. With no connection on first launch, the gate shows "Connect once to set
+up" instead of spinning forever.
+
+**The profile is created only once the server confirms it doesn't exist.** A
+cache miss proves nothing, and writing a fresh profile over a real one would
+reset the account.
+
+**Essentials are seeded against a marker, not against document existence.**
+`profile.categoriesSeededAt` and the eight category documents are written in
+**one batch**, so the marker can never disagree with the data. The category ids
+are deterministic (`cat-food`, …), so two launches racing to seed write identical
+documents instead of duplicates, and a seed that is still pending offline already
+shows as done locally, so it doesn't run twice.
 
 ## Acceptance criteria
 

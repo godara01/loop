@@ -311,6 +311,20 @@ export function seedEssentialCategories(
   );
 }
 
+/**
+ * What a bootstrap must write: all eight essentials if this account has never
+ * been seeded, otherwise nothing.
+ *
+ * Keyed on a marker (`profile.categoriesSeededAt`) rather than on whether
+ * category documents exist, because re-seeding with a blind write would
+ * overwrite any essential the user has renamed. The ids are deterministic, so
+ * two launches racing to seed the same account write identical documents and
+ * converge instead of duplicating.
+ */
+export function essentialCategoriesToSeed(categoriesSeededAt: string | null, now: string): Category[] {
+  return categoriesSeededAt === null ? seedEssentialCategories(now) : [];
+}
+
 /** Catalogue entries the user has not already installed, grouped for browsing. */
 export function catalogueFor(
   installed: readonly Category[],

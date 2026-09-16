@@ -17,11 +17,13 @@ npm install
 npm run mobile
 ```
 
-Scan the QR code with **Expo Go**, or press `a` / `i` for a connected device.
+The app runs on an **EAS development build**, not Expo Go — the native Firebase
+SDK requires it. Day-to-day testing happens on the Android emulator; full setup,
+including the emulator, is in [docs/14-environment-setup.md](docs/14-environment-setup.md).
 
-> Haptics do not fire in a simulator. Every tactile change must be checked on a
-> physical device — and specifically on a mid-range Android, which is where the
-> feel is hardest to get right.
+> Haptics do not fire in an emulator. Every interaction still calls its haptic
+> event as it is built, but *feeling* them on a physical mid-range Android is a
+> single pass during hardening (M8) — see [docs/07-haptics.md](docs/07-haptics.md#testing).
 
 ## Layout
 

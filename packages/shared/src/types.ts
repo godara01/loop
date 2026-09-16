@@ -1,5 +1,6 @@
 /** Domain entities shared by the app, Cloud Functions, and the MCP server. */
 
+import type { PeriodKind } from './insights';
 import type { CurrencyCode, Money } from './money';
 import type { Allocation, SplitMode } from './split';
 
@@ -16,10 +17,23 @@ export interface UserProfile {
   readonly currency: CurrencyCode;
   /** Null until onboarding completes. This is the gate. */
   readonly onboardedAt: string | null;
+  /**
+   * When the essential categories were written. The bootstrap seeds only while
+   * this is null, so re-running it can never overwrite a category the user has
+   * since renamed or recoloured.
+   */
+  readonly categoriesSeededAt: string | null;
   /** True until the anonymous account is linked to a real credential. */
   readonly isAnonymous: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface UserSettings {
+  readonly hapticsEnabled: boolean;
+  /** Hides coins, the streak capsule and celebrations. See docs/06-gamification.md. */
+  readonly keepItPlain: boolean;
+  readonly insightsPeriod: PeriodKind;
 }
 
 /** Where an expense came from. SMS-derived ones are approved, never automatic. */

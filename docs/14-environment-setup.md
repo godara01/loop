@@ -172,6 +172,75 @@ On the device, open the **You** tab:
 
 That is M0 complete.
 
+## Android emulator — daily testing
+
+Features are tested here, not in a browser (`@react-native-firebase` does not run
+on web) and not on the physical phone (its lock screen blocks automated
+screenshots). Haptics do not fire in an emulator — see
+[07-haptics.md](07-haptics.md#testing) for why that is fine until M8.
+
+### Daily use
+
+```bash
+npm run mobile      # terminal 1 — Metro
+npm run emulator    # terminal 2 — boots Loop_API35, re-applies adb reverse, opens the app
+```
+
+The same development APK runs on the emulator and a physical phone: EAS builds
+it with `x86_64` libraries alongside `arm64-v8a`. Rebuild only when native
+dependencies change.
+
+### One-time setup
+
+Verified on this machine: Ubuntu, Wayland, RTX 2060 on the proprietary driver,
+JDK 25, KVM available to the user through an ACL (no `kvm` group needed).
+
+```bash
+SDK=$HOME/Android/Sdk
+# 1. Command-line tools. Pick the highest build number — sorting the filenames
+#    as text picks an old one (9862592 sorts after 16111833).
+#    https://dl.google.com/android/repository/repository2-3.xml
+unzip commandlinetools-linux-<build>_latest.zip -d /tmp/ct
+mkdir -p $SDK/cmdline-tools && mv /tmp/ct/cmdline-tools $SDK/cmdline-tools/latest
+
+# 2. Emulator, platform-tools, Android 15 image (~4.5 GB installed in total)
+SM=$SDK/cmdline-tools/latest/bin/sdkmanager
+yes | $SM --sdk_root=$SDK --licenses
+$SM --sdk_root=$SDK --install emulator platform-tools \
+  "system-images;android-35;google_apis;x86_64"
+
+# 3. The AVD. avdmanager is still a Java launcher and needs JAVA_HOME;
+#    sdkmanager is native and does not.
+export JAVA_HOME=$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")
+echo no | $SDK/cmdline-tools/latest/bin/avdmanager create avd \
+  -n Loop_API35 -k "system-images;android-35;google_apis;x86_64" -d pixel_7
+```
+
+Then edit `~/.android/avd/Loop_API35.avd/config.ini`:
+
+| Setting | Why |
+|---|---|
+| **delete** `disk.dataPartition.path=<temp>` | Otherwise the data partition is temporary and the app and its Firestore cache are lost on every restart |
+| `hw.ramSize=3072`, `hw.cpu.ncore=4` | Comfortable for a debug React Native app |
+| `disk.dataPartition.size=4G` | The disk is tight; userdata only grows as used |
+| `hw.keyboard=yes` | Type into forms from the laptop keyboard |
+| `fastboot.forceColdBoot=yes` | Quickboot snapshots write ~3 GB of guest RAM to disk on every exit. Cold boot takes ~30 s with KVM |
+
+`google_apis`, not `google_apis_playstore`: Google Play services are included
+(Firebase needs them), without the Play Store's extra size.
+
+### Emulator gotchas
+
+- **"Cannot find AVD system path"** — `platform-tools/` is missing. The emulator
+  uses it to recognise a valid SDK root, even if you use a system `adb`.
+- **Blank or broken emulator window on Wayland** — run with
+  `QT_QPA_PLATFORM=xcb`. The script does this.
+- **Two devices attached** — with the phone plugged in, every `adb` command needs
+  `-s emulator-5554` (or the phone's serial).
+- **No `curl` on the device** — the Android 15 image does not ship one. Check
+  connectivity from logcat (`Running "main"`) instead.
+- **`adb reverse` is lost on reboot** — `npm run emulator` re-applies it.
+
 ## Troubleshooting
 
 ### White screen when you open the app
@@ -300,24 +369,32 @@ causes, in order of likelihood:
 Step 1c is not done. The file is only needed at build time, so `npm run mobile`
 works without it and `eas build` does not.
 
-## The emulator (from M2 onward)
+## Local Firebase — the emulator suite
 
-Feature work runs against the local emulator, not the real project:
+Feature work runs against local Auth and Firestore emulators, not the live
+project.
 
 ```bash
-firebase emulators:start        # UI at http://127.0.0.1:4000
+cp apps/mobile/.env.example apps/mobile/.env   # once
+npm run firebase:emulators   # terminal 1 — Auth :9099, Firestore :8080, UI http://127.0.0.1:4000
+npm run mobile               # terminal 2 — Metro
+npm run emulator             # terminal 3 — the Android emulator
 ```
 
-Then in `.env`:
-
-```
-EXPO_PUBLIC_USE_EMULATORS=true
-EXPO_PUBLIC_EMULATOR_HOST=<your machine's LAN IP>
-```
-
-The host is resolved **from the phone**, so `127.0.0.1` means the phone itself
-and will not work for a physical device. Use your machine's LAN IP (`hostname -I`),
-or `10.0.2.2` for an Android emulator.
+- **`.env` lives in `apps/mobile/`**, not the repo root, because that's the folder
+  Expo reads it from. `EXPO_PUBLIC_*` values are baked in at bundle time, so
+  restart Metro (with `--clear`) after changing one.
+- **`localhost` is correct for the Android emulator.** RNFirebase rewrites
+  `localhost` and `127.0.0.1` to `10.0.2.2`, the emulator's alias for this
+  machine, so no port forwarding is needed. A physical phone needs your LAN IP.
+- **Emulator data survives restarts.** It is exported to `.firebase/emulator-data`
+  (gitignored) on exit and imported on the next start. Delete that folder for a
+  clean slate.
+- **EAS builds always use the live project.** `.env` is gitignored, so it never
+  reaches the builder.
+- **`npm run test:rules` runs its own Firestore emulator** from
+  `firebase.rules-test.json` on port 8085, under the `demo-loop` project id, so it
+  runs safely alongside `firebase:emulators` and can never touch real data.
 
 ## Deferred deliberately
 

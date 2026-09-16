@@ -17,6 +17,14 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "mobile:tunnel": "npm run start:tunnel --workspace=@loop/mobile"
+    "mobile:tunnel": "npm run start:tunnel --workspace=@loop/mobile",
+    "emulator": "bash scripts/emulator.sh",
+    "test:rules": "firebase emulators:exec --config firebase.rules-test.json --only firestore --project demo-loop \"tsx --test tests/firestore-rules/*.test.ts\"",
+    "firebase:emulators": "bash scripts/firebase-emulators.sh"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "tsx": "^4.23.13"
   }
 }
