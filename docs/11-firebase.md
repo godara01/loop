@@ -310,6 +310,36 @@ are deterministic (`cat-food`, …), so two launches racing to seed write identi
 documents instead of duplicates, and a seed that is still pending offline already
 shows as done locally, so it doesn't run twice.
 
+## Decisions made while building M4
+
+**`allow write` cannot validate `request.resource.data` and also cover
+delete.** `request.resource` is `null` on a delete — the categories rule
+originally read `allow write: if isOwner(uid) && request.resource.data.slug is
+string && …`, and on a delete that null-dereferences instead of short-circuiting
+to false, denying every delete with a "Null value error" rather than the
+intended `PERMISSION_DENIED` for a bad write. The Storage rules test suite
+(below) caught this the first time a delete was actually exercised end to end.
+Fixed by splitting `allow create, update` (which validates fields) from `allow
+delete` (which only checks ownership) — the same split every other collection
+in this file already used. **Any rule that both validates `request.resource`
+fields and allows delete must make this same split**; a combined `allow write`
+is only safe when it does no field validation at all.
+
+**Storage rules are tested with the compat SDK, not the modular one.**
+`@firebase/rules-unit-testing`'s `RulesTestContext.storage()` returns
+`firebase.storage.Storage` — the `firebase/compat/storage` namespaced API — even
+though the Firestore half of the same package uses modular `firebase/firestore`.
+`tests/storage-rules/rules.test.ts` is written against `ref(...).put(...)`
+accordingly; do not "fix" it to modular `uploadBytes`, it will not compile
+against what the test context actually returns.
+
+**Storage path building gets its own module**, `packages/shared/src/storage-paths.ts`,
+rather than living in `firestore/paths.ts`. A Storage path has no even/odd
+segment constraint the way a Firestore document path does, and folding the two
+together would blur that difference. It must be kept in sync with
+`storage.rules` by hand — there is no shared source of truth between the two,
+the same way `firestore/paths.ts` and `firestore.rules` already aren't.
+
 ## Acceptance criteria
 
 - [ ] The app is fully usable in airplane mode: log, edit, delete, browse

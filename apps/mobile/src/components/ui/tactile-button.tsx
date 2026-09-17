@@ -28,6 +28,7 @@ interface TactileButtonProps {
   disabled?: boolean;
   fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 }
 
 const VARIANTS: Record<
@@ -72,6 +73,7 @@ export function TactileButton({
   disabled = false,
   fullWidth = false,
   style,
+  testID,
 }: TactileButtonProps) {
   const pressed = useSharedValue(0);
   const theme = VARIANTS[variant];
@@ -95,6 +97,7 @@ export function TactileButton({
 
   return (
     <Pressable
+      testID={testID}
       onPressIn={disabled ? undefined : handlePressIn}
       onPressOut={disabled ? undefined : handlePressOut}
       onPress={disabled ? undefined : onPress}

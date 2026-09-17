@@ -9,3 +9,4 @@ export * from './insights';
 export * from './types';
 export * from './theme';
 export * from './firestore';
+export * from './storage-paths';

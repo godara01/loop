@@ -99,7 +99,24 @@ milestone that tells you whether the 10-second target is real.
 
 ### M4 — Categories, in full
 
-- Catalogue browse + add (Firestore `catalog/`, bundled fallback)
+> **App layer done — 2026-09-17.** Catalogue browse + add, custom creation
+> (glyph or uploaded logo), manage screen with archive/unarchive/delete/drag
+> reorder, and the "+" chip in the entry strip. Full gate green: typecheck,
+> 170 unit tests, 40 rules tests (Firestore + the new Storage rules). Live
+> device verification is next, gated on an EAS rebuild for
+> `@react-native-firebase/storage` / `expo-image-manipulator` /
+> `expo-file-system` / `react-native-draggable-flatlist`. Decisions and a rules
+> bug the tests caught are in
+> [11-firebase.md](11-firebase.md#decisions-made-while-building-m4).
+>
+> **Scope trim:** the catalogue is bundled-only in v1 — no live
+> `catalog/categories/entries/*` override from Firestore. Docs 04/11 described
+> that as a way to add catalogue entries without an app update; it earns its
+> place once there's a reason to change the catalogue between releases, not
+> before. `catalogueFor()` already takes the templates as data, so wiring in a
+> Firestore override later is additive, not a rewrite.
+
+- Catalogue browse + add (bundled `CATEGORY_CATALOGUE`)
 - Custom category creation, glyph and uploaded logo
 - Manage screen, archive/unarchive, drag reorder
 - Most-used-first ordering in the entry strip

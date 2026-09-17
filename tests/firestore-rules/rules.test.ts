@@ -21,7 +21,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import { deleteDoc, doc, getDoc, setDoc, setLogLevel, updateDoc } from 'firebase/firestore';
 
-import { seedEssentialCategories } from '../../packages/shared/src/categories';
+import { editCategory, newCustomCategory, seedEssentialCategories } from '../../packages/shared/src/categories';
 import { newPersonalExpense, softDeleteExpense } from '../../packages/shared/src/expenses';
 import { money } from '../../packages/shared/src/money';
 import {
@@ -135,6 +135,28 @@ describe('categories', () => {
   it("refuses to write into someone else's categories", async () => {
     const category = seedEssentialCategories(NOW)[0]!;
     await assertFails(setDoc(doc(as(BOB), p.category(ALICE, category.id)), categoryToDoc(category, NOW)));
+  });
+
+  it('accepts a custom category and an edit to it', async () => {
+    const custom = newCustomCategory(
+      { name: 'Gym', slug: 'GYM', icon: { kind: 'glyph', name: 'barbell' }, colorToken: 'lime' },
+      { id: 'cat-gym', sortOrder: 9, createdAt: NOW },
+    );
+    const ref = doc(as(ALICE), p.category(ALICE, custom.id));
+    await assertSucceeds(setDoc(ref, categoryToDoc(custom, NOW)));
+    const edited = editCategory(custom, { name: 'Fitness' });
+    await assertSucceeds(setDoc(ref, categoryToDoc(edited, NOW)));
+  });
+
+  it('lets the owner delete their own category, but no one else', async () => {
+    const custom = newCustomCategory(
+      { name: 'Gym', slug: 'GYM', icon: { kind: 'glyph', name: 'barbell' }, colorToken: 'lime' },
+      { id: 'cat-gym', sortOrder: 9, createdAt: NOW },
+    );
+    const ref = doc(as(ALICE), p.category(ALICE, custom.id));
+    await setDoc(ref, categoryToDoc(custom, NOW));
+    await assertFails(deleteDoc(doc(as(BOB), p.category(ALICE, custom.id))));
+    await assertSucceeds(deleteDoc(ref));
   });
 });
 

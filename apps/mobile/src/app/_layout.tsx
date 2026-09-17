@@ -61,6 +61,10 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="expense/new" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="expense/[id]" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="category/catalogue" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="category/new" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="category/[id]" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="category/index" options={{ presentation: 'modal' }} />
               </Stack>
             </SettingsProvider>
           </BootstrapProvider>

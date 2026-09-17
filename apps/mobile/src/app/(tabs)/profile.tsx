@@ -1,5 +1,6 @@
 import { categoryColors, colors, layout, space, type } from '@loop/shared';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card, MonoTag, Perforation } from '@/components/ui/surface';
@@ -134,6 +135,12 @@ export default function ProfileScreen() {
                 ? ` · ${categories.snapshot.invalid.length} unreadable`
                 : ''}
             </Text>
+            <Pressable
+              testID="profile-manage-categories"
+              onPress={() => router.push('/category/index')}
+              style={styles.manageLink}>
+              <Text style={styles.manageLinkText}>Manage categories →</Text>
+            </Pressable>
           </>
         )}
       </Card>
@@ -198,4 +205,6 @@ const styles = StyleSheet.create({
   },
   tagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   countLine: { marginTop: space.md },
+  manageLink: { marginTop: space.sm },
+  manageLinkText: { ...type.bodySm, color: colors.credit },
 });

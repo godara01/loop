@@ -3,9 +3,24 @@
     "rules": "firestore.rules"
   },
   "emulators": {
-    "firestore": { "port": 8085, "websocketPort": 9155 },
-    "hub": { "port": 4405 },
-    "logging": { "port": 4505 },
-    "ui": { "enabled": false }
+    "firestore": {
+      "port": 8085,
+      "websocketPort": 9155
+    },
+    "hub": {
+      "port": 4405
+    },
+    "logging": {
+      "port": 4505
+    },
+    "ui": {
+      "enabled": false
+    },
+    "storage": {
+      "port": 9198
+    }
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }

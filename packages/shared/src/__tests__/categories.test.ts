@@ -10,15 +10,22 @@ import {
   CATEGORY_CATALOGUE,
   ESSENTIAL_CATEGORIES,
   FALLBACK_CATEGORY_SLUG,
+  MAX_LOGO_BYTES,
   type Category,
+  archiveCategory,
   canArchive,
   canDelete,
   catalogueFor,
   categoryFromTemplate,
+  editCategory,
+  newCustomCategory,
   orderForEntry,
+  reorderCategories,
   seedEssentialCategories,
   slugifyCategoryName,
+  unarchiveCategory,
   validateCategoryDraft,
+  validateLogoFile,
 } from '../categories';
 import { CATEGORY_COLOR_TOKENS } from '../theme';
 
@@ -186,5 +193,91 @@ describe('entry-strip order', () => {
     );
     const ordered = orderForEntry(archived, new Map(), false);
     assert.ok(!ordered.some((c) => c.slug === 'FUN'));
+  });
+});
+
+describe('creating a custom category', () => {
+  it('builds a category with no catalogue link', () => {
+    const category = newCustomCategory(
+      { name: '  Gym  ', slug: 'gym', icon: { kind: 'glyph', name: 'barbell' }, colorToken: 'lime' },
+      { id: 'cat-1', sortOrder: 9, createdAt: NOW },
+    );
+    assert.equal(category.name, 'Gym');
+    assert.equal(category.slug, 'GYM');
+    assert.equal(category.kind, 'custom');
+    assert.equal(category.catalogueSlug, null);
+    assert.equal(category.archivedAt, null);
+  });
+});
+
+describe('editing a category', () => {
+  it('changes name, icon and colour but never the slug or kind', () => {
+    const original = seedEssentialCategories(NOW)[0]!;
+    const edited = editCategory(original, { name: '  Snacks  ', colorToken: 'amber' });
+    assert.equal(edited.name, 'Snacks');
+    assert.equal(edited.colorToken, 'amber');
+    assert.equal(edited.slug, original.slug);
+    assert.equal(edited.kind, original.kind);
+  });
+
+  it('leaves anything not in the patch untouched', () => {
+    const original = seedEssentialCategories(NOW)[0]!;
+    assert.deepEqual(editCategory(original, {}), original);
+  });
+});
+
+describe('archive / unarchive round trip', () => {
+  it('sets and clears archivedAt', () => {
+    const original = seedEssentialCategories(NOW)[1]!;
+    const archived = archiveCategory(original, '2026-09-17T00:00:00.000Z');
+    assert.equal(archived.archivedAt, '2026-09-17T00:00:00.000Z');
+    assert.equal(unarchiveCategory(archived).archivedAt, null);
+  });
+});
+
+describe('reordering', () => {
+  it('assigns sortOrder 0-based in the given order', () => {
+    const seeded = seedEssentialCategories(NOW);
+    const ids = seeded.map((c) => c.id).reverse();
+    const reordered = reorderCategories(ids, seeded);
+    assert.deepEqual(
+      reordered.map((c) => c.id),
+      ids,
+    );
+    reordered.forEach((c, i) => assert.equal(c.sortOrder, i));
+  });
+
+  it('drops an id that does not exist rather than crashing', () => {
+    const seeded = seedEssentialCategories(NOW);
+    const reordered = reorderCategories(['does-not-exist', seeded[0]!.id], seeded);
+    assert.equal(reordered.length, 1);
+    assert.equal(reordered[0]!.id, seeded[0]!.id);
+  });
+
+  it('feeds directly into orderForEntry as a manual order', () => {
+    const seeded = seedEssentialCategories(NOW);
+    const flipped = reorderCategories([seeded[1]!.id, seeded[0]!.id], seeded.slice(0, 2));
+    const ordered = orderForEntry(flipped, new Map(), true);
+    assert.deepEqual(
+      ordered.map((c) => c.id),
+      [seeded[1]!.id, seeded[0]!.id],
+    );
+  });
+});
+
+describe('uploaded logo limits', () => {
+  it('accepts a small PNG/JPEG/WebP', () => {
+    assert.equal(validateLogoFile({ size: 1000, mimeType: 'image/png' }), null);
+    assert.equal(validateLogoFile({ size: MAX_LOGO_BYTES, mimeType: 'image/jpeg' }), null);
+    assert.equal(validateLogoFile({ size: 1000, mimeType: 'image/webp' }), null);
+  });
+
+  it('rejects anything over the ceiling the Storage rules also enforce', () => {
+    assert.equal(validateLogoFile({ size: MAX_LOGO_BYTES + 1, mimeType: 'image/png' }), 'too_large');
+  });
+
+  it('rejects a type that is not an image the app renders', () => {
+    assert.equal(validateLogoFile({ size: 1000, mimeType: 'application/pdf' }), 'wrong_type');
+    assert.equal(validateLogoFile({ size: 1000, mimeType: 'image/gif' }), 'wrong_type');
   });
 });
