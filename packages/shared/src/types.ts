@@ -34,6 +34,9 @@ export interface UserSettings {
   /** Hides coins, the streak capsule and celebrations. See docs/06-gamification.md. */
   readonly keepItPlain: boolean;
   readonly insightsPeriod: PeriodKind;
+  /** Inclusive start / exclusive end for the user-selected custom Insights window. */
+  readonly insightsCustomStartDate: string | null;
+  readonly insightsCustomEndDate: string | null;
 }
 
 /** Where an expense came from. SMS-derived ones are approved, never automatic. */

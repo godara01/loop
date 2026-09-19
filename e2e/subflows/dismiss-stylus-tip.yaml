@@ -1,0 +1,11 @@
+# Android occasionally shows a one-time "Try out your stylus" IME tip the
+# first time any text field is focused after boot — an OS input-method
+# overlay, nothing to do with this app. Call this right after the first
+# `inputText` in a flow; it is a no-op when the tip isn't showing.
+appId: com.getter.loop
+---
+- runFlow:
+    when:
+      visible: "Try out your stylus"
+    commands:
+      - tapOn: "Cancel"

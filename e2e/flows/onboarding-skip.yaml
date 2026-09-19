@@ -1,0 +1,55 @@
+# Skip steps 3-5 (feel, categories, first-expense) still lands functional app.
+# See docs/02-onboarding.md#steps.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+# Step 1 — Welcome
+- assertVisible:
+    id: "screen-onboarding-welcome"
+- tapOn:
+    id: "onboarding-start"
+
+# Step 2 — Profile
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-profile"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-profile-name-input"
+- inputText: "Skip User"
+- tapOn:
+    id: "onboarding-profile-continue"
+
+# Step 3 — Skip feel
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-feel"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-feel-skip"
+
+# Step 4 — Skip categories
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-categories"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-categories-skip"
+
+# Step 5 — Skip first expense
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-first-expense"
+    timeout: 15000
+- tapOn:
+    id: "entry-skip"
+
+# Should land on Orbit with empty state
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+- assertVisible:
+    text: "Nothing logged today"

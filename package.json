@@ -2,10 +2,11 @@
   "name": "loop",
   "private": true,
   "version": "0.1.0",
-  "description": "Loop \u2014 gamified, haptic expense tracking and group settlement",
+  "description": "Loop — gamified, haptic expense tracking and group settlement",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "functions"
   ],
   "engines": {
     "node": ">=20"
@@ -23,12 +24,16 @@
     "firebase:emulators": "bash scripts/firebase-emulators.sh",
     "e2e": "bash scripts/e2e.sh",
     "seed": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 tsx scripts/seed-emulator.ts",
-    "test:perf": "bash scripts/perf-ledger.sh"
+    "test:perf": "bash scripts/perf-ledger.sh",
+    "test:functions": "firebase emulators:exec --config firebase.rules-test.json --only firestore --project demo-loop \"tsx --test tests/functions/*.test.ts\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
     "firebase": "^12.19.0",
     "firebase-admin": "^13.10.0",
     "tsx": "^4.23.13"
+  },
+  "dependencies": {
+    "firebase-functions": "^7.4.0"
   }
 }

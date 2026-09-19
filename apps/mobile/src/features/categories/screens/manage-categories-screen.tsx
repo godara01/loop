@@ -18,7 +18,7 @@ import {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import DraggableFlatList, { type RenderItemParams } from 'react-native-draggable-flatlist';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,16 +31,13 @@ import { haptic } from '@/lib/haptics';
 
 import { archiveCategory as buildArchived, unarchiveCategory as buildUnarchived } from '@loop/shared';
 import { deleteCategory, saveCategory, saveCategoryOrder } from '../api/category-repository';
+import { CategoryIconView } from '../components/category-icon-view';
 
 function CategoryIconBadge({ category }: { category: Category }) {
   const { tint, onTint } = categoryColors[category.colorToken];
   return (
     <View style={[styles.badge, { backgroundColor: tint }]}>
-      {category.icon.kind === 'image' ? (
-        <Image source={{ uri: category.icon.path }} style={styles.badgeImage} />
-      ) : (
-        <Ionicons name={category.icon.name as keyof typeof Ionicons.glyphMap} size={16} color={onTint} />
-      )}
+      <CategoryIconView icon={category.icon} size={32} color={onTint} style={styles.badgeImage} />
     </View>
   );
 }
@@ -221,7 +218,7 @@ const styles = StyleSheet.create({
   rowDragging: { borderColor: colors.credit },
   rowArchived: { opacity: 0.6 },
   badge: { width: 32, height: 32, borderRadius: radius.control, alignItems: 'center', justifyContent: 'center' },
-  badgeImage: { width: 32, height: 32, borderRadius: radius.control },
+  badgeImage: { borderRadius: radius.control },
   rowInfo: { flex: 1, gap: 4 },
   rowName: { ...type.bodyLg, color: colors.text },
   archivedToggle: { paddingVertical: space.md, alignItems: 'center' },

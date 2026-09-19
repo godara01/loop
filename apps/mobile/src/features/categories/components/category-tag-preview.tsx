@@ -3,9 +3,10 @@
  * that build it — updates as the user types. See docs/04-categories.md.
  */
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { type CategoryColorToken, type CategoryIcon, categoryColors, colors, radius, space, type } from '@loop/shared';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { CategoryIconView } from './category-icon-view';
 
 export function CategoryTagPreview({
   name,
@@ -24,11 +25,7 @@ export function CategoryTagPreview({
   return (
     <View style={styles.wrap}>
       <View style={[styles.tag, { backgroundColor: tint, borderColor: tint }]}>
-        {icon.kind === 'image' ? (
-          <Image source={{ uri: icon.path }} style={styles.logo} />
-        ) : (
-          <Ionicons name={icon.name as keyof typeof Ionicons.glyphMap} size={14} color={onTint} />
-        )}
+        <CategoryIconView icon={icon} size={14} color={onTint} />
         <Text style={[styles.tagText, { color: onTint }]}>{label}</Text>
       </View>
       <Text style={styles.name} numberOfLines={1}>
@@ -49,7 +46,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingVertical: space.sm,
   },
-  logo: { width: 14, height: 14, borderRadius: 3 },
   tagText: { ...type.monoMd },
   name: { ...type.bodyMd, color: colors.textMuted },
 });

@@ -4,11 +4,13 @@
  */
 
 import {
+  type Category,
   type CategoryColorToken,
   type CategoryIcon,
   MAX_CATEGORY_NAME_LENGTH,
   colors,
   layout,
+  newCustomCategory,
   radius,
   slugifyCategoryName,
   space,
@@ -28,13 +30,7 @@ import { useCategories } from '@/features/categories';
 import { haptic } from '@/lib/haptics';
 
 import { pickCategoryLogo } from '../api/logo-picker';
-import {
-  createCustomCategory,
-  deleteCategory,
-  newCategoryId,
-  saveCategory,
-  uploadCategoryLogo,
-} from '../api/category-repository';
+import { deleteCategory, newCategoryId, saveCategory, uploadCategoryLogo } from '../api/category-repository';
 import { CategoryTagPreview } from '../components/category-tag-preview';
 import { ColorTokenPicker } from '../components/color-token-picker';
 import { GlyphGrid } from '../components/glyph-grid';
@@ -131,28 +127,34 @@ export function CategoryEditorScreen({
     setSaving(true);
     setError(null);
     try {
-      // A locally-picked logo has a device file:// path as its icon.path —
-      // upload it now, keyed by the category's own id, and swap in the real
-      // Storage path before writing the document.
-      let finalIcon = icon;
-      if (icon.kind === 'image' && icon.path.startsWith('file://')) {
-        const { path } = await uploadCategoryLogo(uid, editing?.id ?? pendingId, icon.path);
-        finalIcon = { ...icon, path };
-      }
+      const trimmedName = name.trim();
+      const trimmedSlug = slug.trim().toUpperCase();
 
-      if (editing) {
-        await saveCategory(uid, { ...editing, name: name.trim(), slug: slug.trim().toUpperCase(), icon: finalIcon, colorToken });
-      } else {
-        const created = await createCustomCategory(
-          uid,
-          pendingId,
-          { name, slug, icon: finalIcon, colorToken },
-          categories.length,
-        );
-        if (fromEntry) updateDraft({ categoryId: created.id });
-      }
+      // Written with whatever icon is on hand right now — a freshly-picked
+      // logo is still a local file:// path at this point, which renders
+      // immediately and needs no network. This is what makes creating a
+      // category with a logo work fully offline (docs/04-categories.md).
+      const category: Category = editing
+        ? { ...editing, name: trimmedName, slug: trimmedSlug, icon, colorToken }
+        : newCustomCategory(
+            { name: trimmedName, slug: trimmedSlug, icon, colorToken },
+            { id: pendingId, sortOrder: categories.length, createdAt: new Date().toISOString() },
+          );
+
+      await saveCategory(uid, category);
+      if (fromEntry && !editing) updateDraft({ categoryId: category.id });
       haptic('splitConfirm');
       router.back();
+
+      // The upload itself is never awaited before leaving the screen — only
+      // Firestore's write queues offline, Storage's does not. Once it lands,
+      // the document is updated in place to the real Storage path; if it
+      // never does, the local file keeps rendering the logo regardless.
+      if (icon.kind === 'image' && icon.path.startsWith('file://')) {
+        uploadCategoryLogo(uid, category.id, icon.path)
+          .then(({ path }) => saveCategory(uid, { ...category, icon: { ...icon, path } }))
+          .catch((failure: unknown) => console.warn('[categories] logo upload failed', failure));
+      }
     } catch (failure) {
       haptic('error');
       setError(failure instanceof Error ? failure.message : String(failure));

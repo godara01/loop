@@ -155,7 +155,13 @@ describe('settings documents', () => {
   });
 
   it('round-trips', () => {
-    const settings = { hapticsEnabled: false, keepItPlain: true, insightsPeriod: 'week' } as const;
+    const settings = {
+      hapticsEnabled: false,
+      keepItPlain: true,
+      insightsPeriod: 'custom',
+      insightsCustomStartDate: '2026-08-01',
+      insightsCustomEndDate: '2026-08-31',
+    } as const;
     assert.deepEqual(parseSettings(UID, settingsToDoc(settings, NOW)), settings);
   });
 });

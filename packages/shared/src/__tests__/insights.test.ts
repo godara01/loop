@@ -10,12 +10,15 @@ import {
   type SpendRecord,
   collapseLongTail,
   compareToPrevious,
+  customPeriod,
   daysInPeriod,
   displayPercentages,
+  intensityStep,
   periodOf,
   periodStats,
   periodTotal,
   previousPeriod,
+  stepPeriod,
   totalsByCategory,
   totalsByDay,
   weekdayAverages,
@@ -61,6 +64,36 @@ describe('periods', () => {
 
   it('steps back to the immediately preceding window of the same length', () => {
     assert.deepEqual(previousPeriod(WEEK), { startDate: '2026-08-25', endDate: '2026-09-01' });
+  });
+
+  it('moves rolling windows in whole windows and never enters the future', () => {
+    const current = periodOf('week', '2026-09-05');
+    assert.deepEqual(stepPeriod(current, 'week', 1, '2026-09-05'), current);
+    assert.deepEqual(stepPeriod(current, 'week', -1, '2026-09-05'), {
+      startDate: '2026-08-23', endDate: '2026-08-30',
+    });
+  });
+
+  it('steps a past month as a calendar month and returns to month-to-date', () => {
+    const current = periodOf('month', '2026-09-19');
+    const august = stepPeriod(current, 'month', -1, '2026-09-19');
+    assert.deepEqual(august, { startDate: '2026-08-01', endDate: '2026-09-01' });
+    assert.deepEqual(stepPeriod(august, 'month', 1, '2026-09-19'), current);
+  });
+
+  it('moves forward through older full calendar months before returning to today', () => {
+    const july = { startDate: '2026-07-01', endDate: '2026-08-01' };
+    assert.deepEqual(stepPeriod(july, 'month', 1, '2026-09-19'), {
+      startDate: '2026-08-01', endDate: '2026-09-01',
+    });
+  });
+
+  it('accepts a bounded custom window and rejects future or oversized windows', () => {
+    assert.deepEqual(customPeriod('2026-08-01', '2026-08-31', '2026-09-05'), {
+      startDate: '2026-08-01', endDate: '2026-08-31',
+    });
+    assert.throws(() => customPeriod('2025-01-01', '2026-09-01', '2026-09-05'), /366/);
+    assert.throws(() => customPeriod('2026-09-01', '2026-09-07', '2026-09-05'), /future/);
   });
 });
 
@@ -140,6 +173,16 @@ describe('day totals', () => {
     const byDay = totalsByDay(RECORDS, WEEK, INR).reduce((s, d) => s + d.total.minor, 0);
     const byCategory = totalsByCategory(RECORDS, WEEK, INR).reduce((s, c) => s + c.total.minor, 0);
     assert.equal(byDay, byCategory);
+  });
+});
+
+describe('calendar intensity', () => {
+  it('uses five discrete steps and preserves zero-spend days', () => {
+    assert.equal(intensityStep(0, 100), 0);
+    assert.equal(intensityStep(1, 100), 1);
+    assert.equal(intensityStep(20, 100), 1);
+    assert.equal(intensityStep(21, 100), 2);
+    assert.equal(intensityStep(100, 100), 5);
   });
 });
 

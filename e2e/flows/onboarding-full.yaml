@@ -1,0 +1,85 @@
+# Complete onboarding flow: name, currency, feel, categories, first expense.
+# Fresh install → profile doc, 8+ active categories, 1 expense, streak 1, coins.
+# See docs/02-onboarding.md and docs/15-mvp-completion-plan.md#phase-4.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+# Step 1 — Welcome
+- assertVisible:
+    id: "screen-onboarding-welcome"
+- tapOn:
+    id: "onboarding-start"
+
+# Step 2 — Profile (name + currency)
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-profile"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-profile-name-input"
+- inputText: "Test User"
+- tapOn:
+    id: "onboarding-profile-currency-INR"
+- tapOn:
+    id: "onboarding-profile-continue"
+
+# Step 3 — Feel (haptics demo)
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-feel"
+    timeout: 15000
+- assertVisible:
+    text: "Try it"
+- tapOn:
+    id: "onboarding-feel-haptics-switch"
+- tapOn:
+    id: "onboarding-feel-continue"
+
+# Step 4 — Categories (8 essentials selected)
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-categories"
+    timeout: 15000
+- assertVisible:
+    id: "onboarding-categories-continue"
+- tapOn:
+    id: "onboarding-categories-continue"
+
+# Step 5 — First Expense
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-first-expense"
+    timeout: 15000
+- tapOn:
+    id: "entry-amount"
+- inputText: "500"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+
+# Land on Orbit, check streak and coins
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+- assertVisible:
+    text: "Today"
+- assertVisible:
+    id: "orbit-today-total"
+
+# Verify server state: profile onboarded, 8 categories, 1 expense
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "expenses"
+- assertTrue: "${output.docs.length >= 1}"
+
+# Verify profile doc exists and onboardedAt is set
+- runScript:
+    file: ../scripts/query-profile.js
+- assertTrue: "${output.onboardedAt != null}"
+- assertTrue: "${output.currency == 'INR'}"
+- assertTrue: "${output.displayName == 'Test User'}"

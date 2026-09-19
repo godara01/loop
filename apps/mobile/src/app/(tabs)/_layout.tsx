@@ -12,6 +12,7 @@ export default function TabsLayout() {
         screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: 'transparent' } }}>
         <Tabs.Screen name="index" options={{ title: 'Orbit' }} />
         <Tabs.Screen name="activity" options={{ title: 'Ledger' }} />
+        <Tabs.Screen name="insights" options={{ title: 'Insights' }} />
         <Tabs.Screen name="profile" options={{ title: 'You' }} />
       </Tabs>
       <UndoSnackbar />

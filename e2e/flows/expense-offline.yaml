@@ -25,6 +25,7 @@ appId: com.getter.loop
 - tapOn:
     id: "entry-description"
 - inputText: "Offline snack"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
 - tapOn:
     id: "entry-save"
 

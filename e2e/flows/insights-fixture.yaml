@@ -1,0 +1,95 @@
+# M5 smoke journey: exact totals, category drill-down, day detail, and period
+# persistence all use real Firestore-backed data rather than a mocked chart.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+# ₹120 FOOD today.
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-2"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+# ₹80 FOOD yesterday, making the month total exact and exercising two cells.
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-8"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-date-earlier"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+- tapOn:
+    id: "tab-insights"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+    timeout: 15000
+- assertVisible:
+    text: "₹200.00"
+- assertVisible:
+    id: "insights-category-cat-food"
+
+# A category row must retain the selected time range in its ledger drill-down.
+- tapOn:
+    id: "insights-category-cat-food"
+- assertVisible:
+    id: "screen-ledger"
+- assertVisible:
+    text: "₹200.00"
+- tapOn:
+    text: "Clear"
+
+# The current day opens a day detail whose total is independent of yesterday.
+- tapOn:
+    id: "tab-insights"
+- tapOn:
+    id: "insights-day-today"
+- assertVisible:
+    id: "screen-day-detail"
+- assertVisible:
+    text: "₹120.00"
+
+# Settings writes are offline-first and survive relaunch.
+- tapOn:
+    id: "day-back"
+- tapOn:
+    id: "insights-period-week"
+- assertVisible:
+    id: "insights-period-current"
+- stopApp
+- runFlow: ../subflows/launch.yaml
+- tapOn:
+    id: "tab-insights"
+- assertVisible:
+    text: "WEEK"

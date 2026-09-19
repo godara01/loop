@@ -145,7 +145,9 @@ export function CatalogueScreen({ returnTo }: { returnTo: CatalogueReturnTo }) {
         ListFooterComponent={
           <Pressable
             testID="catalogue-create-custom"
-            onPress={() => router.push('/category/new')}
+            onPress={() =>
+              router.push(returnTo === 'entry' ? '/category/new?fromEntry=1' : '/category/new')
+            }
             style={styles.footerLink}>
             <Text style={styles.footerLinkText}>Can't find it? Create your own →</Text>
           </Pressable>

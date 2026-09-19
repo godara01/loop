@@ -1,0 +1,69 @@
+# Create a fully custom category with a picked glyph and colour, from the
+# catalogue's "create your own" footer. See docs/04-categories.md#tier-3--custom.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-manage-categories"
+- tapOn:
+    id: "manage-add"
+- extendedWaitUntil:
+    visible:
+      id: "catalogue-search"
+    timeout: 15000
+# The footer link sits after ~60 catalogue entries. Searching for something
+# that matches nothing collapses the list to just the empty state + footer,
+# so the link is on-screen immediately with no scrolling needed.
+- tapOn:
+    id: "catalogue-search"
+- inputText: "zzznomatch"
+- tapOn:
+    id: "catalogue-create-custom"
+
+- extendedWaitUntil:
+    visible:
+      id: "editor-name"
+    timeout: 15000
+- tapOn:
+    id: "editor-name"
+- inputText: "Book Club"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- assertVisible:
+    text: "BOOKCLUB"
+
+- tapOn:
+    id: "glyph-book"
+# The colour row sits just past the glyph grid, under the fixed Save button —
+# scroll the (single, unambiguous) form ScrollView to reach it.
+- scrollUntilVisible:
+    element:
+      id: "color-amber"
+    direction: DOWN
+    timeout: 8000
+- tapOn:
+    id: "color-amber"
+- tapOn:
+    id: "editor-save"
+
+- extendedWaitUntil:
+    notVisible:
+      id: "editor-save"
+    timeout: 15000
+- assertVisible:
+    text: "Book Club"
+- assertVisible:
+    text: "BOOKCLUB"
+
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "categories"
+- assertTrue: ${output.docs.filter(d => d.slug == "BOOKCLUB").length == 1}
+- assertTrue: ${output.docs.filter(d => d.slug == "BOOKCLUB")[0].kind == "custom"}
+- assertTrue: ${output.docs.filter(d => d.slug == "BOOKCLUB")[0].colorToken == "amber"}
+- assertTrue: ${output.docs.filter(d => d.slug == "BOOKCLUB")[0].icon.kind == "glyph"}
+- assertTrue: ${output.docs.filter(d => d.slug == "BOOKCLUB")[0].icon.name == "book"}

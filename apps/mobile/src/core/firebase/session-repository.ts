@@ -8,9 +8,11 @@ import {
   doc,
   onSnapshot,
   setDoc,
+  updateDoc,
   writeBatch,
 } from '@react-native-firebase/firestore';
 import {
+  type ProfileDoc,
   type UserProfile,
   categoryToDoc,
   essentialCategoriesToSeed,
@@ -47,6 +49,16 @@ async function seedEssentials(uid: string): Promise<void> {
   batch.update(doc(db, firestorePaths.user(uid)), { categoriesSeededAt: now, updatedAt: now });
 
   await batch.commit();
+}
+
+/**
+ * Updates profile fields (e.g. displayName, currency, onboardedAt).
+ */
+export function updateProfile(uid: string, patch: Partial<ProfileDoc>): Promise<void> {
+  const { db } = firebase();
+  const ref = doc(db, firestorePaths.user(uid));
+  const now = new Date().toISOString();
+  return updateDoc(ref, { ...patch, updatedAt: now });
 }
 
 /**
