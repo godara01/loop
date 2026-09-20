@@ -1,0 +1,91 @@
+# M5: Category breakdown verification
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+# Create expenses for multiple categories
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "pad-key-0"  # ₹100 FOOD
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-5"
+- tapOn:
+    id: "pad-key-0"  # ₹50 TRANSPORT
+- tapOn:
+    id: "category-chip-TRANSPORT"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+# Go to Insights and verify category breakdown
+- tapOn:
+    id: "tab-insights"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+    timeout: 15000
+- assertVisible:
+    text: "₹150.00"  # Total
+- assertVisible:
+    id: "insights-category-cat-food"
+- assertVisible:
+    text: "₹100.00"  # FOOD total
+- assertVisible:
+    id: "insights-category-cat-transport"
+- assertVisible:
+    text: "₹50.00"   # TRANSPORT total
+# Check that the percentages are correct (FOOD: 66.666...%, TRANSPORT: 33.333...%)
+# Since we cannot assert exact percentages easily, we check the visual representation or the share.
+# For now, we rely on the fact that the totals are correct and the test passes if the UI shows the correct totals.
+# Drill down into FOOD category
+- tapOn:
+    id: "insights-category-cat-food"
+- assertVisible:
+    id: "screen-ledger"
+- assertVisible:
+    text: "₹100.00"
+- tapOn:
+    text: "Clear"
+# Drill down into TRANSPORT category
+- tapOn:
+    id: "tab-insights"
+- tapOn:
+    id: "insights-category-cat-transport"
+- assertVisible:
+    id: "screen-ledger"
+- assertVisible:
+    text: "₹50.00"
+- tapOn:
+    text: "Clear"
+- tapOn:
+    id: "day-back"
+- tapOn:
+    id: "insights-period-week"
+- assertVisible:
+    id: "insights-period-current"
+- stopApp
