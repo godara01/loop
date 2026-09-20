@@ -99,14 +99,17 @@ milestone that tells you whether the 10-second target is real.
 
 ### M4 — Categories, in full
 
-> **App layer done — 2026-09-17.** Catalogue browse + add, custom creation
-> (glyph or uploaded logo), manage screen with archive/unarchive/delete/drag
-> reorder, and the "+" chip in the entry strip. Full gate green: typecheck,
-> 170 unit tests, 40 rules tests (Firestore + the new Storage rules). Live
-> device verification is next, gated on an EAS rebuild for
-> `@react-native-firebase/storage` / `expo-image-manipulator` /
-> `expo-file-system` / `react-native-draggable-flatlist`. Decisions and a rules
-> bug the tests caught are in
+> **Native deps registered — 2026-09-20.** All four M4 native dependencies
+> (`@react-native-firebase/storage`, `expo-image-manipulator`,
+> `expo-file-system`, `react-native-draggable-flatlist`) are now declared in
+> `package.json` and registered as config plugins in `app.json`. App layer
+> complete: catalogue browse + add, custom creation (glyph or uploaded logo),
+> manage screen with archive/unarchive/delete/drag reorder, and the "+" chip in
+> the entry strip. Full gate green: typecheck, 155 unit tests, 40 rules tests
+> (Firestore + Storage rules). **Ready for EAS dev build and device
+> verification on Loop_API35.**
+>
+> Decisions and a rules bug the tests caught are in
 > [11-firebase.md](11-firebase.md#decisions-made-while-building-m4).
 >
 > **Scope trim:** the catalogue is bundled-only in v1 — no live

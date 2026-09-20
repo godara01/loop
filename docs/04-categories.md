@@ -201,17 +201,17 @@ long tail separately ([05-insights.md](05-insights.md#long-tail)).
 
 ## Acceptance criteria
 
-- [ ] `Expense.categoryId` replaces `Expense.category` across `@loop/shared`, the
+- [x] `Expense.categoryId` replaces `Expense.category` across `@loop/shared`, the
       app and the seed data, and `npm run typecheck` is clean.
-- [ ] A fresh install has exactly 8 active categories and a full browsable
+- [x] A fresh install has exactly 8 active categories and a full browsable
       catalogue, both available with no network.
-- [ ] Adding from the catalogue creates an independent copy; later renaming it
+- [x] Adding from the catalogue creates an independent copy; later renaming it
       does not affect the catalogue and vice versa.
-- [ ] Creating a category from inside expense entry returns to entry with it
+- [x] Creating a category from inside expense entry returns to entry with it
       selected and the typed amount intact.
-- [ ] A custom category with an uploaded logo can be created offline and renders
+- [x] A custom category with an uploaded logo can be created offline and renders
       its logo immediately.
-- [ ] Duplicate slugs are impossible, including against archived categories that
+- [x] Duplicate slugs are impossible, including against archived categories that
       are later re-activated.
-- [ ] Archiving a category with expenses leaves every Insights total unchanged.
-- [ ] Every colour token passes 4.5:1 contrast for its tag text.
+- [x] Archiving a category with expenses leaves every Insights total unchanged.
+- [x] Every colour token passes 4.5:1 contrast for its tag text.
