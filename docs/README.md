@@ -27,6 +27,7 @@ to someone and they can build that feature without reading the rest.
 | [13-build-plan.md](13-build-plan.md) | The order to build v1 in, milestone by milestone |
 | [14-environment-setup.md](14-environment-setup.md) | Firebase, EAS and dev-build setup — start here to run the app |
 | [15-mvp-completion-plan.md](15-mvp-completion-plan.md) | The six phases from M3 to a tested MVP, and the final integration gate |
+| [tasks/](tasks/README.md) | The remaining work broken into small, independently completable task briefs, in build order |
 
 ## Conventions used in every doc
 
