@@ -41,8 +41,8 @@ rewrite them unless verification finds a bug.
 See `docs/06-gamification.md` for the full list of gamification-related
 acceptance criteria. For this gate, we consider the following as the minimum
 set that must be verified:
-- [ ] Cloud Functions unit tests pass
-- [ ] Firestore and Storage rules unit tests pass
+- [x] Cloud Functions unit tests pass
+- [x] Firestore and Storage rules unit tests pass
 - [ ] Check-in zero-spend Maestro flow passes on emulator/device
 - [ ] Check-in offline reconcile Maestro flow passes on emulator/device
 - [ ] Keep it plain Maestro flow passes on emulator/device
@@ -60,3 +60,10 @@ set that must be verified:
   Silently skipped. Commit only when task's Definition of Done is genuinely
   Met, one commit, following same "don't overclaim device-dependent
   Criteria" discipline as Task 2.
+## Status
+L1-L3 gates (G1, G2) are verified and green. L4 gates (G3-G6) are handed off
+due to Firebase emulator startup issues (port conflicts or configuration)
+despite cleaning existing processes. The emulator-5554 is available and the
+app is installed, but the Firebase emulators (auth and firestore) fail to
+start. To complete the gate, fix the emulator setup or run the verification on
+a physical device.
