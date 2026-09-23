@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { parseTransactionSms } from './templates';
+import { parseTransactionSms } from '../sms/templates';
 
 describe('SMS Parser — Transaction Detection', () => {
   it('parses HDFC Bank debit with account last4', () => {
