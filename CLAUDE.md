@@ -10,6 +10,13 @@ wrapped in an arcade-tactile interface where every interaction has physical weig
 functional area. Read [docs/README.md](docs/README.md) before adding a feature;
 the v1 cut line in `docs/00-product.md` is binding.
 
+## Remaining work
+
+[TASKS.md](TASKS.md) is the single task tracker — small code-only tasks with
+dependencies and parallel lanes, plus a device queue (section D) for everything
+that needs the Android emulator. Don't create other trackers (`PLAN.md`,
+`GATES.md`, `docs/tasks/`).
+
 ## Repo layout
 
 ```
