@@ -46,13 +46,32 @@ export interface PendingExpense {
   readonly updatedAt: string;
 }
 
-export interface SmsTemplate {
+export interface TemplateFields {
+  readonly amount: string;
+  readonly merchant?: string;
+  readonly last4?: string;
+}
+
+export interface TemplateSpec {
   readonly id: string;
-  readonly name: string;
+  readonly entity: string;
+  readonly pattern: string;
+  readonly flags: string;
+  readonly fields: TemplateFields;
+}
+
+export interface TemplateRegistry {
+  readonly version: number;
+  readonly templates: readonly TemplateSpec[];
+}
+
+export interface CompiledTemplate extends Omit<TemplateSpec, 'pattern'> {
   readonly pattern: RegExp;
-  readonly extract: (
-    match: RegExpExecArray,
-  ) => ParsedTransaction | null;
+}
+
+export interface CompiledRegistry {
+  readonly version: number;
+  readonly templates: readonly CompiledTemplate[];
 }
 
 // Document types for Firestore

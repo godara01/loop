@@ -14,5 +14,22 @@ export * from './storage-paths';
 
 // SMS exports (selective to avoid duplication with types.ts)
 export { isAllowlistedSender } from './sms/sender';
-export { parseTransactionSms, SMS_TEMPLATES } from './sms/templates';
-export type { ParsedTransaction, PendingExpenseStatus, PendingExpenseSource, TransactionDirection } from './sms/types';
+export {
+  BUNDLED_REGISTRY,
+  COMPILED_BUNDLED_REGISTRY,
+  compileRegistry,
+  mergeRegistry,
+  parseTransactionSms,
+  SMS_TEMPLATES,
+} from './sms/templates';
+export type {
+  CompiledRegistry,
+  CompiledTemplate,
+  ParsedTransaction,
+  PendingExpenseStatus,
+  PendingExpenseSource,
+  TemplateFields,
+  TemplateRegistry,
+  TemplateSpec,
+  TransactionDirection,
+} from './sms/types';
