@@ -66,7 +66,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | ID | Task | Needs | Status |
 |---|---|---|---|
 | A1 | Make the SMS unit tests actually run | — | todo |
-| A2 | Invariant-check script (`npm run check:invariants`) | — | todo |
+| A2 | Invariant-check script (`npm run check:invariants`) | — | done |
 | A3 | Maestro testID cross-check script | — | todo |
 | A4 | Tick code-provable acceptance criteria in docs | A1, A2 | blocked |
 | S1 | DLT sender registry | A1 | blocked |
