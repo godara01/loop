@@ -89,7 +89,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | U4 | Paste-to-parse | U2, N3 | blocked |
 | U5 | Auto-capture explainer + one-time Orbit card + backfill | N1, N2, N3, U2 | blocked |
 | U6 | Author the 8 SMS Maestro flows | U2, U3, U4, U5, A3 | blocked |
-| R1 | Pure rollup maths in `packages/shared` | — | todo |
+| R1 | Pure rollup maths in `packages/shared` | — | done |
 | R2 | `onExpenseWrite` maintains rollups | R1 | blocked |
 | R3 | `rebuildRollups` callable | R1 | blocked |
 | R4 | Rules test: clients can't write rollups | — | todo |

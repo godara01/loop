@@ -109,14 +109,16 @@ export interface Wallet {
   readonly updatedAt: string;
 }
 
-/** Function-maintained aggregate, so Insights is O(days) not O(expenses). */
+/** Function-maintained aggregate stored at dailyRollups/{YYYY-MM-DD}. */
 export interface DailyRollup {
-  readonly date: string;
-  readonly total: Money;
+  readonly totalMinor: number;
   readonly count: number;
-  /** categoryId → minor units. */
   readonly byCategory: Readonly<Record<string, number>>;
-  readonly updatedAt: string;
+}
+
+/** Function-maintained aggregate stored at monthlyRollups/{YYYY-MM}. */
+export interface MonthlyRollup extends DailyRollup {
+  readonly byDay: Readonly<Record<string, number>>;
 }
 
 export interface Squad {

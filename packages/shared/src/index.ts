@@ -6,6 +6,7 @@ export * from './categories';
 export * from './expenses';
 export * from './coins';
 export * from './insights';
+export * from './rollups';
 export * from './types';
 export * from './theme';
 export * from './firestore';
