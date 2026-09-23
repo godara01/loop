@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import { periodTotal } from '../insights';
 import { money } from '../money';
-import { applyDelta, buildRollups, rollupDelta, type Rollups } from '../rollups';
+import { applyDelta, applyRollupDelta, buildRollups, rollupDelta, type Rollups } from '../rollups';
 import type { Expense } from '../types';
 
 const INR = 'INR' as const;
@@ -33,24 +33,7 @@ function expense(overrides: Partial<Expense> = {}): Expense {
 }
 
 function applyToRollups(rollups: Rollups, before: Expense | null, after: Expense | null): Rollups {
-  const delta = rollupDelta(before, after);
-  const daily = { ...rollups.daily };
-  const monthly = { ...rollups.monthly };
-
-  for (const [date, change] of Object.entries(delta.daily)) {
-    const next = applyDelta(daily[date] ?? { totalMinor: 0, count: 0, byCategory: {} }, change);
-    if (next.count === 0) delete daily[date];
-    else daily[date] = next;
-  }
-  for (const [month, change] of Object.entries(delta.monthly)) {
-    const next = applyDelta(
-      monthly[month] ?? { totalMinor: 0, count: 0, byCategory: {}, byDay: {} },
-      change as import('../types').MonthlyRollup,
-    );
-    if (next.count === 0) delete monthly[month];
-    else monthly[month] = next;
-  }
-  return { daily, monthly };
+  return applyRollupDelta(rollups, rollupDelta(before, after));
 }
 
 describe('rollups', () => {
@@ -114,11 +97,14 @@ describe('rollups', () => {
       return state;
     };
     const pick = <T>(items: readonly T[]): T => items[next() % items.length]!;
-    const dates = Array.from({ length: 90 }, (_, index) => {
-      const month = index < 45 ? '09' : '10';
-      const day = String((index % 45) + 1).padStart(2, '0');
-      return `2026-${month}-${day}`;
+    const dates = Array.from({ length: 91 }, (_, index) => {
+      if (index < 30) return `2026-09-${String(index + 1).padStart(2, '0')}`;
+      if (index < 61) return `2026-10-${String(index - 29).padStart(2, '0')}`;
+      return `2026-11-${String(index - 60).padStart(2, '0')}`;
     });
+    for (const date of dates) {
+      assert.equal(new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10), date);
+    }
     const categories = ['food', 'transport', 'fun', 'rent'] as const;
     const expenses = new Map<string, Expense>();
     let folded: Rollups = { daily: {}, monthly: {} };
@@ -156,8 +142,14 @@ describe('rollups', () => {
     const rebuilt = buildRollups(finalExpenses);
     assert.deepEqual(folded, rebuilt);
 
+    const monthEnd = (month: string): string => {
+      const y = Number(month.slice(0, 4));
+      const m = Number(month.slice(5, 7));
+      return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+    };
     for (const [month, rollup] of Object.entries(rebuilt.monthly)) {
-      assert.equal(periodTotal(finalExpenses, { startDate: `${month}-01`, endDate: month === '2026-09' ? '2026-10-01' : '2026-11-01' }, INR).minor, rollup.totalMinor);
+      const period = { startDate: `${month}-01`, endDate: monthEnd(month) } as import('../insights').Period;
+      assert.equal(periodTotal(finalExpenses, period, INR).minor, rollup.totalMinor);
       assert.ok(Number.isInteger(rollup.totalMinor));
     }
     for (const rollup of Object.values(rebuilt.daily)) assert.ok(Number.isInteger(rollup.totalMinor));

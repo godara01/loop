@@ -126,3 +126,24 @@ export function buildRollups(expenses: readonly Expense[]): Rollups {
 
   return rollups;
 }
+
+export function isEmptyRollup(r: DailyRollup | MonthlyRollup): boolean {
+  return r.count === 0;
+}
+
+export function applyRollupDelta(rollups: Rollups, delta: RollupDelta): Rollups {
+  const daily = { ...rollups.daily };
+  const monthly = { ...rollups.monthly };
+
+  for (const [date, change] of Object.entries(delta.daily)) {
+    const next = applyDelta(daily[date] ?? emptyDaily(), change);
+    if (isEmptyRollup(next)) delete daily[date];
+    else daily[date] = next;
+  }
+  for (const [month, change] of Object.entries(delta.monthly)) {
+    const next = applyDelta(monthly[month] ?? emptyMonthly(), change);
+    if (isEmptyRollup(next)) delete monthly[month];
+    else monthly[month] = next;
+  }
+  return { daily, monthly };
+}
