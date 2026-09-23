@@ -46,6 +46,12 @@ started.
    has one). Then write `NATIVE REBUILD NEEDED: <pkg>` in the commit body. Do
    not attempt the build.
 
+10. **Parallel sessions need separate directories.** Two agents in the same
+    checkout will fight over the git index. Give each one its own directory:
+    `git worktree add ../loop-<id> -b task/<id>` (plain git, works with any
+    tool), then run `npm install` inside it. `test:rules` and `test:functions`
+    bind the same emulator ports, so only one session at a time may run them.
+
 ### Baseline (all green on 2026-09-23)
 
 | Command | Result |
@@ -90,7 +96,8 @@ A task must never lower these counts. A task that adds tests raises them.
 | U5 | Auto-capture explainer + one-time Orbit card + backfill | N1, N2, N3, U2 | blocked |
 | U6 | Author the 8 SMS Maestro flows | U2, U3, U4, U5, A3 | blocked |
 | R1 | Pure rollup maths in `packages/shared` | — | done |
-| R2 | `onExpenseWrite` maintains rollups | R1 | blocked |
+| R1a | R1 follow-ups: valid test dates, shared empty-rollup rule | R1 | todo |
+| R2 | `onExpenseWrite` maintains rollups | R1a | blocked |
 | R3 | `rebuildRollups` callable | R1 | blocked |
 | R4 | Rules test: clients can't write rollups | — | todo |
 | R5 | Pure cache + rollup merge for Insights | R1 | blocked |
@@ -130,7 +137,7 @@ Lane P  pending     P1 ─┬─▶ P2
                         └─▶ C2
 Lane N  native      N1 (no deps)        S4+S6+S7+P1 ─▶ N3
 Lane U  inbox UI    U1+P4 ─▶ U2, U3     U2+N3 ─▶ U4     N1+N2+N3+U2 ─▶ U5     all U + A3 ─▶ U6
-Lane R  rollups     R1 ─┬─▶ R2 ─▶ C1
+Lane R  rollups     R1 ─┬─▶ R1a ─▶ R2 ─▶ C1
                         ├─▶ R3
                         └─▶ R5 ─▶ R6       R4 (no deps)
 Lane X  CSV/reset   X1 ─▶ X2            X3 + C3 ─▶ X4       C3 (no deps)
@@ -271,8 +278,9 @@ with `npm test`. All new tests go in `packages/shared/src/__tests__/`.
   - `mergeRegistry(bundled, override)` keeps the higher version, and an
     override template replaces a bundled one with the same `id`.
   - Amounts go through `parseAmount()` in `money.ts`.
-  - Remove `parseTransactionSms` from this file (it moves to S4) and update
-    the `index.ts` export.
+  - Keep `parseTransactionSms` in this file and working on the compiled
+    bundled registry until S4 moves it. The existing `__tests__/sms.test.ts`
+    must still pass unchanged.
 - **Done when:**
   - Tests cover `compileRegistry` rejecting an invalid pattern and a missing
     `amount` group
@@ -306,6 +314,8 @@ with `npm test`. All new tests go in `packages/shared/src/__tests__/`.
   - lakh grouping, `Rs.`/`INR`/`₹` prefixes, card and UPI debits
   - OTP, balance, promo, declined, reversal, and credit messages
   - non-bank senders
+- **Also:** delete the unused duplicate `PendingExpenseDoc` from `sms/types.ts`
+  once P1's converter exists.
 - **Done when:**
   - The test asserts `corpus.length >= 40` and that every entry matches its
     `expect`
@@ -353,8 +363,8 @@ Spec: `docs/12-sms-ingest.md#the-pending-expense`. The document has **no
   `expenseToDoc`/`parseExpense` pattern.
   - `parsePendingExpense` throws on a bad status enum, a non-integer
     `amountMinor`, or any unknown key (including `body`)
-  - Drop the duplicate `PendingExpenseDoc` in `sms/types.ts` if the converter
-    makes it redundant
+  - Don't edit `sms/types.ts`; S-lane tasks own it. Import `PendingExpense`
+    from it. Removing the duplicate `PendingExpenseDoc` is left for S5.
 - **Done when:**
   - A round-trip test passes: `parse(toDoc(x))` deep-equals `x`
   - Malformed-input tests throw, with one per rule above
@@ -573,14 +583,50 @@ Spec: `docs/11-firebase.md` (the rollup schema) and
     `buildRollups` of the final state. `buildRollups` month totals also equal
     `insights.ts` period totals to the minor unit.
 
+### R1a · R1 follow-ups
+- **Needs:** R1 · **Owns:** `packages/shared/src/rollups.ts`, `__tests__/rollups.test.ts`
+- **Why:** review of R1 found two gaps.
+  - The parity test generates impossible dates such as `2026-09-31` through
+    `2026-09-45` and `2026-10-45`.
+  - The rule "a rollup whose `count` reaches 0 is deleted" lives only in the
+    test's `applyToRollups` helper, so R2 would have to re-invent it.
+- **Build:**
+  - Generate only real calendar dates across at least 3 months, and include
+    the last day of each month.
+  - Export `isEmptyRollup(r)` (true when `count === 0`) and
+    `applyRollupDelta(rollups, delta): Rollups`. This is the helper moved
+    out of the test, which drops empty docs.
+  - Have the test use the exported helper.
+- **Done when:**
+  - `npm test -w @loop/shared` passes with no fewer tests than before
+  - `grep -nE "2026-(09-3[1-9]|09-4|10-3[2-9]|10-4)" packages/shared/src/__tests__/rollups.test.ts`
+    prints nothing
+  - Every generated date round-trips through `new Date(d + 'T00:00:00Z').toISOString().slice(0,10) === d`,
+    asserted in the test
+  - `typecheck` exits 0
+
 ### R2 · `onExpenseWrite` maintains rollups
-- **Needs:** R1 · **Owns:** `functions/src/rollups.ts`, `functions/src/handlers.ts` (call site), `tests/functions/rollups.test.ts`
-- **Build:** apply `rollupDelta` to `dailyRollups/{date}` and
-  `monthlyRollups/{YYYY-MM}` in a transaction. It must stay idempotent under
-  retries: reuse the handler's existing idempotency pattern.
-- **Done when:** `npm run test:functions` passes, with ≥ 5 new tests and the
-  existing 7 still passing. Cover create, edit, category move, soft delete,
-  and the same event delivered twice (one application).
+- **Needs:** R1a · **Owns:** `functions/src/rollups.ts`, `functions/src/handlers.ts` (call site), `tests/functions/rollups.test.ts`
+- **Build:** apply the rollup change to `dailyRollups/{date}` and
+  `monthlyRollups/{YYYY-MM}` in one transaction.
+  - `handleExpenseWrite` currently returns early for deleted and soft-deleted
+    expenses, so the rollup update must run **before** that return.
+  - Triggers are at-least-once and can arrive out of order, so don't trust the
+    event's `before`. Keep a server-only marker at
+    `users/{uid}/rollupApplied/{expenseId}` holding the contribution last
+    applied (`{ localDate, categoryId, minor }`, or absent).
+  - Compute the delta as marker → current `after`, then write the rollups
+    and the marker in the same transaction. A replayed event then produces
+    a zero delta.
+  - `firestore.rules` already denies unknown paths through the final
+    catch-all; confirm this in the commit body.
+  - Delete a rollup doc once `isEmptyRollup` holds.
+- **Done when:** `npm run test:functions` passes, with ≥ 6 new tests and the
+  existing 7 still passing. Cover:
+  - create, edit, category move, and soft delete
+  - the same event delivered twice (applied once)
+  - an older event arriving after a newer one (the final rollups still equal
+    `buildRollups` of the current expenses)
 
 ### R3 · `rebuildRollups` callable
 - **Needs:** R1 · **Owns:** `functions/src/rollups.ts`, `functions/src/index.ts` (export), `tests/functions/rollups.test.ts`
@@ -639,7 +685,7 @@ Spec: `docs/11-firebase.md` (the rollup schema) and
 - **Needs:** — · **Owns:** `functions/src/cleanup.ts`, `functions/src/index.ts`, `tests/functions/delete-user.test.ts`, `package.json` (`test:functions` may need `--only firestore,storage`)
 - **Build:** delete everything under `users/{uid}/**`: profile, settings,
   categories, expenses, checkIns, streak, wallet, coinLedger, pendingExpenses,
-  dailyRollups, monthlyRollups, groupIndex, and devices. Also delete the
+  dailyRollups, monthlyRollups, rollupApplied, groupIndex, and devices. Also delete the
   Storage prefix `users/{uid}/`. Only the caller's own uid can be deleted.
 - **Done when:** `test:functions` passes these tests:
   - a fully populated user (at least one doc in *every* listed subcollection,
