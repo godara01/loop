@@ -89,9 +89,9 @@ A task must never lower these counts. A task that adds tests raises them.
 | N1 | Native `sms-reader` Expo module (code only) | — | todo |
 | N2 | Remote Config wrapper (kill switch + template override) | S3 | todo |
 | N3 | Pure SMS ingest pipeline | S4, S6, S7, P1 | blocked |
-| U1 | Inbox view-model (grouping, badge count, approve-all eligibility) | P1 | todo |
-| U2 | `/inbox` route, cards, empty state | U1, P4 | blocked |
-| U3 | Orbit inbox badge | U1, P4 | blocked |
+| U1 | Inbox view-model (grouping, badge count, approve-all eligibility) | P1 | done |
+| U2 | `/inbox` route, cards, empty state | U1, P4 | todo |
+| U3 | Orbit inbox badge | U1, P4 | todo |
 | U4 | Paste-to-parse | U2, N3 | blocked |
 | U5 | Auto-capture explainer + one-time Orbit card + backfill | N1, N2, N3, U2 | blocked |
 | U6 | Author the 8 SMS Maestro flows | U2, U3, U4, U5, A3 | blocked |
