@@ -84,8 +84,8 @@ A task must never lower these counts. A task that adds tests raises them.
 | S7 | `displayHint` builder | A1 | todo |
 | P1 | `pendingExpenses` path + converter pair | — | done |
 | P2 | `pendingExpenses` security rules + rules tests | P1 | todo |
-| P3 | Pure approval-batch model | P1 | todo |
-| P4 | `pending-expenses-repository.ts` | P1, P3 | blocked |
+| P3 | Pure approval-batch model | P1 | done |
+| P4 | `pending-expenses-repository.ts` | P1, P3 | todo |
 | N1 | Native `sms-reader` Expo module (code only) | — | todo |
 | N2 | Remote Config wrapper (kill switch + template override) | S3 | todo |
 | N3 | Pure SMS ingest pipeline | S4, S6, S7, P1 | blocked |
@@ -393,11 +393,13 @@ Spec: `docs/12-sms-ingest.md#the-pending-expense`. The document has **no
 ### P3 · Approval-batch model (pure)
 - **Needs:** P1 · **Owns:** `apps/mobile/src/features/inbox/model/approval.ts`, `approval.test.ts`
 - **Build:**
-  - `buildApproval(pending, categoryId, edits?, now)` returns
-    `{ expense: ExpenseDraft-shaped doc with source:'sms', pendingId; pendingUpdate: { status:'approved', expenseId } }`
-  - `buildApproveAll(items, choices)` throws `MissingCategoryError` if any
+  - `buildApproval(uid, pending, categoryId, edits?, now)` returns
+    `{ expense: Expense with source:'sms', pendingId; pendingUpdate: { status:'approved', expenseId, updatedAt } }`
+  - `buildApproveAll(uid, items, choices, now)` throws `MissingCategoryError` if any
     item has no category. It returns one pair per item.
-  - `pasted` items produce `source: 'pasted'`.
+  - `pasted` items produce `source: 'sms'`, since `ExpenseSource` has no
+    `'pasted'` and `parseExpense` would reject it. The pending doc keeps
+    `'pasted'`, reachable through `expense.pendingId`.
 - **Done when:** `npm test -w @loop/mobile` passes with the new tests. The
   missing-category test fails without the check, so it's a positive control.
 
