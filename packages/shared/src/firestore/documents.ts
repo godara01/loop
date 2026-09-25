@@ -21,6 +21,7 @@ import type { CoinRuleId } from '../coins';
 import type { Category, CategoryIcon, CategoryKind } from '../categories';
 import type { PeriodKind } from '../insights';
 import { CURRENCY_SYMBOL, type CurrencyCode, money } from '../money';
+import type { PendingExpense, PendingExpenseSource, PendingExpenseStatus } from '../sms/types';
 import type { SplitMode } from '../split';
 import { CATEGORY_COLOR_TOKENS } from '../theme';
 import type { Expense, ExpenseSource, UserProfile, UserSettings } from '../types';
@@ -479,5 +480,104 @@ export function parseCoinLedgerEntry(uid: string, entryId: string, data: unknown
     localDate: localDate(path, d, 'localDate'),
     refId: optionalText(path, d, 'refId'),
     createdAt: instant(path, d, 'createdAt'),
+  };
+}
+
+// ============ PENDING EXPENSE ============
+
+/**
+ * An SMS-derived proposal as stored. Money is flat for the same reason as
+ * `ExpenseDoc`. The raw message body is never stored, so the parser rejects any
+ * key it does not know — including `body` — rather than carrying it along.
+ */
+export type PendingExpenseDoc = Omit<PendingExpense, 'id'>;
+
+const PENDING_STATUSES: readonly PendingExpenseStatus[] = ['pending', 'approved', 'rejected', 'expired'];
+const PENDING_SOURCES: readonly PendingExpenseSource[] = ['sms', 'shared', 'pasted'];
+const PENDING_KEYS: ReadonlySet<string> = new Set<keyof PendingExpenseDoc>([
+  'status',
+  'amountMinor',
+  'currency',
+  'merchant',
+  'accountLast4',
+  'occurredAt',
+  'receivedAt',
+  'source',
+  'templateId',
+  'confidence',
+  'suggestedCategoryId',
+  'suggestionConfidence',
+  'suggestionModelVersion',
+  'expenseId',
+  'displayHint',
+  'createdAt',
+  'updatedAt',
+]);
+
+function unit(path: string, d: Fields, field: string): number {
+  const value = d[field];
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
+    throw new DocumentShapeError(path, field, 'must be a number between 0 and 1');
+  }
+  return value;
+}
+
+function optionalUnit(path: string, d: Fields, field: string): number | null {
+  return d[field] === null || d[field] === undefined ? null : unit(path, d, field);
+}
+
+/** `id` is the document id, so it is not stored inside the document. */
+export function pendingExpenseToDoc(pending: PendingExpense): PendingExpenseDoc {
+  return {
+    status: pending.status,
+    amountMinor: pending.amountMinor,
+    currency: pending.currency,
+    merchant: pending.merchant,
+    accountLast4: pending.accountLast4,
+    occurredAt: pending.occurredAt,
+    receivedAt: pending.receivedAt,
+    source: pending.source,
+    templateId: pending.templateId,
+    confidence: pending.confidence,
+    suggestedCategoryId: pending.suggestedCategoryId,
+    suggestionConfidence: pending.suggestionConfidence,
+    suggestionModelVersion: pending.suggestionModelVersion,
+    expenseId: pending.expenseId,
+    displayHint: pending.displayHint,
+    createdAt: pending.createdAt,
+    updatedAt: pending.updatedAt,
+  };
+}
+
+export function parsePendingExpense(uid: string, pendingExpenseId: string, data: unknown): PendingExpense {
+  const path = firestorePaths.pendingExpense(uid, pendingExpenseId);
+  const d = record(path, '(document)', data);
+
+  for (const key of Object.keys(d)) {
+    if (!PENDING_KEYS.has(key)) throw new DocumentShapeError(path, key, 'is not a pending-expense field');
+  }
+
+  const amountMinor = integer(path, d, 'amountMinor');
+  if (amountMinor <= 0) throw new DocumentShapeError(path, 'amountMinor', 'must be greater than zero');
+
+  return {
+    id: pendingExpenseId,
+    status: oneOf(path, d, 'status', PENDING_STATUSES),
+    amountMinor,
+    currency: oneOf(path, d, 'currency', CURRENCIES),
+    merchant: optionalText(path, d, 'merchant'),
+    accountLast4: optionalText(path, d, 'accountLast4'),
+    occurredAt: instant(path, d, 'occurredAt'),
+    receivedAt: instant(path, d, 'receivedAt'),
+    source: oneOf(path, d, 'source', PENDING_SOURCES),
+    templateId: text(path, d, 'templateId'),
+    confidence: unit(path, d, 'confidence'),
+    suggestedCategoryId: optionalText(path, d, 'suggestedCategoryId'),
+    suggestionConfidence: optionalUnit(path, d, 'suggestionConfidence'),
+    suggestionModelVersion: optionalText(path, d, 'suggestionModelVersion'),
+    expenseId: optionalText(path, d, 'expenseId'),
+    displayHint: text(path, d, 'displayHint'),
+    createdAt: instant(path, d, 'createdAt'),
+    updatedAt: instant(path, d, 'updatedAt'),
   };
 }

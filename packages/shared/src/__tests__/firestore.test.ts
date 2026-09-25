@@ -13,12 +13,15 @@ import {
   categoryToDoc,
   newProfile,
   parseCategory,
+  parsePendingExpense,
+  pendingExpenseToDoc,
   parseProfile,
   parseSettings,
   profileToDoc,
   settingsToDoc,
 } from '../firestore/documents';
 import { firestorePaths } from '../firestore/paths';
+import type { PendingExpense } from '../sms/types';
 
 const UID = 'user-1';
 const NOW = '2026-09-13T10:00:00.000Z';
@@ -163,5 +166,86 @@ describe('settings documents', () => {
       insightsCustomEndDate: '2026-08-31',
     } as const;
     assert.deepEqual(parseSettings(UID, settingsToDoc(settings, NOW)), settings);
+  });
+});
+
+describe('pending expense documents', () => {
+  const pending: PendingExpense = {
+    id: 'pending-1',
+    status: 'pending',
+    amountMinor: 45_000,
+    currency: 'INR',
+    merchant: 'SWIGGY',
+    accountLast4: '1234',
+    occurredAt: '2026-09-13T09:58:00.000Z',
+    receivedAt: NOW,
+    source: 'sms',
+    templateId: 'hdfc-card-debit-v1',
+    confidence: 0.92,
+    suggestedCategoryId: null,
+    suggestionConfidence: null,
+    suggestionModelVersion: null,
+    expenseId: null,
+    displayHint: 'HDFC ••1234 · SWIGGY',
+    createdAt: NOW,
+    updatedAt: NOW,
+  };
+  const doc = pendingExpenseToDoc(pending);
+
+  it('builds its path from the uid', () => {
+    assert.equal(firestorePaths.pendingExpenses(UID), 'users/user-1/pendingExpenses');
+    assert.equal(firestorePaths.pendingExpense(UID, 'pending-1'), 'users/user-1/pendingExpenses/pending-1');
+    assert.throws(() => firestorePaths.pendingExpense(UID, 'a/b'), /pendingExpenseId/);
+  });
+
+  it('round-trips exactly', () => {
+    assert.deepEqual(parsePendingExpense(UID, 'pending-1', doc), pending);
+  });
+
+  it('round-trips an approved item with every optional field set', () => {
+    const approved: PendingExpense = {
+      ...pending,
+      status: 'approved',
+      merchant: null,
+      accountLast4: null,
+      source: 'pasted',
+      suggestedCategoryId: 'cat-food',
+      suggestionConfidence: 0.7,
+      suggestionModelVersion: 'v1',
+      expenseId: 'expense-9',
+    };
+    assert.deepEqual(parsePendingExpense(UID, 'pending-1', pendingExpenseToDoc(approved)), approved);
+  });
+
+  it('never stores the id inside the document', () => {
+    assert.equal('id' in doc, false);
+  });
+
+  it('rejects a status outside the enum', () => {
+    assert.throws(
+      () => parsePendingExpense(UID, 'pending-1', { ...doc, status: 'maybe' }),
+      (e: unknown) => e instanceof DocumentShapeError && e.field === 'status',
+    );
+  });
+
+  it('rejects a fractional amountMinor rather than rounding it', () => {
+    assert.throws(
+      () => parsePendingExpense(UID, 'pending-1', { ...doc, amountMinor: 450.5 }),
+      (e: unknown) => e instanceof DocumentShapeError && e.field === 'amountMinor',
+    );
+  });
+
+  it('rejects a raw message body, so it can never be read back into the app', () => {
+    assert.throws(
+      () => parsePendingExpense(UID, 'pending-1', { ...doc, body: 'Rs.450 spent on card 1234 at SWIGGY' }),
+      (e: unknown) => e instanceof DocumentShapeError && e.field === 'body',
+    );
+  });
+
+  it('rejects any other unknown key', () => {
+    assert.throws(
+      () => parsePendingExpense(UID, 'pending-1', { ...doc, sender: 'AD-HDFCBK' }),
+      (e: unknown) => e instanceof DocumentShapeError && e.field === 'sender',
+    );
   });
 });

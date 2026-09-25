@@ -44,6 +44,6 @@ export const firestorePaths = {
 
   /** Unapproved pending expenses from SMS or manual paste. Phase 5. */
   pendingExpenses: (uid: string) => `${user(uid)}/pendingExpenses`,
-  pendingExpense: (uid: string, pendingId: string) =>
-    `${user(uid)}/pendingExpenses/${segment(pendingId, 'pendingId')}`,
+  pendingExpense: (uid: string, pendingExpenseId: string) =>
+    `${user(uid)}/pendingExpenses/${segment(pendingExpenseId, 'pendingExpenseId')}`,
 } as const;

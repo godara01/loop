@@ -82,14 +82,14 @@ A task must never lower these counts. A task that adds tests raises them.
 | S5 | ≥40-message fixture corpus + privacy test | S4 | blocked |
 | S6 | `dedupe.ts` — `isDuplicatePendingExpense` | A1 | todo |
 | S7 | `displayHint` builder | A1 | todo |
-| P1 | `pendingExpenses` path + converter pair | — | todo |
-| P2 | `pendingExpenses` security rules + rules tests | P1 | blocked |
-| P3 | Pure approval-batch model | P1 | blocked |
+| P1 | `pendingExpenses` path + converter pair | — | done |
+| P2 | `pendingExpenses` security rules + rules tests | P1 | todo |
+| P3 | Pure approval-batch model | P1 | todo |
 | P4 | `pending-expenses-repository.ts` | P1, P3 | blocked |
 | N1 | Native `sms-reader` Expo module (code only) | — | todo |
 | N2 | Remote Config wrapper (kill switch + template override) | S3 | todo |
 | N3 | Pure SMS ingest pipeline | S4, S6, S7, P1 | blocked |
-| U1 | Inbox view-model (grouping, badge count, approve-all eligibility) | P1 | blocked |
+| U1 | Inbox view-model (grouping, badge count, approve-all eligibility) | P1 | todo |
 | U2 | `/inbox` route, cards, empty state | U1, P4 | blocked |
 | U3 | Orbit inbox badge | U1, P4 | blocked |
 | U4 | Paste-to-parse | U2, N3 | blocked |
@@ -103,7 +103,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | R5 | Pure cache + rollup merge for Insights | R1 | todo |
 | R6 | Insights reads rollups for past periods | R5 | blocked |
 | C1 | `cleanupSoftDeleted` (90-day) | R2 | blocked |
-| C2 | Pending-expense expiry sweep (30-day) | P1 | blocked |
+| C2 | Pending-expense expiry sweep (30-day) | P1 | todo |
 | C3 | `deleteUserData` callable (full-subtree delete) | — | todo |
 | X1 | CSV builder/parser with round-trip test | — | todo |
 | X2 | You → Export CSV screen | X1 | blocked |
