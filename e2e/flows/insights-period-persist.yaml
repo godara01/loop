@@ -1,0 +1,91 @@
+# M5: Period selection persistence across app restarts
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+# Create some expenses to work with
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "pad-key-0"  # ₹100
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+# Navigate to Insights
+- tapOn:
+    id: "tab-insights"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+    timeout: 15000
+
+# By default, should show MONTH period
+- assertVisible:
+    text: "MONTH"
+
+# Change to WEEK period
+- tapOn:
+    id: "insights-period-week"
+- assertVisible:
+    text: "WEEK"
+
+# Stop and restart the app
+- stopApp
+- launchApp:
+    appId: "com.getter.loop"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+# Navigate back to Insights
+- tapOn:
+    id: "tab-insights"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+    timeout: 15000
+
+# Verify that WEEK period is still selected (persisted in settings.insightsPeriod)
+- assertVisible:
+    text: "WEEK"
+
+# Change to 30 DAYS and verify persistence again
+- tapOn:
+    id: "insights-period-rolling30"
+- assertVisible:
+    text: "30 DAYS"
+
+- stopApp
+- launchApp:
+    appId: "com.getter.loop"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+- tapOn:
+    id: "tab-insights"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+    timeout: 15000
+
+# Verify 30 DAYS is still selected
+- assertVisible:
+    text: "30 DAYS"

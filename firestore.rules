@@ -43,9 +43,13 @@ service cloud.firestore {
 
       match /categories/{categoryId} {
         allow read: if isOwner(uid);
-        allow write: if isOwner(uid)
+        // `request.resource` is null on delete, so validating its fields has to
+        // stay out of that branch — folding delete into one `allow write` throws
+        // a null-value error and denies every delete, not just malformed ones.
+        allow create, update: if isOwner(uid)
           && request.resource.data.slug is string
           && request.resource.data.slug.size() <= 12;
+        allow delete: if isOwner(uid);
       }
 
       match /expenses/{expenseId} {

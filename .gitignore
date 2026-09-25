@@ -42,3 +42,12 @@ apps/mobile/firebase/GoogleService-Info.plist
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+
+# agent scratch — task tracking lives in TASKS.md only
+.unlazy/
+GATES.md
+PLAN.md
+TASK_SUMMARY.md
+*.backup
+*.backup2
+metro.pid

@@ -1,21 +1,32 @@
 # Opens the Loop dev build against Metro and waits until the app is past the
 # bootstrap gate. Every flow starts here.
+#
+# Wrapped in a retry: Firebase Auth's native init occasionally races on a cold
+# start and throws inside firebase-auth's own internal token-attestation code
+# (a NullPointerException in com.google.android.gms...firebase-auth-api,
+# nothing in this app's code) — DevLauncher shows its native-crash screen
+# instead of the app. A full stopApp + relaunch reliably clears it; retrying
+# here is cheaper than chasing a fix upstream for a Google SDK race.
 appId: com.getter.loop
 ---
-- stopApp
-- openLink: "exp+loop://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
-# First launch after a clear shows Expo's developer-menu introduction.
-- runFlow:
-    when:
-      visible: "Continue"
+- retry:
+    maxRetries: 2
     commands:
-      - tapOn: "Continue"
-- runFlow:
-    when:
-      visible: "Close"
-    commands:
-      - tapOn: "Close"
-- extendedWaitUntil:
-    visible:
-      id: "tab-dock"
-    timeout: 120000
+      - stopApp
+      - openLink: "exp+loop://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+      - runFlow:
+          when:
+            visible: "Continue"
+          commands:
+            - tapOn: "Continue"
+      - runFlow:
+          when:
+            visible: "Close"
+          commands:
+            - tapOn: "Close"
+      - assertNotVisible:
+          text: "There was a problem loading the project"
+      - extendedWaitUntil:
+          visible:
+            id: "tab-dock"
+          timeout: 60000

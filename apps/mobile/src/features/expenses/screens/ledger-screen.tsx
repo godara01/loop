@@ -4,7 +4,7 @@
  */
 
 import { type Category, colors, formatMoney, layout, radius, space, todayISO, type } from '@loop/shared';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +15,7 @@ import { useSession } from '@/core/providers/bootstrap-provider';
 import { useCategories } from '@/features/categories';
 
 import { ExpenseRow } from '../components/expense-row';
-import { useRecentExpenses } from '../hooks/use-expenses';
+import { useLedgerExpenses } from '../hooks/use-expenses';
 import { dayLabel, groupByDay, searchExpenses } from '../model/ledger';
 
 const PAGE = 50;
@@ -23,9 +23,11 @@ const PAGE = 50;
 export function LedgerScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useSession();
+  const { categoryId, date, startDate, endDate } = useLocalSearchParams<{ categoryId?: string; date?: string; startDate?: string; endDate?: string }>();
   const [pageSize, setPageSize] = useState(PAGE);
   const [search, setSearch] = useState('');
-  const expenses = useRecentExpenses(pageSize);
+  const period = startDate && endDate ? { startDate, endDate } : null;
+  const expenses = useLedgerExpenses(pageSize, period);
   const categoriesState = useCategories();
 
   const categoriesById = useMemo(
@@ -38,9 +40,13 @@ export function LedgerScreen() {
 
   const sections = useMemo(() => {
     if (expenses.status !== 'ready') return [];
-    const matched = searchExpenses(expenses.snapshot.expenses, search, categoriesById);
+    const matched = searchExpenses(expenses.snapshot.expenses, search, categoriesById).filter(
+      (expense) =>
+        (categoryId === undefined || expense.categoryId === categoryId) &&
+        (date === undefined || expense.localDate === date),
+    );
     return groupByDay(matched, profile.currency).map((day) => ({ ...day, data: [...day.expenses] }));
-  }, [expenses, search, categoriesById, profile.currency]);
+  }, [expenses, search, categoriesById, profile.currency, categoryId, date]);
 
   const today = todayISO();
   const loaded = expenses.status === 'ready' ? expenses.snapshot.expenses.length : 0;
@@ -56,12 +62,18 @@ export function LedgerScreen() {
         onEndReachedThreshold={0.5}
         onEndReached={() => {
           // Only ask for more when the last page came back full.
-          if (loaded >= pageSize) setPageSize((size) => size + PAGE);
+          if (period === null && loaded >= pageSize) setPageSize((size) => size + PAGE);
         }}
         ListHeaderComponent={
           <View style={styles.header}>
             <Text style={styles.eyebrow}>LEDGER</Text>
             <Text style={styles.title}>Activity</Text>
+            {categoryId || date || period ? (
+              <View style={styles.filterRow}>
+                <MonoTag tone="social">filtered</MonoTag>
+                <TactileButton label="Clear" onPress={() => router.replace('/activity')} />
+              </View>
+            ) : null}
             <TextInput
               testID="ledger-search"
               value={search}
@@ -115,6 +127,7 @@ const styles = StyleSheet.create({
   header: { gap: space.sm, marginBottom: space.md },
   eyebrow: { ...type.monoSm, color: colors.textMuted },
   title: { ...type.headlineLg, color: colors.text },
+  filterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   search: {
     ...type.bodyMd,
     color: colors.text,

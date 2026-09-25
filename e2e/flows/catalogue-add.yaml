@@ -1,0 +1,45 @@
+# Browse the catalogue from Manage, search, multi-select, add — then verify the
+# server has exactly what was picked. See docs/04-categories.md#tier-2--the-catalogue.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-manage-categories"
+- extendedWaitUntil:
+    visible:
+      id: "manage-active-list"
+    timeout: 15000
+
+- tapOn:
+    id: "manage-add"
+- extendedWaitUntil:
+    visible:
+      id: "catalogue-search"
+    timeout: 15000
+
+- inputText: "Coffee"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn:
+    id: "catalogue-item-COFFEE"
+- tapOn:
+    id: "catalogue-add"
+
+- extendedWaitUntil:
+    visible:
+      id: "manage-active-list"
+    timeout: 15000
+- assertVisible:
+    text: "Coffee & tea"
+
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "categories"
+- assertTrue: ${output.docs.length == 9}
+- assertTrue: ${output.docs.filter(d => d.slug == "COFFEE").length == 1}
+- assertTrue: ${output.docs.filter(d => d.slug == "COFFEE")[0].kind == "catalogue"}
+- assertTrue: ${output.docs.filter(d => d.slug == "COFFEE")[0].catalogueSlug == "COFFEE"}

@@ -369,6 +369,7 @@ export function ExpenseEntryScreen({ mode, expenseId }: { mode: 'new' | 'edit'; 
             setError(null);
             update({ categoryId });
           }}
+          onAddNew={() => router.push('/category/catalogue?returnTo=entry')}
         />
 
         <TextInput

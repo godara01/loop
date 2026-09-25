@@ -1,5 +1,8 @@
 # 15 — MVP Completion Plan (six phases)
 
+> **Status and remaining work live in [`TASKS.md`](../TASKS.md).** This doc is
+> the plan and rationale; don't track progress here.
+
 ## Context
 
 M0 (dev build + toolchain), M1 (shared domain layer) and M2 (Firebase spine: anonymous

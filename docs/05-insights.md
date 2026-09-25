@@ -177,14 +177,14 @@ the expenses, the expenses win and the rollup is regenerated.
 
 ## Acceptance criteria
 
-- [ ] Displayed category percentages always sum to exactly 100%.
-- [ ] Sum of all `CategoryTotal.total` equals `periodTotal` exactly, in minor units.
-- [ ] `totalsByDay` returns a contiguous run of dates with no gaps.
-- [ ] An expense logged at 23:59 and one at 00:01 local fall on different days,
+- [x] Displayed category percentages always sum to exactly 100%.
+- [x] Sum of all `CategoryTotal.total` equals `periodTotal` exactly, in minor units.
+- [x] `totalsByDay` returns a contiguous run of dates with no gaps.
+- [x] An expense logged at 23:59 and one at 00:01 local fall on different days,
       and the boundary is local time, not UTC — verified with a non-UTC device.
-- [ ] Archived categories still appear in periods containing their expenses.
+- [x] Archived categories still appear in periods containing their expenses.
 - [ ] Insights renders under 300ms with 3,000 seeded expenses.
 - [ ] Client-computed current-month totals and Function-computed rollups agree
       exactly, to the minor unit, for the same period.
 - [ ] Pending (unapproved) SMS expenses appear in no total, chart or average.
-- [ ] Every number on screen is JetBrains Mono.
+- [x] Every number on screen is JetBrains Mono.

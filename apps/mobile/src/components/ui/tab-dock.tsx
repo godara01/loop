@@ -16,12 +16,14 @@ import { haptic } from '@/lib/haptics';
 const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: 'planet-outline',
   activity: 'receipt-outline',
+  insights: 'bar-chart-outline',
   profile: 'person-outline',
 };
 
 const LABELS: Record<string, string> = {
   index: 'ORBIT',
   activity: 'LEDGER',
+  insights: 'INSIGHTS',
   profile: 'YOU',
 };
 

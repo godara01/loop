@@ -1,5 +1,6 @@
 import { categoryColors, colors, layout, space, type } from '@loop/shared';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card, MonoTag, Perforation } from '@/components/ui/surface';
@@ -7,6 +8,7 @@ import { firebase } from '@/core/firebase/client';
 import { useSession } from '@/core/providers/bootstrap-provider';
 import { useSettings } from '@/core/providers/settings-provider';
 import { useCategories } from '@/features/categories';
+import { useStreak, useWallet } from '@/features/gamification/hooks/use-gamification';
 import { StreakCapsule } from '@/components/ui/streak-capsule';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { type HapticEvent, haptic, setHapticsEnabled } from '@/lib/haptics';
@@ -36,6 +38,11 @@ export default function ProfileScreen() {
   const { uid, profile } = useSession();
   const { projectId, usingEmulators } = firebase();
   const categories = useCategories();
+  const streakState = useStreak();
+  const walletState = useWallet();
+
+  const streakDays = streakState.status === 'ready' ? streakState.snapshot.streak.current : 0;
+  const walletCoins = walletState.status === 'ready' ? walletState.snapshot.wallet.coinBalance : 0;
 
   const syncTag =
     categories.status !== 'ready'
@@ -48,6 +55,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView
+      testID="screen-profile"
       style={styles.screen}
       contentContainerStyle={[
         styles.content,
@@ -59,7 +67,7 @@ export default function ProfileScreen() {
           <Text style={styles.eyebrow}>YOU</Text>
           <Text style={styles.title}>{profile.displayName}</Text>
         </View>
-        <StreakCapsule days={12} />
+        {!settings.keepItPlain && <StreakCapsule days={streakDays} />}
       </View>
 
       <Card>
@@ -71,11 +79,10 @@ export default function ProfileScreen() {
             </Text>
           </View>
           <Switch
+            testID="profile-haptics-switch"
             value={settings.hapticsEnabled}
             onValueChange={(next) => {
               updateSettings({ hapticsEnabled: next });
-              // Apply synchronously as well: the provider's mirror runs after render,
-              // and the confirmation below must fire against the new value.
               setHapticsEnabled(next);
               if (next) haptic('toggleOn');
             }}
@@ -83,7 +90,46 @@ export default function ProfileScreen() {
             thumbColor={colors.text}
           />
         </View>
+        <Perforation />
+        <View style={styles.row}>
+          <View style={styles.info}>
+            <Text style={styles.label}>Keep it plain</Text>
+            <Text style={styles.hint}>
+              Hide streaks, coins, and celebrations.
+            </Text>
+          </View>
+          <Switch
+            testID="profile-keep-it-plain-switch"
+            value={settings.keepItPlain}
+            onValueChange={(next) => {
+              updateSettings({ keepItPlain: next });
+              haptic(next ? 'toggleOn' : 'toggleOff');
+            }}
+            trackColor={{ false: colors.input, true: colors.credit }}
+            thumbColor={colors.text}
+          />
+        </View>
       </Card>
+
+      {!settings.keepItPlain && (
+        <>
+          <Text style={styles.sectionTitle}>Rewards</Text>
+          <Card>
+            <View style={styles.row}>
+              <View style={styles.info}>
+                <Text style={styles.label}>Coins</Text>
+                <Text style={styles.hint}>{walletCoins} coins earned</Text>
+              </View>
+              <Pressable
+                testID="profile-coins-history-link"
+                onPress={() => router.push('/coins' as any)}
+                style={styles.manageLink}>
+                <Text style={styles.manageLinkText}>View history →</Text>
+              </Pressable>
+            </View>
+          </Card>
+        </>
+      )}
 
       <Text style={styles.sectionTitle}>Account</Text>
 
@@ -134,6 +180,12 @@ export default function ProfileScreen() {
                 ? ` · ${categories.snapshot.invalid.length} unreadable`
                 : ''}
             </Text>
+            <Pressable
+              testID="profile-manage-categories"
+              onPress={() => router.push('/category/index')}
+              style={styles.manageLink}>
+              <Text style={styles.manageLinkText}>Manage categories →</Text>
+            </Pressable>
           </>
         )}
       </Card>
@@ -198,4 +250,6 @@ const styles = StyleSheet.create({
   },
   tagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   countLine: { marginTop: space.md },
+  manageLink: { marginTop: space.sm },
+  manageLinkText: { ...type.bodySm, color: colors.credit },
 });

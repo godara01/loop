@@ -13,18 +13,44 @@ import {
 } from '@expo-google-fonts/space-grotesk';
 import { colors } from '@loop/shared';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, router, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/core/providers/auth-provider';
-import { BootstrapProvider } from '@/core/providers/bootstrap-provider';
+import { BootstrapProvider, useSession } from '@/core/providers/bootstrap-provider';
 import { SettingsProvider } from '@/core/providers/settings-provider';
+import { determineResumeStep } from '@/features/onboarding';
 
 SplashScreen.preventAutoHideAsync();
+
+function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const { profile } = useSession();
+  const segments = useSegments();
+
+  useEffect(() => {
+    const segList = segments as string[];
+    const inOnboarding = segList[0] === 'onboarding';
+
+    if (!profile.onboardedAt && !inOnboarding) {
+      const step = determineResumeStep(profile);
+      if (step === 'welcome') {
+        router.replace('/onboarding' as any);
+      } else if (step === 'feel') {
+        router.replace('/onboarding/feel' as any);
+      } else {
+        router.replace('/onboarding' as any);
+      }
+    } else if (profile.onboardedAt && inOnboarding) {
+      router.replace('/(tabs)');
+    }
+  }, [profile, segments]);
+
+  return <>{children}</>;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -37,13 +63,10 @@ export default function RootLayout() {
     JetBrainsMono_700Bold,
   });
 
-  // The splash comes down when the bootstrap gate has something to show — not
-  // when fonts load — so launch never flashes an empty screen between the two.
   const hideSplash = useCallback(() => {
     void SplashScreen.hideAsync();
   }, []);
 
-  // Display numerals are the first thing the eye lands on; never render a fallback face.
   if (!fontsLoaded && !fontError) return null;
 
   return (
@@ -53,15 +76,28 @@ export default function RootLayout() {
         <AuthProvider>
           <BootstrapProvider onSettled={hideSplash}>
             <SettingsProvider>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: colors.background },
-                }}>
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="expense/new" options={{ presentation: 'modal' }} />
-                <Stack.Screen name="expense/[id]" options={{ presentation: 'modal' }} />
-              </Stack>
+              <OnboardingGate>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.background },
+                  }}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="onboarding/index" />
+                  <Stack.Screen name="onboarding/profile" />
+                  <Stack.Screen name="onboarding/feel" />
+                  <Stack.Screen name="onboarding/categories" />
+                  <Stack.Screen name="onboarding/first-expense" />
+                  <Stack.Screen name="expense/new" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="expense/[id]" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="category/catalogue" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="category/new" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="category/[id]" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="category/index" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="coins" options={{ presentation: 'modal' }} />
+                </Stack>
+              </OnboardingGate>
             </SettingsProvider>
           </BootstrapProvider>
         </AuthProvider>

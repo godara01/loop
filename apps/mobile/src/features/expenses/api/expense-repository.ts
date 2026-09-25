@@ -110,6 +110,30 @@ export function observeExpensesSince(
   );
 }
 
+/** A bounded local-date window for Insights and day detail. */
+export function observeExpensesInRange(
+  uid: string,
+  startLocalDate: string,
+  endLocalDate: string,
+  onChange: (snapshot: ExpensesSnapshot) => void,
+  onError: OnError,
+): Unsubscribe {
+  const { db } = firebase();
+  const q = query(
+    collection(db, firestorePaths.expenses(uid)),
+    where('deletedAt', '==', null),
+    where('localDate', '>=', startLocalDate),
+    where('localDate', '<', endLocalDate),
+    orderBy('localDate', 'desc'),
+  );
+  return onSnapshot(
+    q,
+    { includeMetadataChanges: true },
+    (snapshot) => onChange(toSnapshot(uid, snapshot.docs, snapshot.metadata.fromCache)),
+    (error) => onError(toError(error)),
+  );
+}
+
 /** One expense, including a soft-deleted one — the edit screen must still open it. */
 export function observeExpense(
   uid: string,

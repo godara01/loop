@@ -1,0 +1,95 @@
+# M5: Day detail screen with swipe navigation
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+# Create expenses for today and yesterday
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-2"
+- tapOn:
+    id: "pad-key-0"  # ₹120 FOOD today
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-8"
+- tapOn:
+    id: "pad-key-0"  # ₹80 TRANSPORT yesterday
+- tapOn:
+    id: "category-chip-TRANSPORT"
+- tapOn:
+    id: "entry-date-earlier"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+# Navigate to Insights
+- tapOn:
+    id: "tab-insights"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+    timeout: 15000
+
+# Tap on today's day cell to open day detail
+- tapOn:
+    id: "insights-day-today"
+- extendedWaitUntil:
+    visible:
+      id: "screen-day-detail"
+    timeout: 15000
+
+# Verify today's total
+- assertVisible:
+    text: "₹120.00"
+
+# Swipe to navigate to yesterday (implementation may vary - could be swipe left/right or back button)
+# For now, test the back navigation and re-entry to yesterday
+- tapOn:
+    id: "day-back"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+    timeout: 15000
+
+# Tap yesterday's day cell
+- tapOn:
+    id: "insights-day-yesterday"
+- extendedWaitUntil:
+    visible:
+      id: "screen-day-detail"
+    timeout: 15000
+
+# Verify yesterday's total
+- assertVisible:
+    text: "₹80.00"
+
+# Back to insights
+- tapOn:
+    id: "day-back"
+- assertVisible:
+    id: "insights-period-total"

@@ -49,6 +49,10 @@
       "expo-secure-store",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
+      "@react-native-firebase/storage",
+      "expo-image-manipulator",
+      "expo-file-system",
+      "react-native-draggable-flatlist",
       [
         "expo-build-properties",
         {

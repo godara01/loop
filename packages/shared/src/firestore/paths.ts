@@ -41,4 +41,9 @@ export const firestorePaths = {
   coinLedger: (uid: string) => `${user(uid)}/coinLedger`,
   coinEntry: (uid: string, entryId: string) =>
     `${user(uid)}/coinLedger/${segment(entryId, 'entryId')}`,
+
+  /** Unapproved pending expenses from SMS or manual paste. Phase 5. */
+  pendingExpenses: (uid: string) => `${user(uid)}/pendingExpenses`,
+  pendingExpense: (uid: string, pendingExpenseId: string) =>
+    `${user(uid)}/pendingExpenses/${segment(pendingExpenseId, 'pendingExpenseId')}`,
 } as const;

@@ -28,6 +28,8 @@ to someone and they can build that feature without reading the rest.
 | [14-environment-setup.md](14-environment-setup.md) | Firebase, EAS and dev-build setup — start here to run the app |
 | [15-mvp-completion-plan.md](15-mvp-completion-plan.md) | The six phases from M3 to a tested MVP, and the final integration gate |
 
+Remaining work is tracked in one place: [`../TASKS.md`](../TASKS.md).
+
 ## Conventions used in every doc
 
 - **MUST / SHOULD / MAY** are load-bearing. MUST is a release blocker.

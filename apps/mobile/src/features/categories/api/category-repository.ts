@@ -1,10 +1,28 @@
 /**
- * Reads the user's categories. Screens never see a Firestore snapshot — they get
- * domain `Category` objects and the sync state. See docs/10-architecture.md.
+ * Reads and writes the user's categories. Screens never see a Firestore
+ * snapshot or a Storage reference — they get domain `Category` objects and the
+ * sync state. See docs/10-architecture.md#the-repository-pattern.
  */
 
-import { collection, onSnapshot } from '@react-native-firebase/firestore';
-import { type Category, DocumentShapeError, firestorePaths, parseCategory } from '@loop/shared';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  setDoc,
+  writeBatch,
+} from '@react-native-firebase/firestore';
+import { getDownloadURL, putFile, ref } from '@react-native-firebase/storage';
+import {
+  type Category,
+  type CategoryTemplate,
+  DocumentShapeError,
+  categoryFromTemplate,
+  categoryToDoc,
+  firestorePaths,
+  parseCategory,
+  storagePaths,
+} from '@loop/shared';
 
 import { firebase } from '@/core/firebase/client';
 
@@ -56,4 +74,85 @@ export function observeCategories(
     },
     onError,
   );
+}
+
+/** A new Firestore id, generated locally — works offline. */
+export function newCategoryId(uid: string): string {
+  const { db } = firebase();
+  return doc(collection(db, firestorePaths.categories(uid))).id;
+}
+
+export function saveCategory(uid: string, category: Category): Promise<void> {
+  const { db } = firebase();
+  const now = new Date().toISOString();
+  return setDoc(doc(db, firestorePaths.category(uid, category.id)), categoryToDoc(category, now));
+}
+
+/**
+ * Installs one or more catalogue templates in a single batch, so "Add 4
+ * categories" either lands as four documents or none. Each gets a fresh id and
+ * the next available `sortOrder`, in the order given.
+ */
+export function addCategoriesFromCatalogue(
+  uid: string,
+  templates: readonly CategoryTemplate[],
+  startingSortOrder: number,
+): Promise<Category[]> {
+  const { db } = firebase();
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+
+  const created = templates.map((template, index) =>
+    categoryFromTemplate(template, {
+      id: newCategoryId(uid),
+      kind: 'catalogue',
+      sortOrder: startingSortOrder + index,
+      createdAt: now,
+    }),
+  );
+  for (const category of created) {
+    batch.set(doc(db, firestorePaths.category(uid, category.id)), categoryToDoc(category, now));
+  }
+
+  return batch.commit().then(() => created);
+}
+
+/** Only offered for custom/catalogue categories with zero expenses — see canDelete(). */
+export function deleteCategory(uid: string, categoryId: string): Promise<void> {
+  const { db } = firebase();
+  return deleteDoc(doc(db, firestorePaths.category(uid, categoryId)));
+}
+
+/**
+ * One batch for the whole drag result, so a reorder is never seen half-applied.
+ */
+export function saveCategoryOrder(uid: string, categories: readonly Category[]): Promise<void> {
+  const { db } = firebase();
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+  for (const category of categories) {
+    batch.set(doc(db, firestorePaths.category(uid, category.id)), categoryToDoc(category, now));
+  }
+  return batch.commit();
+}
+
+/**
+ * Uploads a locally-cropped logo and returns its Storage path and a fetchable
+ * URL. The path is what gets stored on the category document
+ * (`CategoryIcon.path`); the URL is only for rendering it immediately after.
+ *
+ * `putFile` takes a native file path directly — no Blob conversion, which is
+ * the awkward part of the web Storage SDK that RNFirebase skips.
+ */
+export async function uploadCategoryLogo(
+  uid: string,
+  categoryId: string,
+  localFileUri: string,
+): Promise<{ path: string; url: string }> {
+  const { storage } = firebase();
+  const path = storagePaths.categoryLogo(uid, categoryId);
+  const reference = ref(storage, path);
+  await putFile(reference, localFileUri, { contentType: 'image/jpeg' });
+  const url = await getDownloadURL(reference);
+  return { path, url };
 }

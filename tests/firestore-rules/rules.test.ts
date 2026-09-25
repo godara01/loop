@@ -21,7 +21,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import { deleteDoc, doc, getDoc, setDoc, setLogLevel, updateDoc } from 'firebase/firestore';
 
-import { seedEssentialCategories } from '../../packages/shared/src/categories';
+import { editCategory, newCustomCategory, seedEssentialCategories } from '../../packages/shared/src/categories';
 import { newPersonalExpense, softDeleteExpense } from '../../packages/shared/src/expenses';
 import { money } from '../../packages/shared/src/money';
 import {
@@ -136,6 +136,28 @@ describe('categories', () => {
     const category = seedEssentialCategories(NOW)[0]!;
     await assertFails(setDoc(doc(as(BOB), p.category(ALICE, category.id)), categoryToDoc(category, NOW)));
   });
+
+  it('accepts a custom category and an edit to it', async () => {
+    const custom = newCustomCategory(
+      { name: 'Gym', slug: 'GYM', icon: { kind: 'glyph', name: 'barbell' }, colorToken: 'lime' },
+      { id: 'cat-gym', sortOrder: 9, createdAt: NOW },
+    );
+    const ref = doc(as(ALICE), p.category(ALICE, custom.id));
+    await assertSucceeds(setDoc(ref, categoryToDoc(custom, NOW)));
+    const edited = editCategory(custom, { name: 'Fitness' });
+    await assertSucceeds(setDoc(ref, categoryToDoc(edited, NOW)));
+  });
+
+  it('lets the owner delete their own category, but no one else', async () => {
+    const custom = newCustomCategory(
+      { name: 'Gym', slug: 'GYM', icon: { kind: 'glyph', name: 'barbell' }, colorToken: 'lime' },
+      { id: 'cat-gym', sortOrder: 9, createdAt: NOW },
+    );
+    const ref = doc(as(ALICE), p.category(ALICE, custom.id));
+    await setDoc(ref, categoryToDoc(custom, NOW));
+    await assertFails(deleteDoc(doc(as(BOB), p.category(ALICE, custom.id))));
+    await assertSucceeds(deleteDoc(ref));
+  });
 });
 
 describe('expenses', () => {
@@ -230,6 +252,23 @@ describe('server-authoritative data', () => {
   it('does not let another user read them either', async () => {
     await seedAsServer(p.wallet(ALICE), { coinBalance: 40 });
     await assertFails(getDoc(doc(as(BOB), p.wallet(ALICE))));
+  });
+
+  it('does not let another user read their rollups', async () => {
+    for (const path of [`${p.user(ALICE)}/dailyRollups/2026-09-13`, `${p.user(ALICE)}/monthlyRollups/2026-09`]) {
+      await seedAsServer(path, { totalMinor: 18000, count: 1 });
+      await assertFails(getDoc(doc(as(BOB), path)));
+    }
+  });
+
+  it('keeps the rollup bookkeeping marker out of reach, even for the owner', async () => {
+    // rollupApplied has no match of its own; the final catch-all denies it.
+    const path = `${p.user(ALICE)}/rollupApplied/expense-1`;
+    await seedAsServer(path, { localDate: '2026-09-13', categoryId: 'cat-food', amountMinor: 18000, currency: 'INR' });
+    const ref = doc(as(ALICE), path);
+    await assertFails(getDoc(ref));
+    await assertFails(setDoc(ref, { localDate: '2026-09-13', categoryId: 'cat-food', amountMinor: 1, currency: 'INR' }));
+    await assertFails(deleteDoc(ref));
   });
 });
 

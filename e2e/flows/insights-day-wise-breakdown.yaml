@@ -1,0 +1,89 @@
+# M5: Day-wise breakdown verification
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+# Create expenses for multiple days
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "pad-key-0"  # ₹100 on day 1 (today)
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-5"
+- tapOn:
+    id: "pad-key-0"  # ₹50 on day 2 (yesterday)
+- tapOn:
+    id: "category-chip-TRANSPORT"
+- tapOn:
+    id: "entry-date-earlier"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+# Go to Insights and verify day-wise breakdown
+- tapOn:
+    id: "tab-insights"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+    timeout: 15000
+- assertVisible:
+    text: "₹150.00"  # Total
+# Today should show ₹100, yesterday ₹50
+- assertVisible:
+    id: "insights-day-today"
+- assertVisible:
+    text: "₹100.00"
+- assertVisible:
+    id: "insights-day-yesterday"
+- assertVisible:
+    text: "₹50.00"
+# Drill down into today
+- tapOn:
+    id: "insights-day-today"
+- assertVisible:
+    id: "screen-day-detail"
+- assertVisible:
+    text: "₹100.00"
+- tapOn:
+    id: "day-back"
+# Drill down into yesterday
+- tapOn:
+    id: "insights-day-yesterday"
+- assertVisible:
+    id: "screen-day-detail"
+- assertVisible:
+    text: "₹50.00"
+- tapOn:
+    id: "day-back"
+- tapOn:
+    id: "day-back"
+- tapOn:
+    id: "insights-period-week"
+- assertVisible:
+    id: "insights-period-current"
+- stopApp

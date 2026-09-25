@@ -1,0 +1,75 @@
+# Full pipeline: pick a real photo → crop to a centred square → resize →
+# upload to Storage → the category document points at the uploaded path.
+# See docs/04-categories.md#uploaded-logos.
+#
+# Run via `npm run e2e -- e2e/flows/category-custom-logo.yaml`, but only after
+# `bash scripts/seed-gallery-image.sh` — this flow does not seed its own photo,
+# since that needs adb, not Maestro's scripting engine.
+#
+# The system Photo Picker (Android 13+) is a different app with no stable
+# testIDs of ours to select by; tapping the first grid tile by position is the
+# best available option and is the one part of this flow most likely to need a
+# human's eyes if the OS picker's layout ever shifts.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-manage-categories"
+- tapOn:
+    id: "manage-add"
+- extendedWaitUntil:
+    visible:
+      id: "catalogue-search"
+    timeout: 15000
+# The footer link sits after ~60 catalogue entries. Searching for something
+# that matches nothing collapses the list to just the empty state + footer,
+# so the link is on-screen immediately with no scrolling needed.
+- tapOn:
+    id: "catalogue-search"
+- inputText: "zzznomatch"
+- tapOn:
+    id: "catalogue-create-custom"
+
+- extendedWaitUntil:
+    visible:
+      id: "editor-name"
+    timeout: 15000
+- tapOn:
+    id: "editor-name"
+- inputText: "Gym Buddy"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+
+- tapOn:
+    id: "editor-upload-logo"
+- extendedWaitUntil:
+    visible:
+      text: "Photos"
+    timeout: 15000
+- tapOn:
+    point: "50%,25%"
+
+- extendedWaitUntil:
+    notVisible:
+      text: "Preparing…"
+    timeout: 15000
+- tapOn:
+    id: "editor-save"
+
+- extendedWaitUntil:
+    notVisible:
+      id: "editor-save"
+    timeout: 20000
+- assertVisible:
+    text: "Gym Buddy"
+
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "categories"
+- assertTrue: ${output.docs.filter(d => d.slug == "GYMBUDDY").length == 1}
+- assertTrue: ${output.docs.filter(d => d.slug == "GYMBUDDY")[0].icon.kind == "image"}
+- assertTrue: ${output.docs.filter(d => d.slug == "GYMBUDDY")[0].icon.path.indexOf("categoryLogos") != -1}

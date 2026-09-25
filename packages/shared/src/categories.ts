@@ -325,6 +325,93 @@ export function essentialCategoriesToSeed(categoriesSeededAt: string | null, now
   return categoriesSeededAt === null ? seedEssentialCategories(now) : [];
 }
 
+/** Building a brand-new custom category, chosen by the user rather than a template. */
+export interface NewCategoryInput {
+  readonly name: string;
+  readonly slug: string;
+  readonly icon: CategoryIcon;
+  readonly colorToken: CategoryColorToken;
+}
+
+/** A custom category the user names and colours themselves — never from a template. */
+export function newCustomCategory(
+  input: NewCategoryInput,
+  options: { readonly id: string; readonly sortOrder: number; readonly createdAt: string },
+): Category {
+  return {
+    id: options.id,
+    slug: input.slug.trim().toUpperCase(),
+    name: input.name.trim(),
+    icon: input.icon,
+    colorToken: input.colorToken,
+    kind: 'custom',
+    catalogueSlug: null,
+    sortOrder: options.sortOrder,
+    createdAt: options.createdAt,
+    archivedAt: null,
+  };
+}
+
+/**
+ * Applies a name/icon/colour edit. The slug and kind never change here — a
+ * slug edit goes through validateCategoryDraft first and is applied by the
+ * caller, since renaming the tag that already labels past expenses is a
+ * separate, warned-about decision (docs/04-categories.md#editing).
+ */
+export function editCategory(
+  category: Category,
+  patch: { readonly name?: string; readonly icon?: CategoryIcon; readonly colorToken?: CategoryColorToken },
+): Category {
+  return {
+    ...category,
+    name: patch.name !== undefined ? patch.name.trim() : category.name,
+    icon: patch.icon ?? category.icon,
+    colorToken: patch.colorToken ?? category.colorToken,
+  };
+}
+
+export function archiveCategory(category: Category, now: string): Category {
+  return { ...category, archivedAt: now };
+}
+
+export function unarchiveCategory(category: Category): Category {
+  return { ...category, archivedAt: null };
+}
+
+/**
+ * Assigns fresh `sortOrder` values from a drag reorder, 0-based in the order
+ * given. This is also what turns on manual ordering: any call here means
+ * `orderForEntry` must be told `hasManualOrder: true` from now on.
+ */
+export function reorderCategories(orderedIds: readonly string[], categories: readonly Category[]): Category[] {
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  const reordered: Category[] = [];
+  orderedIds.forEach((id, index) => {
+    const category = byId.get(id);
+    if (category) reordered.push({ ...category, sortOrder: index });
+  });
+  return reordered;
+}
+
+// ── Uploaded logos ───────────────────────────────────────────────────────────
+
+/** Cloud Storage rules enforce the same ceiling — see docs/11-firebase.md. */
+export const MAX_LOGO_BYTES = 512_000;
+export const LOGO_DIMENSION = 256;
+const LOGO_MIME_TYPES: readonly string[] = ['image/png', 'image/jpeg', 'image/webp'];
+
+export type LogoValidationError = 'too_large' | 'wrong_type';
+
+/**
+ * Checked again client-side before ever starting an upload, so a bad file is
+ * rejected instantly rather than after a round trip to Storage's own rules.
+ */
+export function validateLogoFile(file: { readonly size: number; readonly mimeType: string }): LogoValidationError | null {
+  if (!LOGO_MIME_TYPES.includes(file.mimeType)) return 'wrong_type';
+  if (file.size > MAX_LOGO_BYTES) return 'too_large';
+  return null;
+}
+
 /** Catalogue entries the user has not already installed, grouped for browsing. */
 export function catalogueFor(
   installed: readonly Category[],

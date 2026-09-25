@@ -10,15 +10,18 @@ import {
   getFirestore,
   initializeFirestore,
 } from '@react-native-firebase/firestore';
+import { connectStorageEmulator, getStorage } from '@react-native-firebase/storage';
 
 import { firebaseEnv } from './config';
 
 export type FirebaseAuth = ReturnType<typeof getAuth>;
 export type FirestoreDb = ReturnType<typeof getFirestore>;
+export type FirebaseStorageInstance = ReturnType<typeof getStorage>;
 
 export interface FirebaseClients {
   readonly auth: FirebaseAuth;
   readonly db: FirestoreDb;
+  readonly storage: FirebaseStorageInstance;
   readonly projectId: string | null;
   readonly usingEmulators: boolean;
 }
@@ -46,11 +49,13 @@ export function firebase(): FirebaseClients {
     db = getFirestore(app);
   }
   const auth = getAuth(app);
+  const storage = getStorage(app);
 
   if (firebaseEnv.useEmulators) {
     try {
       connectFirestoreEmulator(db, firebaseEnv.emulatorHost, 8080);
       connectAuthEmulator(auth, `http://${firebaseEnv.emulatorHost}:9099`);
+      connectStorageEmulator(storage, firebaseEnv.emulatorHost, 9199);
     } catch (error) {
       console.warn('[firebase] emulators already connected on this native instance', error);
     }
@@ -59,6 +64,7 @@ export function firebase(): FirebaseClients {
   holder.__loopFirebase = {
     auth,
     db,
+    storage,
     projectId: app.options.projectId ?? null,
     usingEmulators: firebaseEnv.useEmulators,
   };

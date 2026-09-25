@@ -22,7 +22,7 @@ export interface Period {
   readonly endDate: string;
 }
 
-export type PeriodKind = 'week' | 'month' | 'rolling30';
+export type PeriodKind = 'week' | 'month' | 'rolling30' | 'custom';
 
 /**
  * The minimum an expense must expose to be aggregated. `Expense` satisfies it,
@@ -47,6 +47,15 @@ export interface DayTotal {
   readonly date: string;
   readonly total: Money;
   readonly count: number;
+}
+
+/**
+ * The calendar's five deliberately discrete spend intensities. Zero is kept
+ * separate so a no-spend day can be rendered as a positive, outlined cell.
+ */
+export function intensityStep(amountMinor: number, maximumMinor: number): 0 | 1 | 2 | 3 | 4 | 5 {
+  if (amountMinor <= 0 || maximumMinor <= 0) return 0;
+  return Math.min(5, Math.max(1, Math.ceil((amountMinor / maximumMinor) * 5))) as 1 | 2 | 3 | 4 | 5;
 }
 
 export interface Delta {
@@ -100,7 +109,53 @@ export function periodOf(kind: PeriodKind, today: string): Period {
       return { startDate: addDays(today, -29), endDate };
     case 'month':
       return { startDate: `${today.slice(0, 7)}-01`, endDate };
+    case 'custom':
+      // Until a user supplies their saved dates, custom opens to a useful,
+      // valid window rather than an empty or future range.
+      return { startDate: addDays(today, -29), endDate };
   }
+}
+
+/** Validates the persisted custom range; end is exclusive like every Period. */
+export function customPeriod(startDate: string, endDate: string, today: string): Period {
+  const length = periodLength({ startDate, endDate });
+  if (length < 1 || length > 366) throw new Error('Custom period must be between 1 and 366 days');
+  if (endDate > addDays(today, 1)) throw new Error('Custom period cannot include future dates');
+  return { startDate, endDate };
+}
+
+/** Moves a displayed window without ever manufacturing a future date. */
+export function stepPeriod(period: Period, kind: PeriodKind, direction: -1 | 1, today: string): Period {
+  if (direction === 1 && period.endDate >= addDays(today, 1)) return period;
+
+  if (kind !== 'month') {
+    const length = periodLength(period);
+    const next = {
+      startDate: addDays(period.startDate, direction * length),
+      endDate: addDays(period.endDate, direction * length),
+    };
+    const currentEnd = addDays(today, 1);
+    return next.endDate > currentEnd ? periodOf(kind, today) : next;
+  }
+
+  // A past month is a complete calendar month. Returning to the present uses
+  // month-to-date, so the current view never includes days that have not happened.
+  if (direction === 1) {
+    const current = periodOf('month', today);
+    if (period.endDate >= current.startDate) return current;
+    const startDate = period.endDate;
+    const following = addDays(startDate, 32);
+    return { startDate, endDate: `${following.slice(0, 7)}-01` };
+  }
+  const previousMonthLastDay = addDays(period.startDate, -1);
+  return {
+    startDate: `${previousMonthLastDay.slice(0, 7)}-01`,
+    endDate: `${period.startDate.slice(0, 7)}-01`,
+  };
+}
+
+export function isCurrentPeriod(period: Period, today: string): boolean {
+  return period.endDate >= addDays(today, 1);
 }
 
 /** The equivalent window immediately before this one, for delta comparison. */
