@@ -15,6 +15,7 @@ import {
 } from '@loop/shared';
 
 import { awardCoins } from './award-coins';
+import { updateRollups } from './rollups';
 
 async function fetchCoinContext(
   db: FirebaseFirestore.Firestore,
@@ -55,6 +56,10 @@ export async function handleExpenseWrite(
   afterData: FirebaseFirestore.DocumentData | null,
   now: string = new Date().toISOString(),
 ): Promise<void> {
+  // Before the deleted/soft-deleted early return: removing an expense must
+  // take it back out of the rollups.
+  await updateRollups(db, uid, expenseId);
+
   // If deleted or soft-deleted, do nothing
   if (!afterData || afterData.deletedAt !== null) return;
 
