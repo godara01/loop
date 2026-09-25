@@ -253,6 +253,23 @@ describe('server-authoritative data', () => {
     await seedAsServer(p.wallet(ALICE), { coinBalance: 40 });
     await assertFails(getDoc(doc(as(BOB), p.wallet(ALICE))));
   });
+
+  it('does not let another user read their rollups', async () => {
+    for (const path of [`${p.user(ALICE)}/dailyRollups/2026-09-13`, `${p.user(ALICE)}/monthlyRollups/2026-09`]) {
+      await seedAsServer(path, { totalMinor: 18000, count: 1 });
+      await assertFails(getDoc(doc(as(BOB), path)));
+    }
+  });
+
+  it('keeps the rollup bookkeeping marker out of reach, even for the owner', async () => {
+    // rollupApplied has no match of its own; the final catch-all denies it.
+    const path = `${p.user(ALICE)}/rollupApplied/expense-1`;
+    await seedAsServer(path, { localDate: '2026-09-13', categoryId: 'cat-food', amountMinor: 18000, currency: 'INR' });
+    const ref = doc(as(ALICE), path);
+    await assertFails(getDoc(ref));
+    await assertFails(setDoc(ref, { localDate: '2026-09-13', categoryId: 'cat-food', amountMinor: 1, currency: 'INR' }));
+    await assertFails(deleteDoc(ref));
+  });
 });
 
 describe('catalogue', () => {
