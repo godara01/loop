@@ -75,19 +75,19 @@ A task must never lower these counts. A task that adds tests raises them.
 | A2 | Invariant-check script (`npm run check:invariants`) | — | done |
 | A3 | Maestro testID cross-check script | — | todo |
 | A4 | Tick code-provable acceptance criteria in docs | A1, A2 | blocked |
-| S1 | DLT sender registry | A1 | blocked |
-| S2 | SMS shape filters (OTP/balance/promo/declined/reversal/credit) | A1 | blocked |
+| S1 | DLT sender registry | A1 | todo |
+| S2 | SMS shape filters (OTP/balance/promo/declined/reversal/credit) | A1 | todo |
 | S3 | Versioned, serializable template registry + override merge | A1 | done |
 | S4 | `parser.ts` — `parseTransactionSms` | S1, S2, S3 | blocked |
 | S5 | ≥40-message fixture corpus + privacy test | S4 | blocked |
-| S6 | `dedupe.ts` — `isDuplicatePendingExpense` | A1 | blocked |
-| S7 | `displayHint` builder | A1 | blocked |
+| S6 | `dedupe.ts` — `isDuplicatePendingExpense` | A1 | todo |
+| S7 | `displayHint` builder | A1 | todo |
 | P1 | `pendingExpenses` path + converter pair | — | todo |
 | P2 | `pendingExpenses` security rules + rules tests | P1 | blocked |
 | P3 | Pure approval-batch model | P1 | blocked |
 | P4 | `pending-expenses-repository.ts` | P1, P3 | blocked |
 | N1 | Native `sms-reader` Expo module (code only) | — | todo |
-| N2 | Remote Config wrapper (kill switch + template override) | S3 | blocked |
+| N2 | Remote Config wrapper (kill switch + template override) | S3 | todo |
 | N3 | Pure SMS ingest pipeline | S4, S6, S7, P1 | blocked |
 | U1 | Inbox view-model (grouping, badge count, approve-all eligibility) | P1 | blocked |
 | U2 | `/inbox` route, cards, empty state | U1, P4 | blocked |
@@ -97,10 +97,10 @@ A task must never lower these counts. A task that adds tests raises them.
 | U6 | Author the 8 SMS Maestro flows | U2, U3, U4, U5, A3 | blocked |
 | R1 | Pure rollup maths in `packages/shared` | — | done |
 | R1a | R1 follow-ups: valid test dates, shared empty-rollup rule | R1 | done |
-| R2 | `onExpenseWrite` maintains rollups | R1a | blocked |
-| R3 | `rebuildRollups` callable | R1 | blocked |
+| R2 | `onExpenseWrite` maintains rollups | R1a | todo |
+| R3 | `rebuildRollups` callable | R1 | todo |
 | R4 | Rules test: clients can't write rollups | — | todo |
-| R5 | Pure cache + rollup merge for Insights | R1 | blocked |
+| R5 | Pure cache + rollup merge for Insights | R1 | todo |
 | R6 | Insights reads rollups for past periods | R5 | blocked |
 | C1 | `cleanupSoftDeleted` (90-day) | R2 | blocked |
 | C2 | Pending-expense expiry sweep (30-day) | P1 | blocked |
