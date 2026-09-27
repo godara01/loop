@@ -13,7 +13,7 @@ export * from './firestore';
 export * from './storage-paths';
 
 // SMS exports (selective to avoid duplication with types.ts)
-export { isAllowlistedSender } from './sms/sender';
+export { BANK_SENDER_ENTITIES, isAllowlistedSender, senderEntity } from './sms/sender';
 export { isDuplicatePendingExpense } from './sms/dedupe';
 export type {
   DedupeCandidate,
