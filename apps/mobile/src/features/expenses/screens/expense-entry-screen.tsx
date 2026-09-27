@@ -341,7 +341,7 @@ export function ExpenseEntryScreen({
     return (
       <View style={[styles.screen, styles.centered]}>
         <Text style={styles.muted}>This expense no longer exists.</Text>
-        <TactileButton label="Back" variant="secondary" onPress={leave} style={styles.spaced} />
+        <TactileButton testID="entry-missing-back" label="Back" variant="secondary" onPress={leave} style={styles.spaced} />
       </View>
     );
   }
@@ -416,6 +416,8 @@ export function ExpenseEntryScreen({
         {repeatSource ? (
           <Pressable
             testID="entry-repeat"
+            accessibilityRole="button"
+            accessibilityLabel={`Same as ${formatMoney(repeatSource.total)}, ${repeatSource.description || 'last expense'}`}
             onPress={() => {
               haptic('selection');
               update({ categoryId: repeatSource.categoryId, description: repeatSource.description });
@@ -474,7 +476,7 @@ export function ExpenseEntryScreen({
             }}>
             <Ionicons name="chevron-forward" size={22} color={draft.daysAgo === 0 ? colors.border : colors.text} />
           </Pressable>
-          <Pressable testID="entry-more" onPress={() => setShowMore((v) => !v)} style={styles.moreToggle}>
+          <Pressable testID="entry-more" accessibilityRole="button" accessibilityLabel={showMore ? 'Hide note' : 'Add a note'} onPress={() => setShowMore((v) => !v)} style={styles.moreToggle}>
             <Text style={styles.moreText}>{showMore ? 'LESS' : 'NOTE'}</Text>
           </Pressable>
         </View>
@@ -504,6 +506,7 @@ export function ExpenseEntryScreen({
 
       <View testID="entry-save" accessible>
         <TactileButton
+          testID="entry-save-button"
           label={mode === 'new' ? 'Save' : mode === 'approve' ? 'Approve' : 'Update'}
           fullWidth
           onPress={onSave}

@@ -80,6 +80,7 @@ export default function ProfileScreen() {
           </View>
           <Switch
             testID="profile-haptics-switch"
+            accessibilityLabel="Haptic feedback"
             value={settings.hapticsEnabled}
             onValueChange={(next) => {
               updateSettings({ hapticsEnabled: next });
@@ -100,6 +101,7 @@ export default function ProfileScreen() {
           </View>
           <Switch
             testID="profile-keep-it-plain-switch"
+            accessibilityLabel="Keep it plain"
             value={settings.keepItPlain}
             onValueChange={(next) => {
               updateSettings({ keepItPlain: next });
@@ -122,6 +124,8 @@ export default function ProfileScreen() {
               </View>
               <Pressable
                 testID="profile-coins-history-link"
+                accessibilityRole="link"
+                accessibilityLabel="Coin history"
                 onPress={() => router.push('/coins' as any)}
                 style={styles.manageLink}>
                 <Text style={styles.manageLinkText}>View history →</Text>
@@ -182,6 +186,8 @@ export default function ProfileScreen() {
             </Text>
             <Pressable
               testID="profile-manage-categories"
+              accessibilityRole="link"
+              accessibilityLabel="Manage categories"
               onPress={() => router.push('/category/index')}
               style={styles.manageLink}>
               <Text style={styles.manageLinkText}>Manage categories →</Text>
@@ -217,6 +223,7 @@ export default function ProfileScreen() {
             <View style={styles.row}>
               <Text style={styles.event}>{event}</Text>
               <TactileButton
+                testID={`haptic-bench-${event}`}
                 label="Feel"
                 variant="secondary"
                 onPress={() => haptic(event)}

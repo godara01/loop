@@ -107,6 +107,9 @@ export function CategoriesStepScreen() {
             <Pressable
               key={cat.id}
               testID={`onboarding-category-${cat.id}`}
+              accessibilityRole="checkbox"
+              accessibilityLabel={cat.name}
+              accessibilityState={{ checked: isSelected }}
               onPress={() => toggleCategory(cat.id)}
               style={[
                 styles.categoryChip,

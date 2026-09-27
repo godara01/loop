@@ -12,6 +12,7 @@ import { haptic } from '@/lib/haptics';
 export function StreakCapsule({ days, onPress }: { days: number; onPress?: () => void }) {
   return (
     <Pressable
+      testID="streak-capsule"
       accessibilityRole="button"
       accessibilityLabel={`${days} day streak`}
       onPress={() => {

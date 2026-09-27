@@ -77,9 +77,9 @@ export default function DayDetailScreen() {
     <ScrollView {...pan.panHandlers} testID="screen-day-detail" style={styles.screen} contentContainerStyle={[styles.content, { paddingTop: insets.top + space.base, paddingBottom: space['3xl'] }]} showsVerticalScrollIndicator={false}>
       <View style={styles.nav}><Pressable testID="day-back" accessibilityLabel="Back to insights" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable><Text style={styles.eyebrow}>DAY DETAIL</Text></View>
       <View style={styles.dateRow}>
-        <Pressable testID="day-previous" disabled={selectedDate <= period.startDate} onPress={() => move(-1)}><Text style={[styles.step, selectedDate <= period.startDate && styles.disabled]}>‹</Text></Pressable>
+        <Pressable testID="day-previous" accessibilityRole="button" accessibilityLabel="Previous day" disabled={selectedDate <= period.startDate} onPress={() => move(-1)}><Text style={[styles.step, selectedDate <= period.startDate && styles.disabled]}>‹</Text></Pressable>
         <Text testID="day-detail-date" style={styles.title}>{selectedDate}</Text>
-        <Pressable testID="day-next" disabled={addDays(selectedDate, 1) >= period.endDate} onPress={() => move(1)}><Text style={[styles.step, addDays(selectedDate, 1) >= period.endDate && styles.disabled]}>›</Text></Pressable>
+        <Pressable testID="day-next" accessibilityRole="button" accessibilityLabel="Next day" disabled={addDays(selectedDate, 1) >= period.endDate} onPress={() => move(1)}><Text style={[styles.step, addDays(selectedDate, 1) >= period.endDate && styles.disabled]}>›</Text></Pressable>
       </View>
       <Text testID="day-detail-total" style={styles.total}>{formatMoney(total)}</Text>
       {rank ? <Text style={styles.rank}>#{rank.position} SPENDING DAY OF {rank.total}</Text> : <Text style={styles.rank}>NO SPEND THIS DAY</Text>}

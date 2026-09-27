@@ -54,7 +54,7 @@ export function ApprovePendingScreen({ pendingId }: { pendingId: string | undefi
     return (
       <View style={[styles.screen, styles.centered]} testID="approve-missing">
         <Text style={styles.muted}>This transaction is no longer waiting for approval.</Text>
-        <TactileButton label="Back" variant="secondary" onPress={() => router.back()} />
+        <TactileButton testID="approve-missing-back" label="Back" variant="secondary" onPress={() => router.back()} />
       </View>
     );
   }

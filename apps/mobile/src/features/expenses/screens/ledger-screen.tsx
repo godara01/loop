@@ -72,7 +72,7 @@ export function LedgerScreen() {
             {categoryId || date || period ? (
               <View style={styles.filterRow}>
                 <MonoTag tone="social">filtered</MonoTag>
-                <TactileButton label="Clear" onPress={() => router.replace('/activity')} />
+                <TactileButton testID="ledger-clear-filter" label="Clear" onPress={() => router.replace('/activity')} />
               </View>
             ) : null}
             <TextInput
@@ -113,7 +113,7 @@ export function LedgerScreen() {
           ) : (
             <View style={styles.emptyState} testID="ledger-empty">
               <Text style={styles.empty}>{EMPTY_STATES.ledger}</Text>
-              <TactileButton label="Log an expense" onPress={() => router.push('/expense/new')} />
+              <TactileButton testID="ledger-empty-add" label="Log an expense" onPress={() => router.push('/expense/new')} />
             </View>
           )
         }

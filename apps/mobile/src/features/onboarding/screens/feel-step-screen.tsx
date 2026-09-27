@@ -73,6 +73,7 @@ export function FeelStepScreen() {
           </View>
           <Switch
             testID="onboarding-haptics-switch"
+            accessibilityLabel="Haptic feedback"
             value={settings.hapticsEnabled}
             onValueChange={(next) => {
               updateSettings({ hapticsEnabled: next });

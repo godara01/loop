@@ -106,7 +106,7 @@ function Blocked({ title, body, onRetry }: { title: string; body: string; onRetr
       <Text style={styles.eyebrow}>LOOP</Text>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.body}>{body}</Text>
-      <TactileButton label="Try again" onPress={onRetry} style={styles.button} />
+      <TactileButton testID="bootstrap-retry" label="Try again" onPress={onRetry} style={styles.button} />
     </View>
   );
 }

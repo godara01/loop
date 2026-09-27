@@ -165,6 +165,7 @@ export function OrbitScreen() {
       )}
 
       <TactileButton
+        testID="orbit-log-expense"
         label="Log an expense"
         fullWidth
         onPress={() => router.push('/expense/new')}

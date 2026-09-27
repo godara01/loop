@@ -132,6 +132,9 @@ export function ManageCategoriesScreen() {
           return (
             <Pressable
               testID={`manage-row-${item.slug}`}
+              accessibilityRole="button"
+              accessibilityLabel={item.name}
+              accessibilityHint="Opens the category. Long-press to reorder."
               onLongPress={drag}
               disabled={isActive}
               onPress={() => router.push({ pathname: '/category/[id]', params: { id: item.id } })}
@@ -164,7 +167,7 @@ export function ManageCategoriesScreen() {
         }}
       />
 
-      <Pressable testID="manage-toggle-archived" onPress={() => setShowArchived((v) => !v)} style={styles.archivedToggle}>
+      <Pressable testID="manage-toggle-archived" accessibilityRole="button" accessibilityLabel={showArchived ? 'Hide archived categories' : 'Show archived categories'} onPress={() => setShowArchived((v) => !v)} style={styles.archivedToggle}>
         <Text style={styles.archivedToggleText}>
           {showArchived ? 'Hide' : 'Show'} archived ({archived.length})
         </Text>

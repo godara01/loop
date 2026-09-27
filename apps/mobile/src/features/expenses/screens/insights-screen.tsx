@@ -151,9 +151,9 @@ export function InsightsScreen() {
       </View>
 
       <View style={styles.navigator}>
-        <Pressable testID="insights-previous" onPress={() => step(-1)} hitSlop={10}><Text style={styles.nav}>‹</Text></Pressable>
+        <Pressable testID="insights-previous" accessibilityRole="button" accessibilityLabel="Previous period" onPress={() => step(-1)} hitSlop={10}><Text style={styles.nav}>‹</Text></Pressable>
         <View style={styles.rangeBlock}><Text testID="insights-period-current" style={styles.range}>{PERIOD_LABEL[settings.insightsPeriod]}</Text><Text style={styles.range}>{period.startDate} — {addDays(period.endDate, -1)}</Text></View>
-        <Pressable testID="insights-next" onPress={() => step(1)} disabled={atPresent} hitSlop={10}><Text style={[styles.nav, atPresent && styles.disabled]}>›</Text></Pressable>
+        <Pressable testID="insights-next" accessibilityRole="button" accessibilityLabel="Next period" onPress={() => step(1)} disabled={atPresent} hitSlop={10}><Text style={[styles.nav, atPresent && styles.disabled]}>›</Text></Pressable>
       </View>
 
       {expenses.status === 'loading' || rollups.status === 'loading' ? <Text style={styles.empty}>Loading your spending…</Text> : null}
@@ -190,7 +190,7 @@ export function InsightsScreen() {
                 // Expo's generated route types refresh when Metro next starts; this
                 // new route is intentionally kept as a concrete path meanwhile.
                 const today = day.date === todayISO();
-                return <Pressable key={day.date} testID={today ? 'insights-day-today' : `insights-day-${day.date}`} onPress={() => { haptic('tap'); router.push({ pathname: '/day/[date]' as never, params: { date: day.date, startDate: period.startDate, endDate: period.endDate } }); }} style={[styles.dayCell, fill, today && styles.todayCell]}><Text style={styles.dayText}>{day.date.slice(-2)}</Text></Pressable>;
+                return <Pressable key={day.date} testID={today ? 'insights-day-today' : `insights-day-${day.date}`} accessibilityRole="button" accessibilityLabel={`${day.date}, ${formatMoney(day.total)}`} onPress={() => { haptic('tap'); router.push({ pathname: '/day/[date]' as never, params: { date: day.date, startDate: period.startDate, endDate: period.endDate } }); }} style={[styles.dayCell, fill, today && styles.todayCell]}><Text style={styles.dayText}>{day.date.slice(-2)}</Text></Pressable>;
               })}
             </View>
             <View style={styles.statRow}>
@@ -210,13 +210,13 @@ export function InsightsScreen() {
 
 function CategoryRow({ row, category, percent, period }: { row: ReturnType<typeof totalsByCategory>[number]; category: Category | undefined; percent: number; period: { startDate: string; endDate: string } }) {
   const tint = category ? categoryColors[category.colorToken].tint : colors.textMuted;
-  return <Pressable testID={`insights-category-${row.categoryId}`} onPress={() => { haptic('tap'); router.push({ pathname: '/(tabs)/activity', params: { categoryId: row.categoryId, startDate: period.startDate, endDate: period.endDate } }); }} style={styles.categoryRow}><View style={styles.categoryTop}><MonoTag tint={tint}>{category?.name ?? 'Unknown'}</MonoTag><Text style={styles.amount}>{formatMoney(row.total)} · {percent}%</Text></View><View style={styles.track}><View style={[styles.bar, { backgroundColor: tint, width: `${Math.max(row.share * 100, 2)}%` }]} /></View></Pressable>;
+  return <Pressable testID={`insights-category-${row.categoryId}`} accessibilityRole="button" accessibilityLabel={`${category?.name ?? 'Unknown'}, ${formatMoney(row.total)}, ${percent}%`} onPress={() => { haptic('tap'); router.push({ pathname: '/(tabs)/activity', params: { categoryId: row.categoryId, startDate: period.startDate, endDate: period.endDate } }); }} style={styles.categoryRow}><View style={styles.categoryTop}><MonoTag tint={tint}>{category?.name ?? 'Unknown'}</MonoTag><Text style={styles.amount}>{formatMoney(row.total)} · {percent}%</Text></View><View style={styles.track}><View style={[styles.bar, { backgroundColor: tint, width: `${Math.max(row.share * 100, 2)}%` }]} /></View></Pressable>;
 }
 
 function LongTail({ rows, categoriesById, percentages, period }: { rows: readonly ReturnType<typeof totalsByCategory>[number][]; categoriesById: ReadonlyMap<string, Category>; percentages: ReadonlyMap<string, number>; period: { startDate: string; endDate: string } }) {
   const [expanded, setExpanded] = useState(false);
   const total = rows.reduce((sum, row) => sum + row.total.minor, 0);
-  return <View style={styles.longTail}><Pressable testID="insights-long-tail" onPress={() => { haptic('tap'); setExpanded((value) => !value); }}><Text style={styles.collapsed}>{expanded ? '−' : '+'} {rows.length} SMALL CATEGORIES · {formatMoney({ minor: total, currency: rows[0]!.total.currency })}</Text></Pressable>{expanded ? rows.map((row) => <CategoryRow key={row.categoryId} row={row} category={categoriesById.get(row.categoryId)} percent={percentages.get(row.categoryId) ?? 0} period={period} />) : null}</View>;
+  return <View style={styles.longTail}><Pressable testID="insights-long-tail" accessibilityRole="button" accessibilityLabel={`${rows.length} small categories`} accessibilityState={{ expanded }} onPress={() => { haptic('tap'); setExpanded((value) => !value); }}><Text style={styles.collapsed}>{expanded ? '−' : '+'} {rows.length} SMALL CATEGORIES · {formatMoney({ minor: total, currency: rows[0]!.total.currency })}</Text></Pressable>{expanded ? rows.map((row) => <CategoryRow key={row.categoryId} row={row} category={categoriesById.get(row.categoryId)} percent={percentages.get(row.categoryId) ?? 0} period={period} />) : null}</View>;
 }
 
 function Stat({ label, value }: { label: string; value: string }) { return <View style={styles.stat}><Text style={styles.statLabel}>{label}</Text><Text style={styles.statValue}>{value}</Text></View>; }

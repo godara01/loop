@@ -145,6 +145,8 @@ export function CatalogueScreen({ returnTo }: { returnTo: CatalogueReturnTo }) {
         ListFooterComponent={
           <Pressable
             testID="catalogue-create-custom"
+            accessibilityRole="button"
+            accessibilityLabel="Create a custom category"
             onPress={() =>
               router.push(returnTo === 'entry' ? '/category/new?fromEntry=1' : '/category/new')
             }

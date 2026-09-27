@@ -230,7 +230,7 @@ export function CategoryEditorScreen({
         </View>
 
         <Text style={styles.sectionLabel}>ICON</Text>
-        <Pressable testID="editor-upload-logo" onPress={onPickLogo} disabled={uploadingLogo} style={styles.uploadRow}>
+        <Pressable testID="editor-upload-logo" accessibilityRole="button" accessibilityLabel="Upload a logo" onPress={onPickLogo} disabled={uploadingLogo} style={styles.uploadRow}>
           <Ionicons name="image-outline" size={16} color={colors.credit} />
           <Text style={styles.uploadText}>{uploadingLogo ? 'Preparing…' : 'Upload your own logo'}</Text>
         </Pressable>
@@ -243,7 +243,7 @@ export function CategoryEditorScreen({
         <ColorTokenPicker selected={colorToken} onSelect={setColorToken} />
 
         {editing ? (
-          <Pressable testID="editor-delete" onPress={onDelete} style={styles.deleteRow}>
+          <Pressable testID="editor-delete" accessibilityRole="button" accessibilityLabel="Delete category" onPress={onDelete} style={styles.deleteRow}>
             <Ionicons name="trash-outline" size={16} color={colors.debit} />
             <Text style={styles.deleteText}>Delete category</Text>
           </Pressable>

@@ -51,6 +51,7 @@ export function CheckInPlate({
         </View>
         {!isCheckedIn && (
           <TactileButton
+            testID="check-in-button"
             label="Check in"
             fullWidth
             disabled={disabled}

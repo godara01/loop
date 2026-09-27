@@ -100,6 +100,9 @@ export function ProfileStepScreen() {
                 <Pressable
                   key={code}
                   testID={`onboarding-currency-${code}`}
+                  accessibilityRole="radio"
+                  accessibilityLabel={code}
+                  accessibilityState={{ selected }}
                   onPress={() => {
                     haptic('selection');
                     setCurrency(code);
