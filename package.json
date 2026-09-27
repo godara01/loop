@@ -26,6 +26,7 @@
     "seed": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 tsx scripts/seed-emulator.ts",
     "check:invariants": "node scripts/check-invariants.mjs",
     "check:testids": "node scripts/check-testids.mjs",
+    "check:a11y": "node scripts/check-a11y.mjs",
     "test:perf": "bash scripts/perf-ledger.sh",
     "test:functions": "firebase emulators:exec --config firebase.rules-test.json --only firestore,storage --project demo-loop \"tsx --test tests/functions/*.test.ts\""
   },

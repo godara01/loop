@@ -113,8 +113,8 @@ A task must never lower these counts. A task that adds tests raises them.
 | X4 | You → Reset app screen | X3, C3 | todo |
 | H1 | Crashlytics wrapper with key allowlist | A2 | blocked |
 | H2 | App Check wiring | — | todo |
-| H3 | Accessibility/testID audit script | — | todo |
-| H4 | Fix every a11y/testID finding | H3 | blocked |
+| H3 | Accessibility/testID audit script | — | done |
+| H4 | Fix every a11y/testID finding | H3 | todo |
 | H5 | Empty-state copy module matching `docs/02` | — | done |
 | H6 | `npm run test:all` (code-level) + MVP journey YAML | A2, A3, U6 | blocked |
 
