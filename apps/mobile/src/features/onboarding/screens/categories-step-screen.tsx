@@ -236,6 +236,8 @@ const styles = StyleSheet.create({
   },
   moreButtons: {
     flexDirection: 'row',
+    // At the largest font scale the two buttons are wider than the card.
+    flexWrap: 'wrap',
     gap: space.sm,
   },
   footer: { marginTop: 'auto', paddingTop: space.md, gap: space.md },

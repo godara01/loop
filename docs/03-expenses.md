@@ -196,4 +196,8 @@ for the second, unrelated hazard this surfaced.
 - [ ] A failed save keeps the sheet open with input intact.
 - [ ] Deleting the last expense of a day leaves the streak and coins untouched.
 - [ ] Ledger scrolls at 60fps with 5,000 seeded expenses.
+      *(2026-09-28, Loop_API35, dev build `6d928d7b`: 23ms median / 31ms p90 /
+      46ms p99 frames, 2.3% janky, over 20 flings. The emulator's own Settings app
+      scrolls at 20ms median (GPU 18ms), so 60fps is unmeasurable here — needs
+      the mid-range phone.)*
 - [ ] No two haptics fire within 150ms of each other on any path in this doc.
