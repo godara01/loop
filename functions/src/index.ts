@@ -1,7 +1,9 @@
 import * as admin from 'firebase-admin';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 
+import { cleanupSoftDeletedExpenses } from './cleanup';
 import { handleCategoryCreate, handleCheckInCreate, handleExpenseWrite } from './handlers';
 import { rebuildUserRollups } from './rollups';
 
@@ -42,3 +44,9 @@ export const rebuildRollups = onCall(async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to rebuild rollups.');
   return rebuildUserRollups(db, request.auth.uid);
 });
+
+/** Daily: hard-delete expenses soft-deleted more than 90 days ago. */
+export const cleanupSoftDeleted = onSchedule({ schedule: 'every day 03:00', timeZone: 'Asia/Kolkata' }, async () => {
+  await cleanupSoftDeletedExpenses(db, new Date());
+});
+

@@ -104,7 +104,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | R4 | Rules test: clients can't write rollups | — | done |
 | R5 | Pure cache + rollup merge for Insights | R1 | done |
 | R6 | Insights reads rollups for past periods | R5 | todo |
-| C1 | `cleanupSoftDeleted` (90-day) | R2 | todo |
+| C1 | `cleanupSoftDeleted` (90-day) | R2 | done |
 | C2 | Pending-expense expiry sweep (30-day) | P1 | todo |
 | C3 | `deleteUserData` callable (full-subtree delete) | — | todo |
 | X1 | CSV builder/parser with round-trip test | — | done |
