@@ -20,37 +20,48 @@ export function CheckInPlate({
   isCheckedIn: boolean;
   disabled?: boolean;
 }) {
+  const canCheckIn = !isCheckedIn && !disabled;
+  // The whole plate is the target ("tap here to bank the day"), not just the button.
   return (
-    <Card accent="credit" hero style={styles.card}>
-      <View style={styles.content}>
-        <Ionicons
-          name={isCheckedIn ? 'checkbox' : 'checkmark-circle-outline'}
-          size={24}
-          color={isCheckedIn ? colors.credit : colors.textMuted}
-        />
-        <View style={styles.textBlock}>
-          <Text style={[styles.title, isCheckedIn && styles.titleChecked]}>
-            {isCheckedIn ? 'DAY BANKED' : 'CHECK-IN TODAY'}
-          </Text>
-          <Text style={styles.subtitle}>
-            {isCheckedIn
-              ? 'Streak advanced, coins awarded.'
-              : 'Log an expense or tap here to bank the day.'}
-          </Text>
+    <Pressable
+      testID="check-in-plate"
+      accessibilityRole="button"
+      accessibilityLabel={isCheckedIn ? 'Day banked' : 'Check in today'}
+      accessibilityState={{ disabled: !canCheckIn }}
+      disabled={!canCheckIn}
+      onPress={() => {
+        haptic('press');
+        onPress();
+      }}>
+      <Card accent="credit" hero style={styles.card}>
+        <View style={styles.content}>
+          <Ionicons
+            name={isCheckedIn ? 'checkbox' : 'checkmark-circle-outline'}
+            size={24}
+            color={isCheckedIn ? colors.credit : colors.textMuted}
+          />
+          <View style={styles.textBlock}>
+            <Text style={[styles.title, isCheckedIn && styles.titleChecked]}>
+              {isCheckedIn ? 'DAY BANKED' : 'CHECK-IN TODAY'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {isCheckedIn ? 'Streak advanced, coins awarded.' : 'Log an expense or tap here to bank the day.'}
+            </Text>
+          </View>
         </View>
-      </View>
-      {!isCheckedIn && (
-        <TactileButton
-          label="Check in"
-          fullWidth
-          disabled={disabled}
-          onPress={() => {
-            haptic('press');
-            onPress();
-          }}
-        />
-      )}
-    </Card>
+        {!isCheckedIn && (
+          <TactileButton
+            label="Check in"
+            fullWidth
+            disabled={disabled}
+            onPress={() => {
+              haptic('press');
+              onPress();
+            }}
+          />
+        )}
+      </Card>
+    </Pressable>
   );
 }
 

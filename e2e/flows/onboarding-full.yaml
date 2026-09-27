@@ -18,10 +18,10 @@ appId: com.getter.loop
       id: "screen-onboarding-profile"
     timeout: 15000
 - tapOn:
-    id: "onboarding-profile-name-input"
+    id: "onboarding-name-input"
 - inputText: "Test User"
 - tapOn:
-    id: "onboarding-profile-currency-INR"
+    id: "onboarding-currency-INR"
 - tapOn:
     id: "onboarding-profile-continue"
 
@@ -33,7 +33,7 @@ appId: com.getter.loop
 - assertVisible:
     text: "Try it"
 - tapOn:
-    id: "onboarding-feel-haptics-switch"
+    id: "onboarding-haptics-switch"
 - tapOn:
     id: "onboarding-feel-continue"
 

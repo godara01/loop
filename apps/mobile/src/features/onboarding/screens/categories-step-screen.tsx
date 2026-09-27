@@ -160,6 +160,14 @@ export function CategoriesStepScreen() {
           disabled={selectedIds.size === 0}
           onPress={handleContinue}
         />
+        {/* Skipping keeps every seeded essential active. docs/02-onboarding.md. */}
+        <TactileButton
+          testID="onboarding-categories-skip"
+          label="Skip"
+          variant="secondary"
+          fullWidth
+          onPress={() => router.push('/onboarding/first-expense' as any)}
+        />
       </View>
     </ScrollView>
   );
@@ -221,5 +229,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: space.sm,
   },
-  footer: { marginTop: 'auto', paddingTop: space.md },
+  footer: { marginTop: 'auto', paddingTop: space.md, gap: space.md },
 });

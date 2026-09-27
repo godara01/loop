@@ -17,10 +17,10 @@ appId: com.getter.loop
       id: "screen-onboarding-profile"
     timeout: 15000
 - tapOn:
-    id: "onboarding-profile-name-input"
+    id: "onboarding-name-input"
 - inputText: "Resume Test"
 - tapOn:
-    id: "onboarding-profile-currency-USD"
+    id: "onboarding-currency-USD"
 
 # Kill the app
 - stopApp
@@ -54,7 +54,7 @@ appId: com.getter.loop
       id: "screen-onboarding-first-expense"
     timeout: 15000
 - tapOn:
-    id: "entry-skip"
+    id: "onboarding-skip-expense"
 
 # Land on Orbit
 - extendedWaitUntil:

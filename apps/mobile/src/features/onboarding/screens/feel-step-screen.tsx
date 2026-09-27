@@ -95,6 +95,14 @@ export function FeelStepScreen() {
             router.push('/onboarding/categories' as any);
           }}
         />
+        {/* Skipping leaves haptics at their default (on). docs/02-onboarding.md. */}
+        <TactileButton
+          testID="onboarding-feel-skip"
+          label="Skip"
+          variant="secondary"
+          fullWidth
+          onPress={() => router.push('/onboarding/categories' as any)}
+        />
       </View>
     </ScrollView>
   );
@@ -132,5 +140,5 @@ const styles = StyleSheet.create({
   toggleInfo: { flex: 1, gap: 2 },
   toggleTitle: { ...type.bodyLg, color: colors.text },
   toggleDesc: { ...type.bodySm, color: colors.textMuted },
-  footer: { marginTop: 'auto', paddingTop: space.md },
+  footer: { marginTop: 'auto', paddingTop: space.md, gap: space.md },
 });
