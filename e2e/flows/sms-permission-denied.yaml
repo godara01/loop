@@ -1,0 +1,90 @@
+# docs/12: with SMS permission denied, every other feature works unchanged.
+# Deny both SMS permissions, then log, check in, browse Insights and the ledger,
+# and use the paste path into the inbox (which needs no permission).
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
+
+- tapOn:
+    id: "tab-profile"
+- scrollUntilVisible:
+    element:
+      id: "profile-auto-capture"
+    centerElement: true
+- tapOn:
+    id: "profile-auto-capture"
+- extendedWaitUntil:
+    visible:
+      id: "screen-auto-capture"
+    timeout: 10000
+- tapOn:
+    id: "auto-capture-enable"
+- repeat:
+    times: 2
+    commands:
+      - runFlow:
+          when:
+            visible: "Don.t allow"
+          commands:
+            - tapOn: "Don.t allow"
+- extendedWaitUntil:
+    visible:
+      id: "auto-capture-denied"
+    timeout: 20000
+- tapOn:
+    id: "auto-capture-back"
+
+# Log an expense.
+- tapOn:
+    id: "tab-index"
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-7"
+- tapOn:
+    id: "pad-key-5"
+- tapOn:
+    id: "category-chip-TRANSPORT"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+- assertVisible:
+    id: "orbit-today-total"
+    text: "₹75.00"
+- extendedWaitUntil:
+    visible:
+      id: "orbit-coin-balance"
+    timeout: 30000
+
+# Ledger and Insights.
+- tapOn:
+    id: "tab-activity"
+- extendedWaitUntil:
+    visible:
+      id: "screen-ledger"
+    timeout: 10000
+- assertVisible: "₹75.00"
+- tapOn:
+    id: "tab-insights"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+      text: "₹75.00"
+    timeout: 15000
+
+# The inbox and its paste path still work without the permission.
+- openLink: "loop://inbox"
+- extendedWaitUntil:
+    visible:
+      id: "screen-inbox"
+    timeout: 15000
+- assertVisible:
+    id: "inbox-paste"
