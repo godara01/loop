@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { DEFAULT_DISPLAY_NAME, newProfile } from '@loop/shared';
 
 import {
   INITIAL_ONBOARDING_STATE,
@@ -72,6 +73,11 @@ describe('determineResumeStep', () => {
   it('resumes welcome when no display name is set', () => {
     assert.equal(determineResumeStep({ displayName: '' }), 'welcome');
     assert.equal(determineResumeStep({ displayName: null }), 'welcome');
+  });
+
+  it("resumes welcome for a brand-new profile, whose name is still the placeholder", () => {
+    assert.equal(determineResumeStep({ displayName: DEFAULT_DISPLAY_NAME, onboardedAt: null }), 'welcome');
+    assert.equal(determineResumeStep(newProfile('u', true, '2026-09-27T10:00:00.000Z')), 'welcome');
   });
 
   it('resumes feel when display name is set but onboardedAt is null', () => {

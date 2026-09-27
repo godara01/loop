@@ -3,7 +3,7 @@
  * See docs/02-onboarding.md#step-2--profile.
  */
 
-import { type CurrencyCode, colors, layout, space, type } from '@loop/shared';
+import { type CurrencyCode, DEFAULT_DISPLAY_NAME, colors, layout, space, type } from '@loop/shared';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -30,7 +30,10 @@ export function ProfileStepScreen() {
   const insets = useSafeAreaInsets();
   const { uid, profile } = useSession();
 
-  const [displayName, setDisplayName] = useState(profile.displayName || '');
+  // Don't pre-fill the placeholder a new profile starts with.
+  const [displayName, setDisplayName] = useState(
+    profile.displayName && profile.displayName !== DEFAULT_DISPLAY_NAME ? profile.displayName : '',
+  );
   const [currency, setCurrency] = useState<CurrencyCode>(profile.currency || 'INR');
   const [saving, setSaving] = useState(false);
 

@@ -14,6 +14,7 @@ import {
 import {
   type CheckInDoc,
   type CoinLedgerEntryDoc,
+  EMPTY_STREAK,
   type StreakDoc,
   type WalletDoc,
   checkInToDoc,
@@ -45,16 +46,21 @@ export function observeStreak(
     doc(db, firestorePaths.streak(uid)),
     { includeMetadataChanges: true },
     (snapshot) => {
-      onChange({
-        streak: parseStreak(uid, snapshot.data()),
-        fromCache: snapshot.metadata.fromCache,
-      });
+      // No streak doc until the first banked day: that is a zero streak, not an error.
+      if (!snapshot.exists()) return onChange({ streak: EMPTY_STREAK, fromCache: snapshot.metadata.fromCache });
+      try {
+        onChange({ streak: parseStreak(uid, snapshot.data()), fromCache: snapshot.metadata.fromCache });
+      } catch (error) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+      }
     },
     onError,
   );
 }
 
 // ============ WALLET ============
+
+const EMPTY_WALLET: WalletDoc = { coinBalance: 0 };
 
 export interface WalletSnapshot {
   readonly wallet: WalletDoc;
@@ -72,10 +78,13 @@ export function observeWallet(
     doc(db, firestorePaths.wallet(uid)),
     { includeMetadataChanges: true },
     (snapshot) => {
-      onChange({
-        wallet: parseWallet(uid, snapshot.data()),
-        fromCache: snapshot.metadata.fromCache,
-      });
+      // No wallet doc until the first coin is awarded: a new user has 0 coins, not an error.
+      if (!snapshot.exists()) return onChange({ wallet: EMPTY_WALLET, fromCache: snapshot.metadata.fromCache });
+      try {
+        onChange({ wallet: parseWallet(uid, snapshot.data()), fromCache: snapshot.metadata.fromCache });
+      } catch (error) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+      }
     },
     onError,
   );

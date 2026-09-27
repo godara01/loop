@@ -123,13 +123,19 @@ export interface ProfileDoc {
 }
 
 /**
+ * The name every brand-new profile carries until onboarding asks for a real
+ * one. Onboarding treats it as "not chosen yet".
+ */
+export const DEFAULT_DISPLAY_NAME = 'You';
+
+/**
  * The profile a brand-new account starts with. Currency defaults to INR until
  * onboarding (M6) asks; `onboardedAt` stays null so that onboarding still runs.
  */
 export function newProfile(uid: string, isAnonymous: boolean, now: string): UserProfile {
   return {
     uid,
-    displayName: 'You',
+    displayName: DEFAULT_DISPLAY_NAME,
     currency: 'INR',
     onboardedAt: null,
     categoriesSeededAt: null,

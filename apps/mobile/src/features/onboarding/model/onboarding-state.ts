@@ -3,7 +3,7 @@
  * See docs/02-onboarding.md.
  */
 
-import type { CurrencyCode } from '@loop/shared';
+import { type CurrencyCode, DEFAULT_DISPLAY_NAME } from '@loop/shared';
 
 export type OnboardingStep =
   | 'welcome'
@@ -88,6 +88,8 @@ export function determineResumeStep(profile: {
   onboardedAt?: string | null;
 }): OnboardingStep {
   if (profile.onboardedAt) return 'complete';
-  if (!profile.displayName || profile.displayName.trim() === '') return 'welcome';
+  // A new account's profile carries the placeholder name; the user hasn't done step 1 yet.
+  const name = profile.displayName?.trim() ?? '';
+  if (name === '' || name === DEFAULT_DISPLAY_NAME) return 'welcome';
   return 'feel';
 }
