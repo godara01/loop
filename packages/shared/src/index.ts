@@ -14,6 +14,8 @@ export * from './storage-paths';
 
 // SMS exports (selective to avoid duplication with types.ts)
 export { isAllowlistedSender } from './sms/sender';
+export { bankLabel, buildDisplayHint } from './sms/display-hint';
+export type { DisplayHintFields } from './sms/display-hint';
 export {
   BUNDLED_REGISTRY,
   COMPILED_BUNDLED_REGISTRY,
