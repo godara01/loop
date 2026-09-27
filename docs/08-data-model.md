@@ -176,3 +176,5 @@ in [03](03-expenses.md#acceptance-criteria) and [05](05-insights.md#performance)
       (proof: packages/shared/src/__tests__/expenses.test.ts › "is already a valid settlement input that nets to zero")
 - [x] Export → re-import produces byte-identical `amountMinor` values.
       (proof: packages/shared/src/__tests__/csv.test.ts › "round-trips Number.MAX_SAFE_INTEGER exactly, with an exact display amount")
+      (device: 2026-09-28, a 500-expense export pulled from Loop_API35 re-parses to
+      the seeded total and per-category sums exactly)

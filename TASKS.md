@@ -839,14 +839,16 @@ These need the `Loop_API35` emulator, an EAS dev build, or both. Code agents
 | D4 | Onboarding flows (full, resume, skip). Bootstrap-gate escape attempts. Kill and resume at every step. Airplane-mode run, 90-second run. **Done 2026-09-28:** full/resume/skip plus new `onboarding-gate` and `onboarding-offline`, each twice. Fixed: resume could only land on welcome or feel (now `settings.onboardingStep`); the gate bounced the category modals steps 3 and 5 open; an offline cold install showed a raw auth error instead of "Connect once to set up"; `launch.yaml` tapped any "Continue", advancing onboarding on relaunch. | D0 | `docs/02` (all) |
 | D5 | Rebuild with `sms-reader` + remote-config. Test `adb emu sms send` delivery (and whether alphanumeric senders work, with the dev fallback if not), 30-day backfill, permission denied, kill switch at runtime. | N1, N2, U5 | `docs/12` denied and kill switch |
 | D6 | The 8 `sms-*` flows, each passing twice. Privacy audit across Firestore, Storage, and logcat. | U6, D5 | `docs/12` (rest) |
-| D7 | Rollups parity on device. Export CSV, then pull and re-parse the file. Reset app leaves an empty subtree. App Check negative control. Crashlytics payload inspection. | R6, X2, X4, H1, H2 | `docs/08` export, `docs/11` App Check and deletion |
+| D7 | Rollups parity on device. Export CSV, then pull and re-parse the file. Reset app leaves an empty subtree. App Check negative control. Crashlytics payload inspection. **Done 2026-09-28, two halves need the live project:** rollups — Insights shows Aug ₹60,940.00 / Jul ₹66,985.00, equal to the expenses (and all 365 daily rollups equal for the 3,000 seed); CSV — 500 rows pulled via `run-as` re-parse to the seed exactly (total, per category, integer minor units); reset — new `reset-app` flow twice, old uid's subtree empty. App Check: the emulator rejects a callable with **no** token but accepts a **fake** one (it checks presence only), so the invalid-token control must run on `loop-app-0403` after deploy. Crashlytics: only `lib/crashlytics.ts` touches it, one call site (`errorCode: app-check-init`), no user id; collection is off in dev, so inspect a real payload — including auto-captured JS exceptions — in the preview smoke test. | R6, X2, X4, H1, H2 | `docs/08` export, `docs/11` App Check and deletion |
 | D8 | Maximum font scale, screen-reader walk (entry sheet, inbox, onboarding), and perf re-check (5k ledger, 3k insights) | H4, H5 | `docs/03` fps |
 | D9 | `npm run test:all -- --device`, passing twice in a row. Reconcile every doc checkbox. | everything | MVP complete |
 
 **Owner only (not agent work):**
 - Physical-device haptic pass on the Redmi Note 10 Pro
 - Blaze plan and a budget alert, then deploy to `loop-app-0403` and run the
-  preview-build smoke test
+  preview-build smoke test. It must include the two D7 halves the emulator
+  can't prove: a callable with an invalid App Check token is refused, and a
+  Crashlytics report (non-fatal and an uncaught JS error) carries no user text
 - Submit the Play Store SMS permission declaration (it has the longest lead
   time, so submit it early)
 - `git tag v1.0.0-mvp` after D9

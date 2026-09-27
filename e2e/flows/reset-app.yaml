@@ -1,0 +1,101 @@
+# docs/02 + docs/11: You → Reset app deletes the user's whole subtree via the
+# account-deletion Function and returns to step 1. Build data in every kind of
+# collection (client- and Function-written), reset, then scan the old uid.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
+
+# An expense (→ rollups, coin ledger, wallet via onExpenseWrite) and a check-in.
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-9"
+- tapOn:
+    id: "pad-key-9"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "orbit-coin-balance"
+    timeout: 30000
+
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "dailyRollups"
+- assertTrue: ${output.docs.length == 1}
+- evalScript: ${output.oldUid = output.uid}
+
+# Reset through the UI: typed confirmation, no silent path.
+- tapOn:
+    id: "tab-profile"
+- scrollUntilVisible:
+    element:
+      id: "profile-reset-app"
+    centerElement: true
+- tapOn:
+    id: "profile-reset-app"
+- tapOn:
+    id: "reset-start"
+- tapOn:
+    id: "reset-input"
+- inputText: "RESET"
+- tapOn:
+    id: "reset-confirm"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 60000
+
+# Nothing is left under the old uid.
+- runScript:
+    file: ../scripts/query.js
+    env:
+      UID: ${output.oldUid}
+      PROFILE: "1"
+      COLLECTION: "expenses"
+- assertTrue: ${output.profile == null}
+- assertTrue: ${output.docs.length == 0}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      UID: ${output.oldUid}
+      COLLECTION: "categories"
+- assertTrue: ${output.docs.length == 0}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      UID: ${output.oldUid}
+      COLLECTION: "checkIns"
+- assertTrue: ${output.docs.length == 0}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      UID: ${output.oldUid}
+      COLLECTION: "coinLedger"
+- assertTrue: ${output.docs.length == 0}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      UID: ${output.oldUid}
+      COLLECTION: "dailyRollups"
+- assertTrue: ${output.docs.length == 0}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      UID: ${output.oldUid}
+      DOC: "wallet/main"
+- assertTrue: ${output.doc == null}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      UID: ${output.oldUid}
+      DOC: "streak/main"
+- assertTrue: ${output.doc == null}

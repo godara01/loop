@@ -355,5 +355,9 @@ the same way `firestore/paths.ts` and `firestore.rules` already aren't.
       (proof: scripts/check-invariants.mjs rule 2 "shared-no-react-native-firebase")
 - [ ] App Check is enforced on Firestore, Storage and Functions before the first
       external tester build.
+      *(2026-09-28: callables declare `enforceAppCheck`, and the emulator refuses a
+      call with no token — but it accepts a fake one, so the invalid-token check
+      has to run against the deployed project. Firestore/Storage enforcement is a
+      console setting. Owner, before the first tester build.)*
 - [x] Deleting an account removes every document and file for that uid.
       (proof: tests/functions/delete-user.test.ts › "leaves a fully populated user with zero docs and zero files" and "leaves a second user's data untouched")
