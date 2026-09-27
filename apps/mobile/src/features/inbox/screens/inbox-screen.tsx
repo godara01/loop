@@ -23,6 +23,7 @@ import {
   approvePendingExpense,
   dismissPendingExpense,
 } from '../api/pending-expenses-repository';
+import { PasteSheet } from '../components/paste-sheet';
 import { PendingCard } from '../components/pending-card';
 import { usePendingExpenses } from '../hooks/use-pending-expenses';
 import type { CategoryChoices, PendingExpense } from '../model/approval';
@@ -48,6 +49,7 @@ export function InboxScreen() {
   const pending = usePendingExpenses();
   const categoriesState = useCategories();
   const [picked, setPicked] = useState<Record<string, string>>({});
+  const [pasting, setPasting] = useState(false);
 
   const categories: Category[] = useMemo(
     () =>
@@ -127,6 +129,12 @@ export function InboxScreen() {
               <Text style={styles.eyebrow}>INBOX</Text>
             </View>
             <Text style={styles.title}>To approve</Text>
+            <TactileButton
+              testID="inbox-paste"
+              label="Paste a message"
+              variant="secondary"
+              onPress={() => setPasting(true)}
+            />
             {pending.status === 'ready' && pending.snapshot.fromCache ? <MonoTag>offline</MonoTag> : null}
           </View>
         }
@@ -160,6 +168,8 @@ export function InboxScreen() {
           )
         }
       />
+
+      <PasteSheet visible={pasting} onClose={() => setPasting(false)} />
 
       {items.length > 0 ? (
         <View style={[styles.footer, { paddingBottom: insets.bottom + space.base }]}>
