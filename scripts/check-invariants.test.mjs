@@ -244,6 +244,38 @@ export const setup = () => registerForPushNotifications();`,
     assert.strictEqual(result.status, 0);
   });
 
+  test('rule 7: crashlytics imported outside lib/crashlytics.ts', () => {
+    const fixtureDir = join(tempDir, 'rule7');
+    createFixture(fixtureDir, {
+      'apps/mobile/src/features/expenses/screen.tsx': `import { getCrashlytics } from '@react-native-firebase/crashlytics';
+export const Screen = () => null;`,
+    });
+    const result = runScript(fixtureDir);
+    assert.strictEqual(result.status, 1);
+    assert.match(result.stdout, /crashlytics-only-in-wrapper/);
+  });
+
+  test('rule 7: crashlytics imported in another lib file still fails', () => {
+    const fixtureDir = join(tempDir, 'rule7-lib');
+    createFixture(fixtureDir, {
+      'apps/mobile/src/lib/app-check.ts': `import { recordError } from '@react-native-firebase/crashlytics';
+export const init = () => null;`,
+    });
+    const result = runScript(fixtureDir);
+    assert.strictEqual(result.status, 1);
+    assert.match(result.stdout, /crashlytics-only-in-wrapper/);
+  });
+
+  test('rule 7: crashlytics allowed in lib/crashlytics.ts', () => {
+    const fixtureDir = join(tempDir, 'rule7-allowed');
+    createFixture(fixtureDir, {
+      'apps/mobile/src/lib/crashlytics.ts': `import { getCrashlytics } from '@react-native-firebase/crashlytics';
+export const recordError = () => null;`,
+    });
+    const result = runScript(fixtureDir);
+    assert.strictEqual(result.status, 0);
+  });
+
   test('clean repo passes', () => {
     const result = runScript(process.cwd());
     if (result.status !== 0) {
