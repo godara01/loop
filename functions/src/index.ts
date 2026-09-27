@@ -3,7 +3,7 @@ import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/fire
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
-import { cleanupSoftDeletedExpenses } from './cleanup';
+import { cleanupSoftDeletedExpenses, expireStalePendingExpenses } from './cleanup';
 import { handleCategoryCreate, handleCheckInCreate, handleExpenseWrite } from './handlers';
 import { rebuildUserRollups } from './rollups';
 
@@ -48,5 +48,10 @@ export const rebuildRollups = onCall(async (request) => {
 /** Daily: hard-delete expenses soft-deleted more than 90 days ago. */
 export const cleanupSoftDeleted = onSchedule({ schedule: 'every day 03:00', timeZone: 'Asia/Kolkata' }, async () => {
   await cleanupSoftDeletedExpenses(db, new Date());
+});
+
+/** Daily: pending inbox items older than 30 days become `expired`. Never deleted. */
+export const expirePendingExpenses = onSchedule({ schedule: 'every day 03:30', timeZone: 'Asia/Kolkata' }, async () => {
+  await expireStalePendingExpenses(db, new Date());
 });
 

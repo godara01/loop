@@ -47,3 +47,35 @@ export async function cleanupSoftDeletedExpenses(db: admin.firestore.Firestore, 
   }
   return deleted;
 }
+
+// ── C2 · Pending-expense expiry ───────────────────────────────────────────
+
+export const PENDING_EXPIRY_DAYS = 30;
+
+/**
+ * Marks `pending` items received more than 30 days ago as `expired`, so the
+ * inbox never becomes a graveyard. Never deletes: every item keeps its
+ * decision history. Approved, rejected and expired items are not matched.
+ */
+export async function expireStalePendingExpenses(db: admin.firestore.Firestore, now: Date): Promise<number> {
+  const before = cutoff(now, PENDING_EXPIRY_DAYS);
+  const updatedAt = now.toISOString();
+  let expired = 0;
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const snap = await db
+      .collectionGroup('pendingExpenses')
+      .where('status', '==', 'pending')
+      .where('receivedAt', '<', before)
+      .orderBy('receivedAt')
+      .limit(PAGE_SIZE)
+      .get();
+    const docs = snap.docs.filter((d) => isUserDoc(d.ref));
+    if (docs.length === 0) break;
+    const batch = db.batch();
+    for (const d of docs) batch.update(d.ref, { status: 'expired', updatedAt });
+    await batch.commit();
+    expired += docs.length;
+    if (snap.size < PAGE_SIZE) break;
+  }
+  return expired;
+}

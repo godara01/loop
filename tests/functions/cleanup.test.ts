@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import * as admin from 'firebase-admin';
 
 import { firestorePaths } from '../../packages/shared/src';
-import { cleanupSoftDeletedExpenses } from '../../functions/src/cleanup';
+import { cleanupSoftDeletedExpenses, expireStalePendingExpenses } from '../../functions/src/cleanup';
 import { handleExpenseWrite } from '../../functions/src/handlers';
 
 process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8085';
@@ -94,5 +94,43 @@ describe('cleanupSoftDeleted (C1)', () => {
       (o: { collectionGroup: string; fieldPath: string }) => o.collectionGroup === 'expenses' && o.fieldPath === 'deletedAt',
     );
     assert.ok(override?.indexes.some((i: { queryScope: string }) => i.queryScope === 'COLLECTION_GROUP'));
+  });
+});
+
+describe('expirePendingExpenses (C2)', () => {
+  const pending = (receivedAt: string, status = 'pending') => ({ status, amountMinor: 45_000, receivedAt, updatedAt: receivedAt });
+
+  it('leaves 29 days untouched and expires 31 days', async () => {
+    await db.doc(firestorePaths.pendingExpense(UID, 'p29')).set(pending(daysAgo(29)));
+    await db.doc(firestorePaths.pendingExpense(UID, 'p31')).set(pending(daysAgo(31)));
+
+    await expireStalePendingExpenses(db, NOW);
+
+    const docs = await db.collection(firestorePaths.pendingExpenses(UID)).get();
+    const status = Object.fromEntries(docs.docs.map((d) => [d.id, d.data().status]));
+    assert.deepEqual(status, { p29: 'pending', p31: 'expired' });
+  });
+
+  it('never touches approved, rejected or already-expired items', async () => {
+    for (const status of ['approved', 'rejected', 'expired']) {
+      await db.doc(firestorePaths.pendingExpense(UID, status)).set(pending(daysAgo(60), status));
+    }
+    const before = await raw('pendingExpenses');
+    await expireStalePendingExpenses(db, NOW);
+    assert.deepEqual(await raw('pendingExpenses'), before);
+  });
+
+  it('is a no-op the second time and never changes the document count', async () => {
+    for (let i = 0; i < 5; i += 1) await db.doc(firestorePaths.pendingExpense(UID, `p${i}`)).set(pending(daysAgo(20 + i * 5)));
+    const count = (await ids('pendingExpenses')).length;
+
+    const first = await expireStalePendingExpenses(db, NOW);
+    const afterFirst = await raw('pendingExpenses');
+    const second = await expireStalePendingExpenses(db, NOW);
+
+    assert.ok(first > 0);
+    assert.equal(second, 0);
+    assert.deepEqual(await raw('pendingExpenses'), afterFirst);
+    assert.equal((await ids('pendingExpenses')).length, count);
   });
 });
