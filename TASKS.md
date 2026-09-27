@@ -52,14 +52,16 @@ started.
     tool), then run `npm install` inside it. `test:rules` and `test:functions`
     bind the same emulator ports, so only one session at a time may run them.
 
-### Baseline (all green on 2026-09-23)
+### Baseline (all green on 2026-09-27)
 
 | Command | Result |
 |---|---|
 | `npm run typecheck` | exit 0 |
-| `npm test` | shared 155 pass · mobile 28 pass · functions 0 |
-| `npm run test:functions` | 7 pass |
-| `npm run test:rules` | 40 pass (Firestore + Storage) |
+| `npm test` | shared 241 pass · mobile 49 pass · functions 0 |
+| `npm run test:functions` | 20 pass |
+| `npm run test:rules` | 42 pass (Firestore + Storage) |
+| `npm run check:invariants` | exit 0 |
+| `npm run check:testids` | exit 0 |
 
 A task must never lower these counts. A task that adds tests raises them.
 
