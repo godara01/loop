@@ -56,6 +56,8 @@ appId: com.getter.loop
 - assertVisible:
     text: "₹100.00"  # FOOD total
 - assertVisible:
+    text: "·.67%"    # and its share, not wrapped out of view
+- assertVisible:
     id: "insights-category-cat-transport"
 - assertVisible:
     text: "₹50.00"   # TRANSPORT total
@@ -83,7 +85,7 @@ appId: com.getter.loop
 - tapOn:
     text: "Clear"
 - tapOn:
-    id: "day-back"
+    id: "tab-insights"
 - tapOn:
     id: "insights-period-week"
 - assertVisible:

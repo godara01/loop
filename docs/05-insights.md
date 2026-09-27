@@ -184,6 +184,20 @@ the expenses, the expenses win and the rollup is regenerated.
       and the boundary is local time, not UTC — verified with a non-UTC device.
 - [x] Archived categories still appear in periods containing their expenses.
 - [ ] Insights renders under 300ms with 3,000 seeded expenses.
+      *Measured 2026-09-27 on Loop_API35 (x86 emulator), dev build `3b37050f`,
+      settled app, `[perf] insights ready` marker (mount → every source ready):*
+      | Cached | This month | Dev bundle | Production bundle |
+      |---|---|---|---|
+      | 3,000 over 365 days | 205 | 919–1,039ms | 812–882ms |
+      | 205 | 205 | 919–957ms | — |
+      | 10 | 10 | 546–582ms | — |
+      *Model computation is 1ms and a year of history costs nothing over a
+      month — rollups work. The floor is five listeners (period, previous
+      period, two rollup ranges, categories) subscribing from scratch on every
+      mount, plus ~1.9ms per current-month expense crossing the bridge. Getting
+      under 300ms needs a structural change (e.g. app-wide live listeners for
+      this month and categories) — an owner decision, not a tuning pass. Not yet
+      measured on a mid-range phone, which is what the rule names (D8).*
 - [x] Client-computed current-month totals and Function-computed rollups agree
       exactly, to the minor unit, for the same period.
       (proof: tests/functions/rollups.test.ts › "a sequence of creates, edits and deletes ends equal to buildRollups of what is left" and packages/shared/src/__tests__/insights.test.ts › "equals an all-cache computation of the same data exactly")

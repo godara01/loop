@@ -141,6 +141,12 @@ getting faster as the strip learns.
 
 ### M5 — Insights
 
+> **Device-verified — 2026-09-27 (D2).** On Loop_API35 with dev build
+> `3b37050f`, all six `insights-*` flows passed twice. Found and fixed on the
+> way: a category row's percentage was clipped out of view on Android
+> ("₹100.00 ·"). The 300ms render budget is **not** met on the emulator — see
+> the measurements under [05-insights.md](05-insights.md#acceptance-criteria).
+
 - `insights.ts` wired to the cached expenses, current period computed on device
 - Category ranked bars, period control, day calendar strip, day detail
 - **No rollup Functions yet** — client-side is correct and fast at your data size

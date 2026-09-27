@@ -65,8 +65,12 @@ appId: com.getter.loop
     id: "insights-category-cat-food"
 - assertVisible:
     id: "screen-ledger"
+# The filtered ledger has no grand total (docs/05: "filtered ledger for that
+# category and period"); both FOOD expenses in the range must be listed.
 - assertVisible:
-    text: "₹200.00"
+    text: "₹120.00"
+- assertVisible:
+    text: "₹80.00"
 - tapOn:
     text: "Clear"
 
@@ -78,6 +82,7 @@ appId: com.getter.loop
 - assertVisible:
     id: "screen-day-detail"
 - assertVisible:
+    id: "day-detail-total"
     text: "₹120.00"
 
 # Settings writes are offline-first and survive relaunch.

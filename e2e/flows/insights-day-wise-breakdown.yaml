@@ -53,33 +53,28 @@ appId: com.getter.loop
     timeout: 15000
 - assertVisible:
     text: "₹150.00"  # Total
-# Today should show ₹100, yesterday ₹50
+# Day cells show only the day number; each one's amount is in its label
+# ("2026-09-27, ₹100.00"), which Maestro matches as text.
 - assertVisible:
     id: "insights-day-today"
+    text: ".*₹100\\.00"
 - assertVisible:
-    text: "₹100.00"
-- assertVisible:
-    id: "insights-day-yesterday"
-- assertVisible:
-    text: "₹50.00"
-# Drill down into today
+    text: ".*, ₹50\\.00"
+# Drill down into today, then step back a day inside day detail.
 - tapOn:
     id: "insights-day-today"
+- extendedWaitUntil:
+    visible:
+      id: "screen-day-detail"
+    timeout: 15000
 - assertVisible:
-    id: "screen-day-detail"
-- assertVisible:
+    id: "day-detail-total"
     text: "₹100.00"
 - tapOn:
-    id: "day-back"
-# Drill down into yesterday
-- tapOn:
-    id: "insights-day-yesterday"
+    id: "day-previous"
 - assertVisible:
-    id: "screen-day-detail"
-- assertVisible:
+    id: "day-detail-total"
     text: "₹50.00"
-- tapOn:
-    id: "day-back"
 - tapOn:
     id: "day-back"
 - tapOn:

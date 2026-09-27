@@ -65,28 +65,23 @@ appId: com.getter.loop
 
 # Verify today's total
 - assertVisible:
+    id: "day-detail-total"
     text: "₹120.00"
 
-# Swipe to navigate to yesterday (implementation may vary - could be swipe left/right or back button)
-# For now, test the back navigation and re-entry to yesterday
+# Step to yesterday with the previous-day control, then back again with a swipe
+# (swiping right goes to the previous day, left to the next).
 - tapOn:
-    id: "day-back"
-- extendedWaitUntil:
-    visible:
-      id: "insights-period-total"
-    timeout: 15000
-
-# Tap yesterday's day cell
-- tapOn:
-    id: "insights-day-yesterday"
-- extendedWaitUntil:
-    visible:
-      id: "screen-day-detail"
-    timeout: 15000
-
-# Verify yesterday's total
+    id: "day-previous"
 - assertVisible:
+    id: "day-detail-total"
     text: "₹80.00"
+- swipe:
+    direction: LEFT
+    from:
+      id: "day-detail-total"
+- assertVisible:
+    id: "day-detail-total"
+    text: "₹120.00"
 
 # Back to insights
 - tapOn:
