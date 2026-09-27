@@ -14,6 +14,7 @@ import {
   daysInPeriod,
   displayPercentages,
   intensityStep,
+  mergePeriodSources,
   periodOf,
   periodStats,
   periodTotal,
@@ -24,6 +25,8 @@ import {
   weekdayAverages,
 } from '../insights';
 import { money } from '../money';
+import { buildRollups } from '../rollups';
+import type { Expense } from '../types';
 
 const INR = 'INR' as const;
 
@@ -250,5 +253,68 @@ describe('the long tail', () => {
       INR,
     );
     assert.equal(collapseLongTail(totals).collapsed.length, 0);
+  });
+});
+
+describe('rollups + cache merge', () => {
+  // Aug 20 – Sep 15: 17 rollup days in August (and Sep 1 onward from the cache).
+  const PERIOD = { startDate: '2026-08-20', endDate: '2026-09-16' };
+  const CACHE_FROM = '2026-09-01';
+  const cats = ['food', 'transport', 'fun', 'rent', 'groceries'];
+
+  // Deterministic spread: some days empty, some with several expenses, awkward amounts.
+  const records: SpendRecord[] = [];
+  daysInPeriod(PERIOD).forEach((date, i) => {
+    for (let n = 0; n < i % 4; n += 1) {
+      records.push(spend(date, cats[(i + n) % cats.length]!, 1_001 * (i + 1) + 37 * n));
+    }
+  });
+  records.push({ ...spend('2026-08-25', 'food', 99_999), deletedAt: '2026-08-26T00:00:00.000Z' });
+  records.push({ ...spend('2026-09-05', 'fun', 55_555), deletedAt: '2026-09-06T00:00:00.000Z' });
+  // Spend on both sides of the boundary, so an off-by-one there changes the totals.
+  records.push(spend('2026-08-31', 'food', 31_031), spend('2026-09-01', 'rent', 90_101));
+  // Outside the period on both sides: must be ignored by both paths.
+  records.push(spend('2026-08-19', 'food', 7_777), spend('2026-09-16', 'food', 8_888));
+
+  const rollups = buildRollups(records as unknown as Expense[]).daily;
+  const merged = mergePeriodSources({ period: PERIOD, currency: INR, cacheFrom: CACHE_FROM, rollups, cached: records });
+
+  it('has no gaps in totalsByDay across the rollup/cache boundary', () => {
+    assert.deepEqual(merged.days.map((d) => d.date), daysInPeriod(PERIOD));
+    assert.ok(merged.days.some((d) => d.date === '2026-08-31'));
+    assert.ok(merged.days.some((d) => d.date === '2026-09-01'));
+    assert.ok(merged.days.some((d) => d.total.minor === 0), 'zero-spend days are present as zero');
+  });
+
+  it('equals an all-cache computation of the same data exactly', () => {
+    assert.deepEqual(merged.total, periodTotal(records, PERIOD, INR));
+    assert.deepEqual(merged.days, totalsByDay(records, PERIOD, INR));
+    assert.deepEqual(merged.stats, periodStats(records, PERIOD, INR));
+    assert.deepEqual(merged.weekdays, weekdayAverages(records, PERIOD, INR));
+    const fromCache = totalsByCategory(records, PERIOD, INR);
+    assert.deepEqual(
+      merged.totals.map(({ categoryId, total, share }) => ({ categoryId, total, share })),
+      fromCache.map(({ categoryId, total, share }) => ({ categoryId, total, share })),
+    );
+  });
+
+  it('keeps displayPercentages summing to 100', () => {
+    const percentages = displayPercentages(merged.totals);
+    assert.equal(percentages.reduce((a, b) => a + b, 0), 100);
+    assert.deepEqual(percentages, displayPercentages(totalsByCategory(records, PERIOD, INR)));
+  });
+
+  it('flags category counts as inexact once rollups are used, and exact for an all-cache period', () => {
+    assert.equal(merged.categoryCountsExact, false);
+    const current = { startDate: '2026-09-01', endDate: '2026-09-16' };
+    const cacheOnly = mergePeriodSources({ period: current, currency: INR, cacheFrom: CACHE_FROM, rollups: {}, cached: records });
+    assert.equal(cacheOnly.categoryCountsExact, true);
+    assert.deepEqual(cacheOnly.totals, totalsByCategory(records, current, INR));
+  });
+
+  it('reads past days only from rollups, even if stale cached expenses are present', () => {
+    const stale = [...records, spend('2026-08-22', 'food', 1_000_000)];
+    const result = mergePeriodSources({ period: PERIOD, currency: INR, cacheFrom: CACHE_FROM, rollups, cached: stale });
+    assert.deepEqual(result.total, merged.total);
   });
 });

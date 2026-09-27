@@ -15,6 +15,7 @@
 
 import { distributeLargestRemainder } from './internal/largest-remainder';
 import { type CurrencyCode, type Money, money } from './money';
+import type { DailyRollup } from './types';
 
 /** Half-open [startDate, endDate) over LOCAL dates. */
 export interface Period {
@@ -279,7 +280,10 @@ export function periodStats(
   period: Period,
   currency: CurrencyCode,
 ): PeriodStats {
-  const days = totalsByDay(records, period, currency);
+  return statsFromDays(totalsByDay(records, period, currency), currency);
+}
+
+function statsFromDays(days: readonly DayTotal[], currency: CurrencyCode): PeriodStats {
   const total = days.reduce((sum, day) => sum + day.total.minor, 0);
   const count = days.reduce((sum, day) => sum + day.count, 0);
 
@@ -307,10 +311,14 @@ export function weekdayAverages(
   period: Period,
   currency: CurrencyCode,
 ): Money[] {
+  return weekdayAveragesFromDays(totalsByDay(records, period, currency), currency);
+}
+
+function weekdayAveragesFromDays(days: readonly DayTotal[], currency: CurrencyCode): Money[] {
   const sums = Array.from({ length: 7 }, () => 0);
   const counts = Array.from({ length: 7 }, () => 0);
 
-  for (const day of totalsByDay(records, period, currency)) {
+  for (const day of days) {
     const weekday = new Date(parseDate(day.date)).getUTCDay();
     sums[weekday] = (sums[weekday] ?? 0) + day.total.minor;
     counts[weekday] = (counts[weekday] ?? 0) + 1;
@@ -338,4 +346,93 @@ export function collapseLongTail(
   }
   // One lonely small category is not a group; show it.
   return collapsed.length > 1 ? { visible, collapsed } : { visible: totals.slice(), collapsed: [] };
+}
+
+// ── Rollups + cache ───────────────────────────────────────────────────────
+
+/**
+ * Where a period's numbers come from. docs/05-insights.md#data-sources: past
+ * days read the Function-maintained daily rollups (a handful of document reads
+ * instead of thousands of expenses); the current month reads the offline cache.
+ */
+export interface PeriodSources {
+  readonly period: Period;
+  readonly currency: CurrencyCode;
+  /** Local dates before this come from `rollups`; this date onward from `cached`. */
+  readonly cacheFrom: string;
+  /** Daily rollup docs by date. A missing date is a zero-spend day (empty rollups are deleted). */
+  readonly rollups: Readonly<Record<string, DailyRollup>>;
+  readonly cached: readonly SpendRecord[];
+}
+
+export interface PeriodInsights {
+  readonly total: Money;
+  readonly totals: CategoryTotal[];
+  readonly days: DayTotal[];
+  readonly stats: PeriodStats;
+  readonly weekdays: Money[];
+  /**
+   * Rollups keep a count per day but not per category. When any rollup day is
+   * in the period, `CategoryTotal.count` covers only the cached days and this
+   * is false. Every amount, share, day count and `stats.count` stays exact.
+   */
+  readonly categoryCountsExact: boolean;
+}
+
+/**
+ * The Insights outputs for a period whose past days come from rollups and whose
+ * recent days come from cached expenses. Equal, to the minor unit, to computing
+ * the same period from the expenses alone.
+ */
+export function mergePeriodSources(sources: PeriodSources): PeriodInsights {
+  const { period, currency, cacheFrom, rollups, cached } = sources;
+  const dayBuckets = new Map<string, { minor: number; count: number }>();
+  const categoryBuckets = new Map<string, { minor: number; count: number }>();
+  let usedRollups = false;
+
+  const addTo = (map: Map<string, { minor: number; count: number }>, key: string, minor: number, count: number) => {
+    const bucket = map.get(key) ?? { minor: 0, count: 0 };
+    bucket.minor += minor;
+    bucket.count += count;
+    map.set(key, bucket);
+  };
+
+  for (const date of daysInPeriod(period)) {
+    if (date >= cacheFrom) continue;
+    usedRollups = true;
+    const rollup = rollups[date];
+    if (!rollup) continue;
+    addTo(dayBuckets, date, rollup.totalMinor, rollup.count);
+    for (const [categoryId, minor] of Object.entries(rollup.byCategory)) addTo(categoryBuckets, categoryId, minor, 0);
+  }
+
+  for (const record of inScope(cached, period)) {
+    if (record.localDate < cacheFrom) continue;
+    addTo(dayBuckets, record.localDate, record.total.minor, 1);
+    addTo(categoryBuckets, record.categoryId, record.total.minor, 1);
+  }
+
+  const days = daysInPeriod(period).map((date) => {
+    const bucket = dayBuckets.get(date);
+    return { date, total: money(bucket?.minor ?? 0, currency), count: bucket?.count ?? 0 };
+  });
+  const grandTotal = days.reduce((sum, day) => sum + day.total.minor, 0);
+  const totals = [...categoryBuckets.entries()]
+    .filter(([, bucket]) => bucket.minor !== 0)
+    .map(([categoryId, bucket]) => ({
+      categoryId,
+      total: money(bucket.minor, currency),
+      count: bucket.count,
+      share: grandTotal === 0 ? 0 : bucket.minor / grandTotal,
+    }))
+    .sort((a, b) => b.total.minor - a.total.minor || a.categoryId.localeCompare(b.categoryId));
+
+  return {
+    total: money(grandTotal, currency),
+    totals,
+    days,
+    stats: statsFromDays(days, currency),
+    weekdays: weekdayAveragesFromDays(days, currency),
+    categoryCountsExact: !usedRollups,
+  };
 }

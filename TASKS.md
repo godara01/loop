@@ -100,8 +100,8 @@ A task must never lower these counts. A task that adds tests raises them.
 | R2 | `onExpenseWrite` maintains rollups | R1a | done |
 | R3 | `rebuildRollups` callable | R1 | done |
 | R4 | Rules test: clients can't write rollups | — | done |
-| R5 | Pure cache + rollup merge for Insights | R1 | todo |
-| R6 | Insights reads rollups for past periods | R5 | blocked |
+| R5 | Pure cache + rollup merge for Insights | R1 | done |
+| R6 | Insights reads rollups for past periods | R5 | todo |
 | C1 | `cleanupSoftDeleted` (90-day) | R2 | todo |
 | C2 | Pending-expense expiry sweep (30-day) | P1 | todo |
 | C3 | `deleteUserData` callable (full-subtree delete) | — | todo |
