@@ -8,6 +8,7 @@ import { firebase } from '@/core/firebase/client';
 import { useSession } from '@/core/providers/bootstrap-provider';
 import { useSettings } from '@/core/providers/settings-provider';
 import { useCategories } from '@/features/categories';
+import { useExportCsv } from '@/features/expenses/hooks/use-export-csv';
 import { useStreak, useWallet } from '@/features/gamification/hooks/use-gamification';
 import { StreakCapsule } from '@/components/ui/streak-capsule';
 import { TactileButton } from '@/components/ui/tactile-button';
@@ -40,6 +41,7 @@ export default function ProfileScreen() {
   const categories = useCategories();
   const streakState = useStreak();
   const walletState = useWallet();
+  const { state: exportState, exportCsv } = useExportCsv();
 
   const streakDays = streakState.status === 'ready' ? streakState.snapshot.streak.current : 0;
   const walletCoins = walletState.status === 'ready' ? walletState.snapshot.wallet.coinBalance : 0;
@@ -197,6 +199,32 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
+        <Pressable
+          testID="profile-export-csv"
+          accessibilityRole="button"
+          accessibilityLabel="Export expenses as CSV"
+          accessibilityState={{ busy: exportState.status === 'exporting' }}
+          disabled={exportState.status === 'exporting'}
+          onPress={() => {
+            haptic('tap');
+            void exportCsv();
+          }}
+          style={styles.manageLink}>
+          <Text style={styles.manageLinkText}>
+            {exportState.status === 'exporting' ? 'Preparing CSV…' : 'Export CSV →'}
+          </Text>
+        </Pressable>
+        {exportState.status === 'error' ? (
+          <Text testID="profile-export-error" style={[styles.hint, { color: colors.debit }]}>
+            {exportState.message}
+          </Text>
+        ) : null}
+        {exportState.status === 'done' ? (
+          <Text testID="profile-export-done" style={styles.hint}>
+            {exportState.count} {exportState.count === 1 ? 'expense' : 'expenses'} exported.
+          </Text>
+        ) : null}
+        <Perforation />
         <Pressable
           testID="profile-reset-app"
           accessibilityRole="button"

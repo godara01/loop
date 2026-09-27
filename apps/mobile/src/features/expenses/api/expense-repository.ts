@@ -11,6 +11,7 @@
 import {
   collection,
   doc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -64,6 +65,17 @@ function toSnapshot(
     }
   }
   return { expenses, invalid, fromCache, pendingIds };
+}
+
+/**
+ * Every live expense, once — the ledger's source without paging, for export.
+ * Soft-deleted rows are left out by the query; pending SMS items live in
+ * another collection and are never included. Malformed docs are skipped.
+ */
+export async function fetchLiveExpenses(uid: string): Promise<Expense[]> {
+  const { db } = firebase();
+  const snapshot = await getDocs(query(collection(db, firestorePaths.expenses(uid)), where('deletedAt', '==', null)));
+  return toSnapshot(uid, snapshot.docs, snapshot.metadata.fromCache).expenses.slice();
 }
 
 /** Newest first, live. The ledger pages by raising `pageSize`. */
