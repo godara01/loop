@@ -2,7 +2,7 @@
 appId: com.getter.loop
 ---
 - runFlow: ../subflows/reset.yaml
-- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/onboarded.yaml
 
 # Create some expenses to work with
 - tapOn:

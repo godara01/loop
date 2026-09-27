@@ -10,7 +10,7 @@ env:
   SMS_BODY_2: "Dear Customer, your account xxxx1234 has been debited for Rs. 450.00 at Swiggy."
 ---
 - runFlow: ../subflows/reset.yaml
-- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/onboarded.yaml
 - runFlow: ../subflows/sms-enable-capture.yaml
 
 - extendedWaitUntil:

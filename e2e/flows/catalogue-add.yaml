@@ -3,10 +3,16 @@
 appId: com.getter.loop
 ---
 - runFlow: ../subflows/reset.yaml
-- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/onboarded.yaml
 
 - tapOn:
     id: "tab-profile"
+# The You screen is taller than the viewport and the tab dock floats over
+# its bottom: centre the row first so the tap lands on it, not the dock.
+- scrollUntilVisible:
+    element:
+      id: "profile-manage-categories"
+    centerElement: true
 - tapOn:
     id: "profile-manage-categories"
 - extendedWaitUntil:
@@ -21,10 +27,14 @@ appId: com.getter.loop
       id: "catalogue-search"
     timeout: 15000
 
+- tapOn:
+    id: "catalogue-search"
 - inputText: "Coffee"
 - runFlow: ../subflows/dismiss-stylus-tip.yaml
 - tapOn:
     id: "catalogue-item-COFFEE"
+# The Add button sits at the bottom, under the open keyboard.
+- hideKeyboard
 - tapOn:
     id: "catalogue-add"
 

@@ -4,7 +4,7 @@
 appId: com.getter.loop
 ---
 - runFlow: ../subflows/reset.yaml
-- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/onboarded.yaml
 
 - tapOn:
     id: "dock-add"
@@ -38,10 +38,14 @@ appId: com.getter.loop
     visible:
       id: "catalogue-search"
     timeout: 15000
+- tapOn:
+    id: "catalogue-search"
 - inputText: "Gym"
 - runFlow: ../subflows/dismiss-stylus-tip.yaml
 - tapOn:
     id: "catalogue-item-GYM"
+# The Add button sits at the bottom, under the open keyboard.
+- hideKeyboard
 - tapOn:
     id: "catalogue-add"
 

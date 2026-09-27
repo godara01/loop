@@ -7,7 +7,7 @@ env:
   SMS_BODY: "ICICI Bank Acct XX567 debited for Rs 1,299.00 on 12-Sep-26; CODECADEMY credited. UPI:625812345678."
 ---
 - runFlow: ../subflows/reset.yaml
-- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/onboarded.yaml
 - runFlow: ../subflows/sms-enable-capture.yaml
 
 - extendedWaitUntil:

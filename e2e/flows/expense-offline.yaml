@@ -4,7 +4,7 @@
 appId: com.getter.loop
 ---
 - runFlow: ../subflows/reset.yaml
-- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/onboarded.yaml
 
 # toggleAirplaneMode is the form that actually parses in this Maestro build;
 # the device starts online, so one toggle takes it offline.

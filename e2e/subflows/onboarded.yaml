@@ -1,0 +1,73 @@
+# Launch, then finish onboarding by its skip path from whichever step the app
+# resumes on, and wait for the tabs. For every flow that is not itself about
+# onboarding. Name and currency are the only required answers (docs/02).
+appId: com.getter.loop
+---
+- runFlow: launch.yaml
+
+- runFlow:
+    when:
+      visible:
+        id: "screen-onboarding-welcome"
+    commands:
+      - tapOn:
+          id: "onboarding-start"
+      - extendedWaitUntil:
+          visible:
+            id: "screen-onboarding-profile"
+          timeout: 15000
+
+- runFlow:
+    when:
+      visible:
+        id: "screen-onboarding-profile"
+    commands:
+      - tapOn:
+          id: "onboarding-name-input"
+      - inputText: "Flow User"
+      - hideKeyboard
+      - tapOn:
+          id: "onboarding-currency-INR"
+      - tapOn:
+          id: "onboarding-profile-continue"
+      - extendedWaitUntil:
+          visible:
+            id: "screen-onboarding-feel"
+          timeout: 15000
+
+- runFlow:
+    when:
+      visible:
+        id: "screen-onboarding-feel"
+    commands:
+      - tapOn:
+          id: "onboarding-feel-skip"
+      - extendedWaitUntil:
+          visible:
+            id: "screen-onboarding-categories"
+          timeout: 15000
+
+- runFlow:
+    when:
+      visible:
+        id: "screen-onboarding-categories"
+    commands:
+      - tapOn:
+          id: "onboarding-categories-skip"
+      - extendedWaitUntil:
+          visible:
+            id: "screen-onboarding-first-expense"
+          timeout: 15000
+
+- runFlow:
+    when:
+      visible:
+        id: "screen-onboarding-first-expense"
+    commands:
+      - tapOn:
+          id: "onboarding-skip-expense"
+
+- extendedWaitUntil:
+    visible:
+      id: "tab-dock"
+    timeout: 30000

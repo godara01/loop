@@ -8,7 +8,7 @@ env:
   SMS_BODY: "Rs.450.00 spent on HDFC Bank Card x1234 at SWIGGY on 2026-09-12:20:15:11."
 ---
 - runFlow: ../subflows/reset.yaml
-- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/onboarded.yaml
 - runFlow: ../subflows/sms-enable-capture.yaml
 
 # Type ₹450 by hand first.

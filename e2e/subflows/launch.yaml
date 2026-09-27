@@ -1,5 +1,6 @@
 # Opens the Loop dev build against Metro and waits until the app is past the
-# bootstrap gate. Every flow starts here.
+# bootstrap gate — on the tabs, or on an onboarding step for a fresh user.
+# Flows that need an onboarded user use onboarded.yaml instead.
 #
 # Wrapped in a retry: Firebase Auth's native init occasionally races on a cold
 # start and throws inside firebase-auth's own internal token-attestation code
@@ -26,7 +27,9 @@ appId: com.getter.loop
             - tapOn: "Close"
       - assertNotVisible:
           text: "There was a problem loading the project"
+      # The app is up once it shows either the tabs or an onboarding step
+      # (a fresh user is routed to onboarding by the OnboardingGate).
       - extendedWaitUntil:
           visible:
-            id: "tab-dock"
+            id: "tab-dock|screen-onboarding-.*"
           timeout: 60000
