@@ -78,9 +78,9 @@ A task must never lower these counts. A task that adds tests raises them.
 | A3 | Maestro testID cross-check script | — | done |
 | A4 | Tick code-provable acceptance criteria in docs | A1, A2 | blocked |
 | S1 | DLT sender registry | A1 | done |
-| S2 | SMS shape filters (OTP/balance/promo/declined/reversal/credit) | A1 | todo |
+| S2 | SMS shape filters (OTP/balance/promo/declined/reversal/credit) | A1 | done |
 | S3 | Versioned, serializable template registry + override merge | A1 | done |
-| S4 | `parser.ts` — `parseTransactionSms` | S1, S2, S3 | blocked |
+| S4 | `parser.ts` — `parseTransactionSms` | S1, S2, S3 | todo |
 | S5 | ≥40-message fixture corpus + privacy test | S4 | blocked |
 | S6 | `dedupe.ts` — `isDuplicatePendingExpense` | A1 | done |
 | S7 | `displayHint` builder | A1 | done |
