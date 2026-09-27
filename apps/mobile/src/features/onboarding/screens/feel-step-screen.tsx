@@ -13,8 +13,10 @@ import { Card, Perforation } from '@/components/ui/surface';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { useSettings } from '@/core/providers/settings-provider';
 import { haptic, setHapticsEnabled } from '@/lib/haptics';
+import { useRecordOnboardingStep } from '../hooks/use-record-onboarding-step';
 
 export function FeelStepScreen() {
+  useRecordOnboardingStep('feel');
   const insets = useSafeAreaInsets();
   const { settings, update: updateSettings } = useSettings();
 

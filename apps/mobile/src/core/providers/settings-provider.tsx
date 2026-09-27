@@ -13,6 +13,8 @@ import { useSession } from './bootstrap-provider';
 
 interface SettingsContextValue {
   readonly settings: UserSettings;
+  /** False until the first snapshot (or failure); `settings` is the defaults until then. */
+  readonly loaded: boolean;
   readonly update: (patch: Partial<UserSettings>) => void;
   /** The last read or write failure, if any. Shown by whichever screen owns the setting. */
   readonly error: string | null;
@@ -24,6 +26,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const { uid } = useSession();
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(
     () =>
@@ -32,8 +35,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         (next) => {
           setSettings(next);
           setError(null);
+          setLoaded(true);
         },
-        (failure) => setError(failure.message),
+        (failure) => {
+          setError(failure.message);
+          setLoaded(true);
+        },
       ),
     [uid],
   );
@@ -56,7 +63,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  return <SettingsContext.Provider value={{ settings, update, error }}>{children}</SettingsContext.Provider>;
+  return <SettingsContext.Provider value={{ settings, loaded, update, error }}>{children}</SettingsContext.Provider>;
 }
 
 export function useSettings(): SettingsContextValue {

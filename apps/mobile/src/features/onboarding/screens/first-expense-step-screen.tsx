@@ -40,10 +40,12 @@ import {
 } from '@/features/expenses/model/amount-input';
 import { saveCheckIn } from '@/features/gamification/api/gamification-repository';
 import { haptic } from '@/lib/haptics';
+import { useRecordOnboardingStep } from '../hooks/use-record-onboarding-step';
 
 const logWriteFailure = (error: unknown) => console.warn('[onboarding] write rejected', error);
 
 export function FirstExpenseStepScreen() {
+  useRecordOnboardingStep('first-expense');
   const insets = useSafeAreaInsets();
   const { uid, profile } = useSession();
   const currency = profile.currency || 'INR';

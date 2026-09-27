@@ -3,15 +3,9 @@
  * See docs/02-onboarding.md.
  */
 
-import { type CurrencyCode, DEFAULT_DISPLAY_NAME } from '@loop/shared';
+import { type CurrencyCode, DEFAULT_DISPLAY_NAME, type OnboardingStep } from '@loop/shared';
 
-export type OnboardingStep =
-  | 'welcome'
-  | 'profile'
-  | 'feel'
-  | 'categories'
-  | 'first-expense'
-  | 'complete';
+export type { OnboardingStep };
 
 export interface OnboardingState {
   readonly step: OnboardingStep;
@@ -82,14 +76,36 @@ export function onboardingReducer(
   }
 }
 
-export function determineResumeStep(profile: {
-  displayName?: string | null;
-  currency?: string | null;
-  onboardedAt?: string | null;
-}): OnboardingStep {
+/** The route each resumable step lives at. */
+export const ONBOARDING_ROUTES: Record<Exclude<OnboardingStep, 'complete'>, string> = {
+  welcome: '/onboarding',
+  profile: '/onboarding/profile',
+  feel: '/onboarding/feel',
+  categories: '/onboarding/categories',
+  'first-expense': '/onboarding/first-expense',
+};
+
+/**
+ * Where a relaunch resumes (docs/02: "resumes at the same step"). `recorded` is
+ * settings.onboardingStep, written as each step is left; null for accounts from
+ * before it existed, which fall back to what the profile shows.
+ */
+export function determineResumeStep(
+  profile: {
+    displayName?: string | null;
+    currency?: string | null;
+    onboardedAt?: string | null;
+  },
+  recorded: OnboardingStep | null = null,
+): OnboardingStep {
   if (profile.onboardedAt) return 'complete';
   // A new account's profile carries the placeholder name; the user hasn't done step 1 yet.
   const name = profile.displayName?.trim() ?? '';
-  if (name === '' || name === DEFAULT_DISPLAY_NAME) return 'welcome';
-  return 'feel';
+  const named = name !== '' && name !== DEFAULT_DISPLAY_NAME;
+  if (recorded === null) return named ? 'feel' : 'welcome';
+  // onboardedAt is written with 'complete'; if only the step landed, finish step 5.
+  if (recorded === 'complete') return 'first-expense';
+  // Past the profile step without a name means that write never landed.
+  if (!named && recorded !== 'welcome' && recorded !== 'profile') return 'profile';
+  return recorded;
 }

@@ -156,6 +156,12 @@ describe('settings documents', () => {
     assert.throws(() => parseSettings(UID, { hapticsEnabled: 'yes' }), /hapticsEnabled/);
     assert.throws(() => parseSettings(UID, { insightsPeriod: 'decade' }), /insightsPeriod/);
     assert.throws(() => parseSettings(UID, { smsCapture: 'maybe' }), /smsCapture/);
+    assert.throws(() => parseSettings(UID, { onboardingStep: 'step-9' }), /onboardingStep/);
+  });
+
+  it('reads a missing or null onboardingStep as unknown (an older account)', () => {
+    assert.equal(parseSettings(UID, {}).onboardingStep, null);
+    assert.equal(parseSettings(UID, { onboardingStep: null }).onboardingStep, null);
   });
 
   it('round-trips', () => {
@@ -166,6 +172,7 @@ describe('settings documents', () => {
       insightsCustomStartDate: '2026-08-01',
       insightsCustomEndDate: '2026-08-31',
       smsCapture: 'denied',
+      onboardingStep: 'categories',
     } as const;
     assert.deepEqual(parseSettings(UID, settingsToDoc(settings, NOW)), settings);
   });

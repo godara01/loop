@@ -17,13 +17,14 @@ import { Stack, router, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/core/providers/auth-provider';
 import { BootstrapProvider, useSession } from '@/core/providers/bootstrap-provider';
-import { SettingsProvider } from '@/core/providers/settings-provider';
-import { determineResumeStep } from '@/features/onboarding';
+import { SettingsProvider, useSettings } from '@/core/providers/settings-provider';
+import { ONBOARDING_ROUTES, determineResumeStep } from '@/features/onboarding';
 import { initAppCheck } from '@/lib/app-check';
 import { initCrashlytics } from '@/lib/crashlytics';
 
@@ -35,27 +36,32 @@ initCrashlytics();
 
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { profile } = useSession();
+  const { settings, loaded } = useSettings();
   const segments = useSegments();
+  const segList = segments as string[];
+  const inOnboarding = segList[0] === 'onboarding';
+  // Steps 3 and 5 open the category catalogue and editor as modals over onboarding.
+  const onboardingModal = segList[0] === 'category' && (segList[1] === 'new' || segList[1] === 'catalogue');
+  // Until settings load we don't know the step to resume at; cover the tabs
+  // rather than flash them (docs/02: no route to the tabs before onboardedAt).
+  const holding = !profile.onboardedAt && !inOnboarding && !onboardingModal;
 
   useEffect(() => {
-    const segList = segments as string[];
-    const inOnboarding = segList[0] === 'onboarding';
-
-    if (!profile.onboardedAt && !inOnboarding) {
-      const step = determineResumeStep(profile);
-      if (step === 'welcome') {
-        router.replace('/onboarding' as any);
-      } else if (step === 'feel') {
-        router.replace('/onboarding/feel' as any);
-      } else {
-        router.replace('/onboarding' as any);
-      }
+    if (holding) {
+      if (!loaded) return;
+      const step = determineResumeStep(profile, settings.onboardingStep);
+      router.replace((step === 'complete' ? ONBOARDING_ROUTES.welcome : ONBOARDING_ROUTES[step]) as never);
     } else if (profile.onboardedAt && inOnboarding) {
       router.replace('/(tabs)');
     }
-  }, [profile, segments]);
+  }, [holding, loaded, profile, inOnboarding, settings.onboardingStep]);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {holding ? <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} /> : null}
+    </>
+  );
 }
 
 export default function RootLayout() {

@@ -162,6 +162,10 @@ getting faster as the strip learns.
 > haptic and `+N` never fired and the streak stayed at 0 until reconnect;
 > the capsule now predicts with the shared `recordActivity`. The same await
 > pattern in onboarding would have stranded an offline user on steps 1, 3 and 4.
+>
+> **Onboarding device-verified — 2026-09-28 (D4).** All of `docs/02`'s criteria
+> ticked from flows on Loop_API35: full, skip, kill-and-resume at every step,
+> deep-link escape attempts, a fully offline run, and a 36s machine-driven run.
 
 - Check-in plate, streak capsule, optimistic prediction on device
 - `onExpenseWrite` / `onCheckInCreate` Functions, coin ledger, wallet

@@ -1,63 +1,101 @@
-# Kill mid-onboarding, relaunch, resume at same step with answers preserved.
-# See docs/02-onboarding.md#acceptance-criteria.
+# Kill the app at every onboarding step: each relaunch resumes at the same
+# step, and answers given on earlier steps are kept. docs/02 acceptance.
 appId: com.getter.loop
 ---
 - runFlow: ../subflows/reset.yaml
 - runFlow: ../subflows/launch.yaml
 
-# Step 1 — Welcome
-- assertVisible:
-    id: "screen-onboarding-welcome"
+# Welcome → kill → Welcome
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- runFlow: ../subflows/launch.yaml
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 30000
 - tapOn:
     id: "onboarding-start"
 
-# Step 2 — Profile (partially fill)
+# Profile → kill → Profile
 - extendedWaitUntil:
     visible:
       id: "screen-onboarding-profile"
     timeout: 15000
-- tapOn:
-    id: "onboarding-name-input"
-- inputText: "Resume Test"
-- tapOn:
-    id: "onboarding-currency-USD"
-
-# Kill the app
-- stopApp
-- openLink: "exp+loop://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
-
-# Should be back at profile step with name and USD still there
+- runFlow: ../subflows/launch.yaml
 - extendedWaitUntil:
     visible:
       id: "screen-onboarding-profile"
     timeout: 30000
-- assertVisible:
-    text: "Resume Test"
-
-# Complete the flow
+- tapOn:
+    id: "onboarding-name-input"
+- inputText: "Resume Test"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn:
+    id: "onboarding-currency-USD"
 - tapOn:
     id: "onboarding-profile-continue"
+
+# Feel → kill → Feel
 - extendedWaitUntil:
     visible:
       id: "screen-onboarding-feel"
     timeout: 15000
+- runFlow: ../subflows/launch.yaml
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-feel"
+    timeout: 30000
 - tapOn:
-    id: "onboarding-feel-skip"
+    id: "onboarding-feel-continue"
+
+# Categories: drop Bills, continue, then kill on step 5 → Step 5
 - extendedWaitUntil:
     visible:
       id: "screen-onboarding-categories"
     timeout: 15000
+- runFlow: ../subflows/launch.yaml
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-categories"
+    timeout: 30000
 - tapOn:
-    id: "onboarding-categories-skip"
+    id: "onboarding-category-cat-bills"
+- tapOn:
+    id: "onboarding-categories-continue"
 - extendedWaitUntil:
     visible:
       id: "screen-onboarding-first-expense"
     timeout: 15000
+- runFlow: ../subflows/launch.yaml
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-first-expense"
+    timeout: 30000
+
+# Earlier answers survived every kill.
+- runScript:
+    file: ../scripts/query.js
+    env:
+      PROFILE: "1"
+      COLLECTION: "categories"
+- assertTrue: ${output.profile.displayName == "Resume Test"}
+- assertTrue: ${output.profile.currency == "USD"}
+- assertTrue: ${output.profile.onboardedAt == null}
+- assertTrue: ${output.docs.filter(d => d.id == "cat-bills")[0].archivedAt != null}
+- assertTrue: ${output.docs.filter(d => d.archivedAt == null).length == 7}
+
 - tapOn:
     id: "onboarding-skip-expense"
-
-# Land on Orbit
 - extendedWaitUntil:
     visible:
       id: "screen-orbit"
     timeout: 15000
+
+# Done means done: a relaunch goes to the tabs, not back into onboarding.
+- runFlow: ../subflows/launch.yaml
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 30000

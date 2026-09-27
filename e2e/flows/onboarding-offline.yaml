@@ -1,0 +1,119 @@
+# docs/02: the entire flow completes in airplane mode and syncs when
+# connectivity returns. docs/11: a brand-new install needs the network exactly
+# once (anonymous sign-in) and says so instead of failing.
+appId: com.getter.loop
+onFlowComplete:
+  - setAirplaneMode: disabled
+---
+- runFlow: ../subflows/reset.yaml
+
+# A fresh install with no network: the one-time connection screen.
+# (Metro is reached over adb reverse, which airplane mode does not cut.)
+- setAirplaneMode: enabled
+- stopApp
+- openLink: "exp+loop://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- runFlow:
+    when:
+      visible: "This is the developer menu.*"
+    commands:
+      - tapOn: "Continue"
+# ...after which the dev client opens its menu over the app.
+- runFlow:
+    when:
+      visible: "Close"
+    commands:
+      - tapOn: "Close"
+- extendedWaitUntil:
+    visible: "Connect once to set up"
+    timeout: 60000
+
+# Connect once: Try again gets a uid and a profile, and lands on Welcome.
+- setAirplaneMode: disabled
+- tapOn:
+    id: "bootstrap-retry"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 60000
+
+# Every step from here offline.
+- setAirplaneMode: enabled
+- tapOn:
+    id: "onboarding-start"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-profile"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-name-input"
+- inputText: "Offline User"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn:
+    id: "onboarding-currency-INR"
+- tapOn:
+    id: "onboarding-profile-continue"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-feel"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-feel-continue"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-categories"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-categories-continue"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-first-expense"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-2"
+- tapOn:
+    id: "pad-key-5"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "onboarding-save-expense"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+- assertVisible:
+    id: "orbit-today-total"
+    text: "₹250.00"
+- assertVisible:
+    id: "streak-capsule"
+    text: "1 day streak"
+
+# Still offline, a relaunch stays onboarded (the gate reads the cache).
+- stopApp
+- openLink: "exp+loop://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 60000
+
+# Reconnect: everything reaches the server, and the Function awards coins.
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible:
+      id: "orbit-coin-balance"
+    timeout: 60000
+- runScript:
+    file: ../scripts/query.js
+    env:
+      PROFILE: "1"
+      COLLECTION: "expenses"
+- assertTrue: ${output.profile.onboardedAt != null}
+- assertTrue: ${output.profile.displayName == "Offline User"}
+- assertTrue: ${output.docs.length == 1}
+- assertTrue: ${output.docs[0].amountMinor == 25000}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      DOC: "streak/main"
+- assertTrue: ${output.doc.current == 1}

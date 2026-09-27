@@ -15,9 +15,12 @@ appId: com.getter.loop
     commands:
       - stopApp
       - openLink: "exp+loop://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+      # The dev-client intro sheet (shown after clearState). Keyed on its own
+      # copy: a bare "Continue" also matches onboarding's Continue buttons, and
+      # tapping those advanced a relaunch past the step it resumed at.
       - runFlow:
           when:
-            visible: "Continue"
+            visible: "This is the developer menu.*"
           commands:
             - tapOn: "Continue"
       - runFlow:

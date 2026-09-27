@@ -83,4 +83,24 @@ describe('determineResumeStep', () => {
   it('resumes feel when display name is set but onboardedAt is null', () => {
     assert.equal(determineResumeStep({ displayName: 'Alice', onboardedAt: null }), 'feel');
   });
+
+  it('resumes at the recorded step', () => {
+    const named = { displayName: 'Alice', onboardedAt: null };
+    assert.equal(determineResumeStep({ displayName: DEFAULT_DISPLAY_NAME }, 'profile'), 'profile');
+    assert.equal(determineResumeStep(named, 'feel'), 'feel');
+    assert.equal(determineResumeStep(named, 'categories'), 'categories');
+    assert.equal(determineResumeStep(named, 'first-expense'), 'first-expense');
+  });
+
+  it('finishes step 5 when the step says complete but onboardedAt has not landed', () => {
+    assert.equal(determineResumeStep({ displayName: 'Alice', onboardedAt: null }, 'complete'), 'first-expense');
+  });
+
+  it('goes back to the profile step when a later step is recorded without a name', () => {
+    assert.equal(determineResumeStep({ displayName: DEFAULT_DISPLAY_NAME }, 'categories'), 'profile');
+  });
+
+  it('lets onboardedAt win over any recorded step', () => {
+    assert.equal(determineResumeStep({ onboardedAt: '2026-09-01T10:00:00Z' }, 'feel'), 'complete');
+  });
 });

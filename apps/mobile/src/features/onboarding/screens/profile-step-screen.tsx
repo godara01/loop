@@ -23,10 +23,12 @@ import { TactileButton } from '@/components/ui/tactile-button';
 import { updateProfile } from '@/core/firebase/session-repository';
 import { useSession } from '@/core/providers/bootstrap-provider';
 import { haptic } from '@/lib/haptics';
+import { useRecordOnboardingStep } from '../hooks/use-record-onboarding-step';
 
 const CURRENCIES: readonly CurrencyCode[] = ['INR', 'USD', 'EUR', 'GBP', 'JPY'];
 
 export function ProfileStepScreen() {
+  useRecordOnboardingStep('profile');
   const insets = useSafeAreaInsets();
   const { uid, profile } = useSession();
 

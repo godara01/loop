@@ -44,9 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ status: 'resolving' });
       signInAnonymously(auth)
         .catch((error: unknown) => {
-          const code = (error as { code?: string } | null)?.code;
           setState(
-            code === 'auth/network-request-failed'
+            isNetworkFailure(error)
               ? { status: 'needs-connection' }
               : { status: 'failed', message: error instanceof Error ? error.message : String(error) },
           );
@@ -61,6 +60,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   return <AuthContext.Provider value={{ state, retry }}>{children}</AuthContext.Provider>;
+}
+
+/**
+ * No route to Auth. The SDK reports it as `auth/network-request-failed`, but an
+ * unreachable host (airplane mode against the emulator, a captive portal) can
+ * surface as `auth/unknown` wrapping the socket error instead.
+ */
+function isNetworkFailure(error: unknown): boolean {
+  const { code, message } = (error ?? {}) as { code?: string; message?: string };
+  if (code === 'auth/network-request-failed') return true;
+  return code === 'auth/unknown' && /failed to connect|unable to resolve host|timeout|network/i.test(message ?? '');
 }
 
 export function useAuth(): AuthContextValue {

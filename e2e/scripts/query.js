@@ -5,8 +5,10 @@
 //   UID         optional — a uid to read instead of the first account's
 //   COLLECTION  optional, e.g. "expenses" — a collection under users/{uid}
 //   DOC         optional, e.g. "settings/app" — a single document under users/{uid}
+//   PROFILE     optional, any value — also read the profile, users/{uid} itself
 // Outputs:
-//   output.userCount, output.uid, output.docs (array of plain objects with `id`), output.doc
+//   output.userCount, output.uid, output.docs (array of plain objects with `id`), output.doc,
+//   output.profile
 var PROJECT = 'loop-app-0403';
 var OWNER = { Authorization: 'Bearer owner', 'Content-Type': 'application/json' };
 var BASE = 'http://127.0.0.1:8080/v1/projects/' + PROJECT + '/databases/(default)/documents';
@@ -54,4 +56,9 @@ if (output.uid && typeof COLLECTION !== 'undefined') {
 if (output.uid && typeof DOC !== 'undefined') {
   var response = http.get(BASE + '/users/' + output.uid + '/' + DOC, { headers: OWNER });
   output.doc = response.status === 200 ? toDoc(json(response.body)) : null;
+}
+output.profile = null;
+if (output.uid && typeof PROFILE !== 'undefined') {
+  var profileResponse = http.get(BASE + '/users/' + output.uid, { headers: OWNER });
+  output.profile = profileResponse.status === 200 ? toDoc(json(profileResponse.body)) : null;
 }

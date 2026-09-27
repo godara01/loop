@@ -11,8 +11,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TactileButton } from '@/components/ui/tactile-button';
 import { haptic } from '@/lib/haptics';
+import { useRecordOnboardingStep } from '../hooks/use-record-onboarding-step';
 
 export function WelcomeScreen() {
+  useRecordOnboardingStep('welcome');
   const insets = useSafeAreaInsets();
 
   return (

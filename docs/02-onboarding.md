@@ -27,8 +27,14 @@ anonymous session and reads `profile.onboardedAt`.
 
 | State | Behaviour |
 |---|---|
-| No profile doc, or `onboardedAt` null | Redirect to `/onboarding`, tabs unreachable |
+| No profile doc, or `onboardedAt` null | Redirect to the step in `settings.onboardingStep` (default `/onboarding`), tabs unreachable |
 | `onboardedAt` set | Redirect away from `/onboarding` to `/(tabs)` |
+
+Each step records itself in `settings.onboardingStep` when it takes focus, so a
+relaunch resumes at the step the user was on; answers from earlier steps are
+already in their own documents. Until settings load, the gate covers the tabs
+rather than flash them. The category catalogue and editor may open as modals
+over onboarding (steps 3 and 5); every other route bounces back.
 
 The gate reads through the **local cache**, so a returning user offline lands on
 their ledger, never back in onboarding. The splash stays up until fonts, auth and
@@ -141,17 +147,30 @@ These matter more than the onboarding screens — most users will see them.
 
 ## Acceptance criteria
 
-- [ ] A cold install lands on `/onboarding` and cannot reach the tabs by any
+- [x] A cold install lands on `/onboarding` and cannot reach the tabs by any
       route until `onboardedAt` is set.
-- [ ] Killing the app mid-onboarding resumes at the same step, with earlier
+      (proof: e2e/flows/onboarding-gate.yaml on Loop_API35, 2026-09-28 — deep links
+      to every tab and top-level route, and closing an allowed category modal,
+      all end on onboarding with no tab dock)
+- [x] Killing the app mid-onboarding resumes at the same step, with earlier
       answers preserved.
-- [ ] Completing all five steps with no skips produces: a profile doc, 8 active
+      (proof: e2e/flows/onboarding-resume.yaml — killed on each of the five
+      steps; name, currency and a deselected category survive)
+- [x] Completing all five steps with no skips produces: a profile doc, 8 active
       categories, one expense, a streak of 1, and a coin balance that settles to
       a non-zero value once the Function runs.
-- [ ] Skipping steps 3–5 produces a usable app with haptics on and 8 categories.
-- [ ] The whole flow is completable in under 90 seconds by someone who has seen
+      (proof: e2e/flows/onboarding-full.yaml — profile, 8 active categories, one
+      expense, streak/main current 1, wallet coinBalance > 0)
+- [x] Skipping steps 3–5 produces a usable app with haptics on and 8 categories.
+      (proof: e2e/flows/onboarding-skip.yaml — 8 active categories, haptics not off)
+- [x] The whole flow is completable in under 90 seconds by someone who has seen
       it once.
-- [ ] The entire flow completes in airplane mode, and syncs when connectivity
+      (proof: onboarding-full.yaml, Start → Orbit in 36s as driven by Maestro at
+      ~2–3s per action; 11 taps plus a name, no step waits on the network)
+- [x] The entire flow completes in airplane mode, and syncs when connectivity
       returns.
+      (proof: e2e/flows/onboarding-offline.yaml — after the one network touch
+      docs/11 allows ("Connect once to set up"), all five steps offline, an offline
+      relaunch stays onboarded, and profile, expense and streak sync on reconnect)
 - [x] No permission dialog appears at any point in onboarding.
       (proof: scripts/check-invariants.mjs rule 4 "onboarding-no-permission-request")

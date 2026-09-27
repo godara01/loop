@@ -24,7 +24,7 @@ import { CURRENCY_SYMBOL, type CurrencyCode, money } from '../money';
 import type { PendingExpense, PendingExpenseSource, PendingExpenseStatus } from '../sms/types';
 import type { SplitMode } from '../split';
 import { CATEGORY_COLOR_TOKENS } from '../theme';
-import type { Expense, ExpenseSource, SmsCaptureState, UserProfile, UserSettings } from '../types';
+import type { Expense, ExpenseSource, OnboardingStep, SmsCaptureState, UserProfile, UserSettings } from '../types';
 import { firestorePaths } from './paths';
 
 export class DocumentShapeError extends Error {
@@ -45,6 +45,7 @@ const CATEGORY_KINDS: readonly CategoryKind[] = ['essential', 'catalogue', 'cust
 const ICON_KINDS = ['glyph', 'image'] as const;
 const PERIOD_KINDS: readonly PeriodKind[] = ['week', 'month', 'rolling30', 'custom'];
 const SMS_CAPTURE_STATES: readonly SmsCaptureState[] = ['unseen', 'shown', 'dismissed', 'denied', 'granted'];
+const ONBOARDING_STEPS: readonly OnboardingStep[] = ['welcome', 'profile', 'feel', 'categories', 'first-expense', 'complete'];
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 const ISO_LOCAL_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -243,6 +244,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   insightsCustomStartDate: null,
   insightsCustomEndDate: null,
   smsCapture: 'unseen',
+  onboardingStep: null,
 };
 
 /**
@@ -264,6 +266,10 @@ export function parseSettings(uid: string, data: unknown): UserSettings {
     insightsCustomEndDate: optionalLocalDate(path, d, 'insightsCustomEndDate'),
     smsCapture:
       d.smsCapture === undefined ? DEFAULT_SETTINGS.smsCapture : oneOf(path, d, 'smsCapture', SMS_CAPTURE_STATES),
+    onboardingStep:
+      d.onboardingStep === undefined || d.onboardingStep === null
+        ? null
+        : oneOf(path, d, 'onboardingStep', ONBOARDING_STEPS),
   };
 }
 

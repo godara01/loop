@@ -39,7 +39,15 @@ export interface UserSettings {
   readonly insightsCustomEndDate: string | null;
   /** Where the SMS auto-capture opt-in stands. See docs/12-sms-ingest.md#permissions-ux. */
   readonly smsCapture: SmsCaptureState;
+  /**
+   * The onboarding step to resume at, written as each step is left. null for an
+   * account from before this existed. See docs/02-onboarding.md.
+   */
+  readonly onboardingStep: OnboardingStep | null;
 }
+
+/** The five onboarding routes, in order, then done. */
+export type OnboardingStep = 'welcome' | 'profile' | 'feel' | 'categories' | 'first-expense' | 'complete';
 
 /**
  * The auto-capture opt-in. `unseen` until the Orbit card first shows; the card

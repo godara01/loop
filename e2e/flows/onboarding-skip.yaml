@@ -19,6 +19,7 @@ appId: com.getter.loop
 - tapOn:
     id: "onboarding-name-input"
 - inputText: "Skip User"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
 - tapOn:
     id: "onboarding-profile-continue"
 
@@ -52,4 +53,15 @@ appId: com.getter.loop
       id: "screen-orbit"
     timeout: 15000
 - assertVisible:
-    text: "Nothing logged today"
+    text: "Nothing logged today\\."
+
+# docs/02: skipping 3–5 leaves haptics on and 8 active categories.
+- runScript:
+    file: ../scripts/query.js
+    env:
+      PROFILE: "1"
+      COLLECTION: "categories"
+      DOC: "settings/app"
+- assertTrue: ${output.profile.onboardedAt != null}
+- assertTrue: ${output.docs.filter(d => d.archivedAt == null).length == 8}
+- assertTrue: ${output.doc == null || output.doc.hapticsEnabled != false}

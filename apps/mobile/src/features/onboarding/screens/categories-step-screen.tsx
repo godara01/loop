@@ -24,10 +24,12 @@ import { useSession } from '@/core/providers/bootstrap-provider';
 import { saveCategory } from '@/features/categories/api/category-repository';
 import { useCategories } from '@/features/categories/hooks/use-categories';
 import { haptic } from '@/lib/haptics';
+import { useRecordOnboardingStep } from '../hooks/use-record-onboarding-step';
 
 const logWriteFailure = (error: unknown) => console.warn('[onboarding] write rejected', error);
 
 export function CategoriesStepScreen() {
+  useRecordOnboardingStep('categories');
   const insets = useSafeAreaInsets();
   const { uid } = useSession();
   const categoriesState = useCategories();

@@ -1,0 +1,115 @@
+# docs/02: before onboardedAt is set there is no route to the tabs. Deep-link
+# at every tab and top-level screen from a fresh, un-onboarded install; each
+# attempt must end back on onboarding with no tab dock.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+
+- openLink: "loop://activity"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
+
+- openLink: "loop://insights"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
+
+- openLink: "loop://profile"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
+
+- openLink: "loop://coins"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
+
+- openLink: "loop://inbox"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
+
+- openLink: "loop://expense/new"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
+
+- openLink: "loop://settings/reset"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
+
+- openLink: "loop://settings/auto-capture"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
+
+- openLink: "loop://day/2026-09-01"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
+
+- openLink: "loop://category"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
+
+- openLink: "loop:///"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
+
+# The category editor is allowed over onboarding (steps 3 and 5 open it);
+# closing it must land back on onboarding, not the tabs.
+- openLink: "loop://category/new"
+- extendedWaitUntil:
+    visible:
+      id: "editor-close"
+    timeout: 15000
+- tapOn:
+    id: "editor-close"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    id: "tab-dock"
