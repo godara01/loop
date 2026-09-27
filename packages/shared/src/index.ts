@@ -14,6 +14,12 @@ export * from './storage-paths';
 
 // SMS exports (selective to avoid duplication with types.ts)
 export { isAllowlistedSender } from './sms/sender';
+export { isDuplicatePendingExpense } from './sms/dedupe';
+export type {
+  DedupeCandidate,
+  DedupeManualExpense,
+  DedupePendingExpense,
+} from './sms/dedupe';
 export {
   BUNDLED_REGISTRY,
   COMPILED_BUNDLED_REGISTRY,
