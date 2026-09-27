@@ -178,6 +178,8 @@ const rules = [
         'apps/mobile/src/features/inbox/',
         'functions/src/cleanup.ts',
         'firestore.rules',
+        // Device-test tooling that reads the emulator (e.g. the SMS privacy scan) — not app code.
+        'e2e/',
       ];
       const isAllowed =
         allowedPaths.some((p) => relPath.startsWith(p)) ||

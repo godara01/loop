@@ -117,7 +117,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | H3 | Accessibility/testID audit script | — | done |
 | H4 | Fix every a11y/testID finding | H3 | done |
 | H5 | Empty-state copy module matching `docs/02` | — | done |
-| H6 | `npm run test:all` (code-level) + MVP journey YAML | A2, A3, U6 | todo |
+| H6 | `npm run test:all` (code-level) + MVP journey YAML | A2, A3, U6 | done |
 
 ---
 

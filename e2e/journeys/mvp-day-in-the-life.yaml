@@ -1,0 +1,399 @@
+# The MVP, end to end, on a fresh install — docs/15-mvp-completion-plan.md
+# #final-gate--full-mvp-integration-test, steps 1-10.
+#
+# Amounts are fixed so the totals are known in advance. Live expenses at the
+# end: 500 FOOD (onboarding) + 120 COFFEE + 200 TRANSPORT (yesterday)
+# + 90 FOOD (edited from 80) + 45 SNACKS + 200 FOOD (approved from a bank
+# message) + 60 FOOD (offline) = ₹1,215.00. The ₹30 expense is deleted.
+#
+# Step 4 uses paste-to-parse rather than `adb emu sms send`: one flow cannot
+# time several out-of-band sends, and the receiver path is covered by the
+# sms-* flows. Parse, dedupe and approval are the same code either way.
+# Step 8: Maestro can't read the shared file; test-all --device pulls and
+# re-parses it (or the runner does, in D7).
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+# ── 1. Onboarding: name, INR, haptics on, COFFEE from the catalogue, first expense
+- tapOn:
+    id: "onboarding-start"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-profile"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-name-input"
+- inputText: "Journey"
+- tapOn:
+    id: "onboarding-currency-INR"
+- tapOn:
+    id: "onboarding-profile-continue"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-feel"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-feel-continue"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-categories"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-browse-catalogue"
+- extendedWaitUntil:
+    visible:
+      id: "catalogue-search"
+    timeout: 15000
+- inputText: "Coffee"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn:
+    id: "catalogue-item-COFFEE"
+- tapOn:
+    id: "catalogue-add"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-categories"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-categories-continue"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-first-expense"
+    timeout: 15000
+- tapOn:
+    id: "entry-amount"
+- inputText: "500"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+- assertVisible:
+    id: "streak-capsule"
+- assertVisible: "1 day streak"
+- runScript:
+    file: ../scripts/query.js
+    env:
+      DOC: "wallet/main"
+- assertTrue: ${output.doc != null && output.doc.coinBalance > 0}
+
+# ── 2. Four more (one backdated), edit one, delete one, undo, delete again
+- tapOn:
+    id: "dock-add"
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-2"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-COFFEE"
+- tapOn:
+    id: "entry-save"
+- tapOn:
+    id: "dock-add"
+- tapOn:
+    id: "pad-key-2"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-TRANSPORT"
+- tapOn:
+    id: "entry-date-earlier"
+- tapOn:
+    id: "entry-save"
+- tapOn:
+    id: "dock-add"
+- tapOn:
+    id: "pad-key-8"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-description"
+- inputText: "Chai run"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn:
+    id: "entry-save"
+- tapOn:
+    id: "dock-add"
+- tapOn:
+    id: "pad-key-3"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-description"
+- inputText: "Mistake"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+- tapOn:
+    id: "tab-activity"
+# Edit 80 -> 90
+- tapOn: "Chai run"
+- longPressOn:
+    id: "pad-key-backspace"
+- tapOn:
+    id: "pad-key-9"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "entry-save"
+# Delete, undo, delete again
+- tapOn: "Mistake"
+- tapOn:
+    id: "entry-delete"
+- tapOn: "Delete"
+- tapOn:
+    id: "snackbar-undo"
+- assertVisible: "Mistake"
+- tapOn: "Mistake"
+- tapOn:
+    id: "entry-delete"
+- tapOn: "Delete"
+- assertNotVisible: "Mistake"
+
+# ── 3. Custom category from inside the entry sheet; the amount survives
+- tapOn:
+    id: "dock-add"
+- tapOn:
+    id: "pad-key-4"
+- tapOn:
+    id: "pad-key-5"
+- swipe:
+    start: "85%,21%"
+    end: "10%,21%"
+- swipe:
+    start: "85%,21%"
+    end: "10%,21%"
+- tapOn:
+    id: "category-chip-add"
+- tapOn:
+    id: "catalogue-create-custom"
+- tapOn:
+    id: "editor-name"
+- inputText: "Snacks"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn:
+    id: "color-amber"
+- tapOn:
+    id: "editor-save"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- assertVisible: "₹45"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+# ── 4. Bank message -> inbox -> approve; OTP -> nothing; duplicate -> one card
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-inbox"
+- tapOn:
+    id: "inbox-paste"
+- tapOn:
+    id: "paste-input"
+- inputText: "482913 is your OTP for a transaction of Rs 200.00 at SWIGGY. Do not share. -SBI"
+- tapOn:
+    id: "paste-submit"
+- assertVisible:
+    id: "paste-error"
+- tapOn:
+    id: "paste-cancel"
+- tapOn:
+    id: "inbox-paste"
+- tapOn:
+    id: "paste-input"
+- inputText: "Dear UPI user A/C X4321 debited by 200.0 on date 12Sep26 trf to SWIGGY Refno 625812345678. -SBI"
+- tapOn:
+    id: "paste-submit"
+- extendedWaitUntil:
+    visible: "SBI ••4321 · SWIGGY"
+    timeout: 10000
+# The same message again is a duplicate: refused, still one card.
+- tapOn:
+    id: "inbox-paste"
+- tapOn:
+    id: "paste-input"
+- inputText: "Dear UPI user A/C X4321 debited by 200.0 on date 12Sep26 trf to SWIGGY Refno 625812345678. -SBI"
+- tapOn:
+    id: "paste-submit"
+- assertVisible:
+    id: "paste-error"
+- tapOn:
+    id: "paste-cancel"
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "pendingExpenses"
+- assertTrue: ${output.docs.length == 1}
+- tapOn:
+    id: "pending-card-.*-category-FOOD"
+- tapOn:
+    id: "pending-card-.*-approve"
+- extendedWaitUntil:
+    visible:
+      id: "inbox-empty"
+    timeout: 10000
+- tapOn:
+    id: "inbox-close"
+
+# ── 5. Offline: add, kill, relaunch, still there, reconnect, synced
+- tapOn:
+    id: "tab-orbit"
+- setAirplaneMode: enabled
+- tapOn:
+    id: "dock-add"
+- tapOn:
+    id: "pad-key-6"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-description"
+- inputText: "Offline samosa"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn:
+    id: "entry-save"
+- stopApp
+- openLink: "exp+loop://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 60000
+- tapOn:
+    id: "tab-activity"
+- assertVisible: "Offline samosa"
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    notVisible: "SYNCING"
+    timeout: 60000
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "expenses"
+- assertTrue: ${output.docs.filter(function (d) { return d.deletedAt == null; }).length == 7}
+
+# ── 6. Insights agree with the journey's own numbers
+- tapOn:
+    id: "tab-insights"
+- tapOn:
+    id: "insights-period-week"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+    timeout: 15000
+- assertVisible: "₹1,215.00"
+- tapOn:
+    id: "insights-day-today"
+- extendedWaitUntil:
+    visible:
+      id: "screen-day-detail"
+    timeout: 10000
+- tapOn:
+    id: "day-back"
+
+# ── 7. Server invariants
+- runScript:
+    file: ../scripts/query.js
+    env:
+      DOC: "wallet/main"
+- evalScript: ${output.walletCoins = output.doc.coinBalance}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "coinLedger"
+- assertTrue: ${output.docs.reduce(function (s, d) { return s + d.coins; }, 0) == output.walletCoins}
+- assertTrue: ${output.userCount == 1}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "checkIns"
+- assertTrue: ${output.docs.length == 1}
+- runScript:
+    file: ../scripts/scan-user-docs.js
+    env:
+      NEEDLE: "Refno 625812345678"
+- assertTrue: ${output.hits.length == 0}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "dailyRollups"
+- assertTrue: ${output.docs.reduce(function (s, d) { return s + d.totalMinor; }, 0) == 121500}
+
+# ── 8. Export CSV (the file is pulled and re-parsed outside Maestro)
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-export-csv"
+- waitForAnimationToEnd:
+    timeout: 10000
+- back
+- extendedWaitUntil:
+    visible:
+      id: "profile-export-done"
+    timeout: 15000
+- assertVisible: "7 expenses exported."
+
+# ── 9. Keep it plain hides the game
+- tapOn:
+    id: "profile-keep-it-plain-switch"
+- tapOn:
+    id: "tab-orbit"
+- assertNotVisible:
+    id: "orbit-coin-balance"
+- assertNotVisible:
+    id: "streak-capsule"
+
+# ── 10. Reset app -> onboarding; the old subtree is empty on the server
+- runScript:
+    file: ../scripts/query.js
+- evalScript: ${output.oldUid = output.uid}
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-reset-app"
+- tapOn:
+    id: "reset-start"
+- tapOn:
+    id: "reset-input"
+- inputText: "RESET"
+- tapOn:
+    id: "reset-confirm"
+- extendedWaitUntil:
+    visible:
+      id: "screen-onboarding-welcome"
+    timeout: 60000
+- runScript:
+    file: ../scripts/query.js
+    env:
+      UID: ${output.oldUid}
+      COLLECTION: "expenses"
+- assertTrue: ${output.docs.length == 0}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      UID: ${output.oldUid}
+      COLLECTION: "coinLedger"
+- assertTrue: ${output.docs.length == 0}

@@ -2,6 +2,7 @@
 // assert what was actually stored rather than only what is on screen.
 //
 // Inputs (runScript env):
+//   UID         optional — a uid to read instead of the first account's
 //   COLLECTION  optional, e.g. "expenses" — a collection under users/{uid}
 //   DOC         optional, e.g. "settings/app" — a single document under users/{uid}
 // Outputs:
@@ -41,6 +42,8 @@ var accounts = json(
 var users = accounts.userInfo || [];
 output.userCount = users.length;
 output.uid = users.length > 0 ? users[0].localId : null;
+// Optional: read a specific user's data (e.g. the pre-reset uid) instead of the signed-in one.
+if (typeof UID !== 'undefined' && UID) output.uid = UID;
 output.docs = [];
 output.doc = null;
 
