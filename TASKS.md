@@ -52,16 +52,17 @@ started.
     tool), then run `npm install` inside it. `test:rules` and `test:functions`
     bind the same emulator ports, so only one session at a time may run them.
 
-### Baseline (all green on 2026-09-27)
+### Baseline (all green on 2026-09-27, after batch 2)
 
 | Command | Result |
 |---|---|
 | `npm run typecheck` | exit 0 |
-| `npm test` | shared 241 pass · mobile 49 pass · functions 0 |
-| `npm run test:functions` | 20 pass |
-| `npm run test:rules` | 42 pass (Firestore + Storage) |
+| `npm test` | shared 324 pass · mobile 62 pass · functions 0 |
+| `npm run test:functions` | 32 pass |
+| `npm run test:rules` | 58 pass (Firestore + Storage) |
 | `npm run check:invariants` | exit 0 |
 | `npm run check:testids` | exit 0 |
+| `npm run check:a11y` | 31 findings (H4 takes it to 0) |
 
 A task must never lower these counts. A task that adds tests raises them.
 
@@ -76,7 +77,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | A1 | Make the SMS unit tests actually run | — | done |
 | A2 | Invariant-check script (`npm run check:invariants`) | — | done |
 | A3 | Maestro testID cross-check script | — | done |
-| A4 | Tick code-provable acceptance criteria in docs | A1, A2 | blocked |
+| A4 | Tick code-provable acceptance criteria in docs | A1, A2 | todo |
 | S1 | DLT sender registry | A1 | done |
 | S2 | SMS shape filters (OTP/balance/promo/declined/reversal/credit) | A1 | done |
 | S3 | Versioned, serializable template registry + override merge | A1 | done |
@@ -111,7 +112,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | X2 | You → Export CSV screen | X1 | todo |
 | X3 | Pure reset-app model | — | done |
 | X4 | You → Reset app screen | X3, C3 | todo |
-| H1 | Crashlytics wrapper with key allowlist | A2 | blocked |
+| H1 | Crashlytics wrapper with key allowlist | A2 | todo |
 | H2 | App Check wiring | — | done |
 | H3 | Accessibility/testID audit script | — | done |
 | H4 | Fix every a11y/testID finding | H3 | todo |
