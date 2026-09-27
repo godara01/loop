@@ -111,7 +111,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | X1 | CSV builder/parser with round-trip test | — | done |
 | X2 | You → Export CSV screen | X1 | todo |
 | X3 | Pure reset-app model | — | done |
-| X4 | You → Reset app screen | X3, C3 | todo |
+| X4 | You → Reset app screen | X3, C3 | done |
 | H1 | Crashlytics wrapper with key allowlist | A2 | todo |
 | H2 | App Check wiring | — | done |
 | H3 | Accessibility/testID audit script | — | done |

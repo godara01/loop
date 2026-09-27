@@ -190,6 +190,20 @@ export default function ProfileScreen() {
         )}
       </Card>
 
+      <Card>
+        <Pressable
+          testID="profile-reset-app"
+          accessibilityRole="button"
+          accessibilityLabel="Reset app"
+          onPress={() => {
+            haptic('tap');
+            router.push('/settings/reset');
+          }}
+          style={styles.manageLink}>
+          <Text style={[styles.manageLinkText, { color: colors.debit }]}>Reset app →</Text>
+        </Pressable>
+      </Card>
+
       <Text style={styles.sectionTitle}>Haptic bench</Text>
       <Text style={styles.sectionHint}>
         Run these on a physical device. Android coverage varies by OEM — anything
