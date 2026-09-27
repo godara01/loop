@@ -90,7 +90,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | P4 | `pending-expenses-repository.ts` | P1, P3 | done |
 | N1 | Native `sms-reader` Expo module (code only) | — | todo |
 | N2 | Remote Config wrapper (kill switch + template override) | S3 | todo |
-| N3 | Pure SMS ingest pipeline | S4, S6, S7, P1 | blocked |
+| N3 | Pure SMS ingest pipeline | S4, S6, S7, P1 | todo |
 | U1 | Inbox view-model (grouping, badge count, approve-all eligibility) | P1 | done |
 | U2 | `/inbox` route, cards, empty state | U1, P4 | done |
 | U3 | Orbit inbox badge | U1, P4 | done |
@@ -107,8 +107,8 @@ A task must never lower these counts. A task that adds tests raises them.
 | C1 | `cleanupSoftDeleted` (90-day) | R2 | todo |
 | C2 | Pending-expense expiry sweep (30-day) | P1 | todo |
 | C3 | `deleteUserData` callable (full-subtree delete) | — | todo |
-| X1 | CSV builder/parser with round-trip test | — | todo |
-| X2 | You → Export CSV screen | X1 | blocked |
+| X1 | CSV builder/parser with round-trip test | — | done |
+| X2 | You → Export CSV screen | X1 | todo |
 | X3 | Pure reset-app model | — | todo |
 | X4 | You → Reset app screen | X3, C3 | blocked |
 | H1 | Crashlytics wrapper with key allowlist | A2 | blocked |
