@@ -155,6 +155,7 @@ describe('settings documents', () => {
   it('treats a present-but-wrong value as corruption, not age', () => {
     assert.throws(() => parseSettings(UID, { hapticsEnabled: 'yes' }), /hapticsEnabled/);
     assert.throws(() => parseSettings(UID, { insightsPeriod: 'decade' }), /insightsPeriod/);
+    assert.throws(() => parseSettings(UID, { smsCapture: 'maybe' }), /smsCapture/);
   });
 
   it('round-trips', () => {
@@ -164,6 +165,7 @@ describe('settings documents', () => {
       insightsPeriod: 'custom',
       insightsCustomStartDate: '2026-08-01',
       insightsCustomEndDate: '2026-08-31',
+      smsCapture: 'denied',
     } as const;
     assert.deepEqual(parseSettings(UID, settingsToDoc(settings, NOW)), settings);
   });

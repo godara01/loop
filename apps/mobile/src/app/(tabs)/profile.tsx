@@ -200,6 +200,18 @@ export default function ProfileScreen() {
 
       <Card>
         <Pressable
+          testID="profile-auto-capture"
+          accessibilityRole="link"
+          accessibilityLabel="Auto-capture bank messages"
+          onPress={() => {
+            haptic('tap');
+            router.push('/settings/auto-capture');
+          }}
+          style={styles.manageLink}>
+          <Text style={styles.manageLinkText}>Auto-capture →</Text>
+        </Pressable>
+        <Perforation />
+        <Pressable
           testID="profile-export-csv"
           accessibilityRole="button"
           accessibilityLabel="Export expenses as CSV"

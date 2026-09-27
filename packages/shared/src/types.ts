@@ -37,7 +37,15 @@ export interface UserSettings {
   /** Inclusive start / exclusive end for the user-selected custom Insights window. */
   readonly insightsCustomStartDate: string | null;
   readonly insightsCustomEndDate: string | null;
+  /** Where the SMS auto-capture opt-in stands. See docs/12-sms-ingest.md#permissions-ux. */
+  readonly smsCapture: SmsCaptureState;
 }
+
+/**
+ * The auto-capture opt-in. `unseen` until the Orbit card first shows; the card
+ * never shows again once it has been shown, dismissed or answered.
+ */
+export type SmsCaptureState = 'unseen' | 'shown' | 'dismissed' | 'denied' | 'granted';
 
 /** Where an expense came from. SMS-derived ones are approved, never automatic. */
 export type ExpenseSource = 'manual' | 'sms' | 'shared' | 'group';
