@@ -1,7 +1,11 @@
-/** Category and day views over the same bounded, offline-first expense query. */
+/**
+ * Category and day views. Past days come from Function-maintained rollups,
+ * this month from the offline-first expense cache, merged by mergePeriodSources.
+ */
 
 import {
   type Category,
+  type Period,
   type PeriodKind,
   addDays,
   categoryColors,
@@ -13,17 +17,14 @@ import {
   intensityStep,
   isCurrentPeriod,
   layout,
+  mergePeriodSources,
   periodOf,
-  periodTotal,
-  periodStats,
   previousPeriod,
   space,
   todayISO,
   totalsByCategory,
-  totalsByDay,
   stepPeriod,
   type,
-  weekdayAverages,
 } from '@loop/shared';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -36,7 +37,28 @@ import { useSettings } from '@/core/providers/settings-provider';
 import { useCategories } from '@/features/categories';
 import { haptic } from '@/lib/haptics';
 
-import { useExpensesForPeriod } from '../hooks/use-expenses';
+import { type ExpensesState, useExpensesForPeriod } from '../hooks/use-expenses';
+import { useDailyRollups } from '../hooks/use-rollups';
+
+const monthStart = (date: string) => `${date.slice(0, 7)}-01`;
+
+/** The part of a period read from cached expenses: this month onward. Empty when wholly past. */
+function cachedPart(period: Period, cacheFrom: string): Period {
+  const startDate = period.startDate > cacheFrom ? period.startDate : cacheFrom;
+  return { startDate, endDate: period.endDate > startDate ? period.endDate : startDate };
+}
+
+/** The part read from daily rollups: before this month. Null when nothing is that old. */
+function rollupPart(period: Period, cacheFrom: string): Period | null {
+  if (period.startDate >= cacheFrom) return null;
+  return { startDate: period.startDate, endDate: period.endDate < cacheFrom ? period.endDate : cacheFrom };
+}
+
+/** Synced expenses only — as before, a write the server hasn't accepted isn't counted yet. */
+function confirmedRecords(state: ExpensesState) {
+  if (state.status !== 'ready') return [];
+  return state.snapshot.expenses.filter((expense) => !state.snapshot.pendingIds.has(expense.id));
+}
 
 const PERIOD_LABEL: Record<PeriodKind, string> = { week: 'WEEK', month: 'MONTH', rolling30: '30 DAYS', custom: 'CUSTOM' };
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -46,8 +68,13 @@ export function InsightsScreen() {
   const { profile } = useSession();
   const { settings, update } = useSettings();
   const [period, setPeriod] = useState(() => periodOf(settings.insightsPeriod, todayISO()));
-  const expenses = useExpensesForPeriod(period);
-  const previousExpenses = useExpensesForPeriod(previousPeriod(period));
+  // Past days read rollups; this month reads the offline cache (docs/05-insights.md#data-sources).
+  const cacheFrom = monthStart(todayISO());
+  const previous = previousPeriod(period);
+  const expenses = useExpensesForPeriod(cachedPart(period, cacheFrom));
+  const rollups = useDailyRollups(rollupPart(period, cacheFrom));
+  const previousExpenses = useExpensesForPeriod(cachedPart(previous, cacheFrom));
+  const previousRollups = useDailyRollups(rollupPart(previous, cacheFrom));
   const categories = useCategories();
 
   const categoriesById = useMemo(
@@ -55,22 +82,19 @@ export function InsightsScreen() {
     [categories],
   );
   const model = useMemo(() => {
-    const allRecords = expenses.status === 'ready' ? expenses.snapshot.expenses : [];
-    const pendingIds = expenses.status === 'ready' ? expenses.snapshot.pendingIds : new Set<string>();
-    const records = allRecords.filter((expense) => !pendingIds.has(expense.id));
-    const totals = totalsByCategory(records, period, profile.currency);
-    const days = totalsByDay(records, period, profile.currency);
-    const maximum = Math.max(...days.map((day) => day.total.minor), 0);
-    const weekdays = weekdayAverages(records, period, profile.currency);
+    const merged = mergePeriodSources({
+      period,
+      currency: profile.currency,
+      cacheFrom,
+      rollups: rollups.status === 'ready' ? rollups.rollups : {},
+      cached: confirmedRecords(expenses),
+    });
     return {
-      totals,
-      days,
-      maximum,
-      weekdays,
-      maximumWeekday: Math.max(...weekdays.map((value) => value.minor), 1),
-      stats: periodStats(records, period, profile.currency),
+      ...merged,
+      maximum: Math.max(...merged.days.map((day) => day.total.minor), 0),
+      maximumWeekday: Math.max(...merged.weekdays.map((value) => value.minor), 1),
     };
-  }, [expenses, period, profile.currency]);
+  }, [expenses, rollups, period, cacheFrom, profile.currency]);
   const { visible, collapsed } = collapseLongTail(model.totals);
   const percentages = displayPercentages(model.totals);
   const percentageById = new Map(model.totals.map((row, index) => [row.categoryId, percentages[index] ?? 0]));
@@ -87,9 +111,17 @@ export function InsightsScreen() {
     setPeriod((value) => stepPeriod(value, settings.insightsPeriod, direction, todayISO()));
   };
 
-  const previousTotal = previousExpenses.status === 'ready'
-    ? periodTotal(previousExpenses.snapshot.expenses, previousPeriod(period), profile.currency)
+  const previousReady = previousExpenses.status === 'ready' && previousRollups.status !== 'loading' && previousRollups.status !== 'error';
+  const previousTotal = previousReady
+    ? mergePeriodSources({
+        period: previous,
+        currency: profile.currency,
+        cacheFrom,
+        rollups: previousRollups.status === 'ready' ? previousRollups.rollups : {},
+        cached: confirmedRecords(previousExpenses),
+      }).total
     : null;
+  const needsConnection = rollups.status === 'ready' && rollups.maybeUnfetched;
   const delta = previousTotal ? compareToPrevious(model.stats.total, previousTotal) : null;
 
   return (
@@ -123,9 +155,11 @@ export function InsightsScreen() {
         <Pressable testID="insights-next" onPress={() => step(1)} disabled={atPresent} hitSlop={10}><Text style={[styles.nav, atPresent && styles.disabled]}>›</Text></Pressable>
       </View>
 
-      {expenses.status === 'loading' ? <Text style={styles.empty}>Loading your spending…</Text> : null}
+      {expenses.status === 'loading' || rollups.status === 'loading' ? <Text style={styles.empty}>Loading your spending…</Text> : null}
       {expenses.status === 'error' ? <Text style={styles.error}>{expenses.message}</Text> : null}
-      {expenses.status === 'ready' && model.stats.count === 0 ? (
+      {rollups.status === 'error' ? <Text style={styles.error}>{rollups.message}</Text> : null}
+      {needsConnection ? <Text testID="insights-needs-connection" style={styles.thinData}>Needs a connection once.</Text> : null}
+      {expenses.status === 'ready' && rollups.status !== 'loading' && model.stats.count === 0 ? (
         <Text testID="insights-empty" style={styles.empty}>Nothing logged in this window.</Text>
       ) : (
         <>
