@@ -54,3 +54,6 @@ metro.pid
 
 # opencode worktrees
 .opencodework/
+
+# Cloud Functions bundle (npm run build -w @loop/functions)
+functions/lib/

@@ -46,6 +46,8 @@ function walkDir(dir, files = []) {
   for (const entry of entries) {
     const fullPath = join(dir, entry.name);
     if (entry.isDirectory()) {
+      // Build output, not source: the functions bundle inlines packages/shared.
+      if (fullPath.endsWith(join('functions', 'lib'))) continue;
       if (!shouldSkipDir(entry.name)) {
         walkDir(fullPath, files);
       }

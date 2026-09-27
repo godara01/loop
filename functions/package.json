@@ -4,8 +4,8 @@
   "private": true,
   "main": "lib/index.js",
   "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=cjs --sourcemap --outfile=lib/index.js --external:firebase-admin --external:firebase-functions",
+    "build:watch": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=cjs --sourcemap --outfile=lib/index.js --external:firebase-admin --external:firebase-functions --watch",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test src/__tests__/*.test.ts"
   },
@@ -17,9 +17,10 @@
   "devDependencies": {
     "@types/node": "^26.4.1",
     "tsx": "^4.23.13",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "esbuild": "^0.28.2"
   },
   "engines": {
-    "node": ">=20"
+    "node": "22"
   }
 }
