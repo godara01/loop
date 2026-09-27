@@ -1,0 +1,28 @@
+# One swipe, two alerts (card alert + account alert, same amount and card,
+# a minute apart) produce ONE pending item. See docs/12-sms-ingest.md#deduplication.
+# Runner (D6): deliver both, ~60 s apart:
+#   adb emu sms send "$SMS_SENDER" "$SMS_BODY"
+#   adb emu sms send "$SMS_SENDER" "$SMS_BODY_2"
+appId: com.getter.loop
+env:
+  SMS_SENDER: "AD-HDFCBK"
+  SMS_BODY: "Rs.450.00 spent on HDFC Bank Card x1234 at SWIGGY on 2026-09-12:20:15:11."
+  SMS_BODY_2: "Dear Customer, your account xxxx1234 has been debited for Rs. 450.00 at Swiggy."
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/sms-enable-capture.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "orbit-inbox-badge"
+    timeout: 60000
+# Leave time for the second alert to arrive too.
+- waitForAnimationToEnd:
+    timeout: 90000
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "pendingExpenses"
+- assertTrue: ${output.docs.length == 1}
+- assertTrue: ${output.docs[0].amountMinor == 45000}

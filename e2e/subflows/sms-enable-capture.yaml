@@ -1,0 +1,34 @@
+# Turns SMS auto-capture on through the explainer, the same path a user takes,
+# and grants both SMS permissions in the system dialog. Preconditions for every
+# sms-* flow (D5/D6): a dev build with the sms-reader module, Remote Config
+# `sms_ingest_enabled = true` for the dev project (except sms-kill-switch), and
+# the runner able to deliver SMS with `adb emu sms send` (see each flow's env).
+appId: com.getter.loop
+---
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-auto-capture"
+- extendedWaitUntil:
+    visible:
+      id: "screen-auto-capture"
+    timeout: 10000
+- tapOn:
+    id: "auto-capture-enable"
+# Android asks once per permission group; allow whatever it shows.
+- repeat:
+    times: 2
+    commands:
+      - runFlow:
+          when:
+            visible: "Allow"
+          commands:
+            - tapOn: "Allow"
+- extendedWaitUntil:
+    visible:
+      id: "auto-capture-on"
+    timeout: 20000
+- tapOn:
+    id: "auto-capture-back"
+- tapOn:
+    id: "tab-orbit"

@@ -1,0 +1,47 @@
+# With the Remote Config kill switch off, granting the permission reads nothing
+# and says so; an arriving debit creates nothing. See docs/12-sms-ingest.md.
+# Preconditions (D5/D6): Remote Config `sms_ingest_enabled = false` for the dev
+# project (the dev override), published before the flow starts.
+# Runner: while the flow waits, deliver adb emu sms send "$SMS_SENDER" "$SMS_BODY".
+appId: com.getter.loop
+env:
+  SMS_SENDER: "AD-HDFCBK"
+  SMS_BODY: "Rs.450.00 spent on HDFC Bank Card x1234 at SWIGGY on 2026-09-12:20:15:11."
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-auto-capture"
+- tapOn:
+    id: "auto-capture-enable"
+- repeat:
+    times: 2
+    commands:
+      - runFlow:
+          when:
+            visible: "Allow"
+          commands:
+            - tapOn: "Allow"
+# Permission saved, but capture reports it is switched off.
+- extendedWaitUntil:
+    visible:
+      id: "auto-capture-error"
+    timeout: 20000
+- assertVisible: "Auto-capture is switched off for now.*"
+- tapOn:
+    id: "auto-capture-back"
+- tapOn:
+    id: "tab-orbit"
+
+- waitForAnimationToEnd:
+    timeout: 30000
+- assertNotVisible:
+    id: "orbit-inbox-badge"
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "pendingExpenses"
+- assertTrue: ${output.docs.length == 0}

@@ -1,0 +1,51 @@
+# A bank debit SMS becomes a pending card; approving it creates a real expense
+# with source "sms" and leaves the inbox empty. See docs/12-sms-ingest.md#the-inbox.
+# Runner (D6): once the flow is waiting on the badge, deliver
+#   adb emu sms send "$SMS_SENDER" "$SMS_BODY"
+# (If the emulator only accepts numeric senders, D5's __DEV__ fallback applies.)
+appId: com.getter.loop
+env:
+  SMS_SENDER: "AD-HDFCBK"
+  SMS_BODY: "Rs.450.00 spent on HDFC Bank Card x1234 at SWIGGY on 2026-09-12:20:15:11.Avl bal: Rs.84,550.00"
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/sms-enable-capture.yaml
+
+# Waiting for the injected SMS to arrive and be parsed.
+- extendedWaitUntil:
+    visible:
+      id: "orbit-inbox-badge"
+    timeout: 60000
+- tapOn:
+    id: "orbit-inbox-badge"
+- extendedWaitUntil:
+    visible:
+      id: "screen-inbox"
+    timeout: 10000
+- assertVisible: "SWIGGY"
+- assertVisible: "HDFC ••1234 · SWIGGY"
+
+# Category is required before approving.
+- tapOn:
+    id: "pending-card-.*-category-FOOD"
+- tapOn:
+    id: "pending-card-.*-approve"
+- extendedWaitUntil:
+    visible:
+      id: "inbox-empty"
+    timeout: 10000
+
+# Server truth: one expense, from SMS, the exact amount.
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "expenses"
+- assertTrue: ${output.docs.length == 1}
+- assertTrue: ${output.docs[0].source == 'sms'}
+- assertTrue: ${output.docs[0].amountMinor == 45000}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "pendingExpenses"
+- assertTrue: ${output.docs[0].status == 'approved'}

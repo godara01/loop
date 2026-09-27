@@ -97,7 +97,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | U3 | Orbit inbox badge | U1, P4 | done |
 | U4 | Paste-to-parse | U2, N3 | done |
 | U5 | Auto-capture explainer + one-time Orbit card + backfill | N1, N2, N3, U2 | done |
-| U6 | Author the 8 SMS Maestro flows | U2, U3, U4, U5, A3 | todo |
+| U6 | Author the 8 SMS Maestro flows | U2, U3, U4, U5, A3 | done |
 | R1 | Pure rollup maths in `packages/shared` | — | done |
 | R1a | R1 follow-ups: valid test dates, shared empty-rollup rule | R1 | done |
 | R2 | `onExpenseWrite` maintains rollups | R1a | done |
@@ -117,7 +117,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | H3 | Accessibility/testID audit script | — | done |
 | H4 | Fix every a11y/testID finding | H3 | done |
 | H5 | Empty-state copy module matching `docs/02` | — | done |
-| H6 | `npm run test:all` (code-level) + MVP journey YAML | A2, A3, U6 | blocked |
+| H6 | `npm run test:all` (code-level) + MVP journey YAML | A2, A3, U6 | todo |
 
 ---
 

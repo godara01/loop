@@ -1,0 +1,41 @@
+# A spend the user already typed by hand is not offered again when the bank's
+# SMS arrives minutes later. See docs/12-sms-ingest.md#deduplication.
+# Runner (D6): AFTER the manual expense is saved (the flow waits on the badge),
+# deliver adb emu sms send "$SMS_SENDER" "$SMS_BODY".
+appId: com.getter.loop
+env:
+  SMS_SENDER: "AD-HDFCBK"
+  SMS_BODY: "Rs.450.00 spent on HDFC Bank Card x1234 at SWIGGY on 2026-09-12:20:15:11."
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/sms-enable-capture.yaml
+
+# Type ₹450 by hand first.
+- tapOn:
+    id: "dock-add"
+- tapOn:
+    id: "pad-key-4"
+- tapOn:
+    id: "pad-key-5"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 10000
+
+# The SMS now arrives and must be recognised as the same spend.
+- waitForAnimationToEnd:
+    timeout: 30000
+- assertNotVisible:
+    id: "orbit-inbox-badge"
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "pendingExpenses"
+- assertTrue: ${output.docs.length == 0}

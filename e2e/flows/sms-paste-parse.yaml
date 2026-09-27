@@ -1,0 +1,53 @@
+# Paste-to-parse: no SMS permission, no receiver — a copied bank message pasted
+# into the inbox becomes a pending card; unreadable text creates nothing.
+# Runs on any platform. See TASKS.md U4.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "profile-inbox"
+- extendedWaitUntil:
+    visible:
+      id: "inbox-empty"
+    timeout: 10000
+
+# Unreadable text: inline error, nothing created.
+- tapOn:
+    id: "inbox-paste"
+- tapOn:
+    id: "paste-input"
+- inputText: "lunch was 450 bucks"
+- tapOn:
+    id: "paste-submit"
+- assertVisible:
+    id: "paste-error"
+- tapOn:
+    id: "paste-cancel"
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "pendingExpenses"
+- assertTrue: ${output.docs.length == 0}
+
+# A real bank message: parsed with no sender, lands as a pending card.
+- tapOn:
+    id: "inbox-paste"
+- tapOn:
+    id: "paste-input"
+- inputText: "Dear UPI user A/C X4321 debited by 200.0 on date 12Sep26 trf to SWIGGY Refno 625812345678. -SBI"
+- tapOn:
+    id: "paste-submit"
+- extendedWaitUntil:
+    visible: "SBI ••4321 · SWIGGY"
+    timeout: 10000
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "pendingExpenses"
+- assertTrue: ${output.docs.length == 1}
+- assertTrue: ${output.docs[0].source == 'pasted'}
+- assertTrue: ${output.docs[0].amountMinor == 20000}

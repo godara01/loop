@@ -1,0 +1,22 @@
+# An OTP from a real bank sender is never turned into anything.
+# See docs/12-sms-ingest.md#filtering.
+# Runner (D6): while the flow waits, deliver adb emu sms send "$SMS_SENDER" "$SMS_BODY".
+appId: com.getter.loop
+env:
+  SMS_SENDER: "AD-HDFCBK"
+  SMS_BODY: "482913 is your OTP for a transaction of Rs 450.00 at SWIGGY on HDFC Bank Card x1234. Valid for 5 mins. Do not share."
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/sms-enable-capture.yaml
+
+# Give the message time to arrive and be (not) processed.
+- waitForAnimationToEnd:
+    timeout: 20000
+- assertNotVisible:
+    id: "orbit-inbox-badge"
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "pendingExpenses"
+- assertTrue: ${output.docs.length == 0}

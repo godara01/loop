@@ -1,0 +1,49 @@
+# The raw message never leaves the device: after capture AND approval, no
+# document anywhere under the user contains text from the SMS body beyond the
+# merchant. See docs/12-sms-ingest.md#privacy-commitments.
+# Runner (D6): deliver adb emu sms send "$SMS_SENDER" "$SMS_BODY". NEEDLE is a
+# body fragment no parsed field may contain.
+appId: com.getter.loop
+env:
+  SMS_SENDER: "AD-HDFCBK"
+  SMS_BODY: "Rs.777.00 spent on HDFC Bank Card x9090 at PRIVACYCAFE on 2026-09-12:20:15:11.Avl bal: Rs.31,337.42 Ref ZQXJ-PRIV-4471"
+  NEEDLE: "ZQXJ-PRIV-4471"
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/launch.yaml
+- runFlow: ../subflows/sms-enable-capture.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "orbit-inbox-badge"
+    timeout: 60000
+
+# Scan while pending…
+- runScript:
+    file: ../scripts/scan-user-docs.js
+    env:
+      NEEDLE: ${NEEDLE}
+- assertTrue: ${output.scanned > 0}
+- assertTrue: ${output.hits.length == 0}
+- runScript:
+    file: ../scripts/scan-user-docs.js
+    env:
+      NEEDLE: "Avl bal: Rs.31,337.42"
+- assertTrue: ${output.hits.length == 0}
+
+# …and again after approval turns it into an expense.
+- tapOn:
+    id: "orbit-inbox-badge"
+- tapOn:
+    id: "pending-card-.*-category-FOOD"
+- tapOn:
+    id: "pending-card-.*-approve"
+- extendedWaitUntil:
+    visible:
+      id: "inbox-empty"
+    timeout: 10000
+- runScript:
+    file: ../scripts/scan-user-docs.js
+    env:
+      NEEDLE: ${NEEDLE}
+- assertTrue: ${output.hits.length == 0}
