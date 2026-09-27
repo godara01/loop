@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { parseTransactionSms } from '../sms/templates';
+import { parseTransactionSms } from '../sms/parser';
 
 describe('SMS Parser — Transaction Detection', () => {
   it('parses HDFC Bank debit with account last4', () => {
@@ -65,10 +65,9 @@ describe('SMS Parser — Transaction Detection', () => {
     assert.equal(result.amountMinor, 25050);
   });
 
-  it('respects confidence threshold', () => {
+  it('returns null when no template matches', () => {
     const sms = 'Your account xxxx1234 has something about Rs 100.';
-    const result = parseTransactionSms(sms, 'AD-HDFCBK', new Date().toISOString(), 0.95);
-    // Low confidence, rejected by high threshold
+    const result = parseTransactionSms(sms, 'AD-HDFCBK', new Date().toISOString());
     assert.equal(result, null);
   });
 

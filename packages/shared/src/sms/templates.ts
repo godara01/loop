@@ -1,11 +1,7 @@
-import { parseAmount, type CurrencyCode } from '../money';
-import type {
-  CompiledRegistry,
-  CompiledTemplate,
-  ParsedTransaction,
-  TemplateRegistry,
-  TemplateSpec,
-} from './types';
+import type { CompiledRegistry, CompiledTemplate, TemplateRegistry, TemplateSpec } from './types';
+
+/** Used when a template does not state its own confidence. */
+export const DEFAULT_TEMPLATE_CONFIDENCE = 0.85;
 
 export const BUNDLED_REGISTRY = {
   version: 1,
@@ -53,6 +49,12 @@ function validateTemplate(template: TemplateSpec): void {
   if (!template.id) throw new Error('SMS template id must not be empty');
   if (!template.entity) throw new Error(`SMS template "${template.id}" entity must not be empty`);
   if (!template.fields.amount) throw new Error(`SMS template "${template.id}" must define an amount field`);
+  if (
+    template.confidence !== undefined &&
+    !(Number.isFinite(template.confidence) && template.confidence >= 0 && template.confidence <= 1)
+  ) {
+    throw new Error(`SMS template "${template.id}" confidence must be between 0 and 1`);
+  }
 
   let pattern: RegExp;
   try {
@@ -105,50 +107,3 @@ export function mergeRegistry(
 
 export const COMPILED_BUNDLED_REGISTRY = compileRegistry(BUNDLED_REGISTRY);
 export const SMS_TEMPLATES = COMPILED_BUNDLED_REGISTRY.templates;
-
-function senderEntity(sender: string): string | null {
-  const match = /^[A-Z]{2}-([A-Z0-9]{6})$/i.exec(sender);
-  return match?.[1]?.toUpperCase() ?? null;
-}
-
-function parseIndianAmount(text: string): number | null {
-  const money = parseAmount(text, 'INR');
-  return money?.minor ?? null;
-}
-
-export function parseTransactionSms(
-  body: string,
-  sender: string,
-  receivedAt: string,
-  minConfidence = 0,
-): ParsedTransaction | null {
-  const entity = senderEntity(sender);
-  if (!entity) return null;
-
-  for (const template of SMS_TEMPLATES) {
-    if (template.entity !== entity) continue;
-    template.pattern.lastIndex = 0;
-    const match = template.pattern.exec(body);
-    if (!match?.groups) continue;
-
-    const amount = match.groups[template.fields.amount];
-    if (!amount) continue;
-    const amountMinor = parseIndianAmount(amount);
-    if (amountMinor === null) continue;
-
-    if (0.85 < minConfidence) continue;
-
-    return {
-      amountMinor,
-      currency: 'INR' as CurrencyCode,
-      direction: 'debit',
-      merchant: template.fields.merchant ? match.groups[template.fields.merchant] ?? null : null,
-      accountLast4: template.fields.last4 ? match.groups[template.fields.last4] ?? null : null,
-      occurredAt: receivedAt,
-      templateId: template.id,
-      confidence: 0.85,
-    };
-  }
-
-  return null;
-}

@@ -58,6 +58,8 @@ export interface TemplateSpec {
   readonly pattern: string;
   readonly flags: string;
   readonly fields: TemplateFields;
+  /** 0–1: how sure a match of this template is. Defaults to DEFAULT_TEMPLATE_CONFIDENCE. */
+  readonly confidence?: number;
 }
 
 export interface TemplateRegistry {

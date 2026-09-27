@@ -4,8 +4,8 @@ import {
   BUNDLED_REGISTRY,
   compileRegistry,
   mergeRegistry,
-  parseTransactionSms,
 } from '../sms/templates';
+import { parseTransactionSms } from '../sms/parser';
 
 const receivedAt = new Date().toISOString();
 

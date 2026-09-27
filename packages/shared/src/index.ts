@@ -25,11 +25,13 @@ export type { DisplayHintFields } from './sms/display-hint';
 export {
   BUNDLED_REGISTRY,
   COMPILED_BUNDLED_REGISTRY,
+  DEFAULT_TEMPLATE_CONFIDENCE,
   compileRegistry,
   mergeRegistry,
-  parseTransactionSms,
   SMS_TEMPLATES,
 } from './sms/templates';
+export { MIN_PARSE_CONFIDENCE, type ParseOptions, parseTransactionSms } from './sms/parser';
+export { type ExclusionReason, classifyExclusion, isCredit } from './sms/filters';
 export type {
   CompiledRegistry,
   CompiledTemplate,
