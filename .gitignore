@@ -51,3 +51,6 @@ TASK_SUMMARY.md
 *.backup
 *.backup2
 metro.pid
+
+# opencode worktrees
+.opencodework/
