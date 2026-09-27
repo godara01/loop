@@ -96,6 +96,8 @@ export default function RootLayout() {
                   <Stack.Screen name="category/index" options={{ presentation: 'modal' }} />
                   <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
                   <Stack.Screen name="coins" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="inbox" />
+                  <Stack.Screen name="expense/approve/[pendingId]" options={{ presentation: 'modal' }} />
                 </Stack>
               </OnboardingGate>
             </SettingsProvider>

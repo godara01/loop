@@ -12,6 +12,7 @@ import {
   ExpenseError,
   FALLBACK_CATEGORY_SLUG,
   MAX_DESCRIPTION_LENGTH,
+  type Money,
   MAX_NOTE_LENGTH,
   addDays,
   colors,
@@ -19,6 +20,7 @@ import {
   editPersonalExpense,
   formatMoney,
   layout,
+  localDateOf,
   newPersonalExpense,
   orderForEntry,
   radius,
@@ -68,14 +70,46 @@ function occurredAtFor(daysAgo: number, now: Date): string {
   return new Date(now.getTime() - daysAgo * 86_400_000).toISOString();
 }
 
-function daysAgoOf(expense: Expense): number {
+function daysAgoOf(localDate: string): number {
   const today = todayISO();
   let days = 0;
-  while (addDays(today, -days) > expense.localDate && days < 3650) days += 1;
+  while (addDays(today, -days) > localDate && days < 3650) days += 1;
   return days;
 }
 
-export function ExpenseEntryScreen({ mode, expenseId }: { mode: 'new' | 'edit'; expenseId?: string }) {
+export interface ApprovalFields {
+  readonly total: Money;
+  readonly categoryId: string;
+  readonly description: string;
+  readonly note: string | null;
+  readonly occurredAt: string;
+}
+
+/**
+ * "Edit & approve" from the inbox: the sheet opens prefilled from a pending
+ * item and hands the result back instead of saving an expense itself. The
+ * caller owns the write, so this feature knows nothing about the inbox.
+ * `submit` throws synchronously on invalid input, like `newPersonalExpense`.
+ */
+export interface ApprovalSource {
+  readonly initial: {
+    readonly total: Money;
+    readonly categoryId: string | null;
+    readonly description: string;
+    readonly occurredAt: string;
+  };
+  readonly submit: (fields: ApprovalFields) => Promise<void>;
+}
+
+export function ExpenseEntryScreen({
+  mode,
+  expenseId,
+  approval,
+}: {
+  mode: 'new' | 'edit' | 'approve';
+  expenseId?: string;
+  approval?: ApprovalSource;
+}) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { uid, profile } = useSession();
@@ -109,6 +143,17 @@ export function ExpenseEntryScreen({ mode, expenseId }: { mode: 'new' | 'edit'; 
     if (mode === 'new') {
       startNew(Date.now());
       setStarted(true);
+    } else if (mode === 'approve' && approval) {
+      const fromPending: ExpenseDraft = {
+        amount: inputFromMoney(approval.initial.total),
+        categoryId: approval.initial.categoryId,
+        description: approval.initial.description,
+        note: '',
+        daysAgo: daysAgoOf(localDateOf(approval.initial.occurredAt)),
+      };
+      startFrom(fromPending);
+      initialDraft.current = fromPending;
+      setStarted(true);
     } else if (existing.status === 'ready') {
       const e = existing.expense;
       const fromExpense: ExpenseDraft = {
@@ -116,13 +161,13 @@ export function ExpenseEntryScreen({ mode, expenseId }: { mode: 'new' | 'edit'; 
         categoryId: e.categoryId,
         description: e.description,
         note: e.note ?? '',
-        daysAgo: daysAgoOf(e),
+        daysAgo: daysAgoOf(e.localDate),
       };
       startFrom(fromExpense);
       initialDraft.current = fromExpense;
       setStarted(true);
     }
-  }, [mode, existing, started, startNew, startFrom]);
+  }, [mode, existing, approval, started, startNew, startFrom]);
 
   // Preselect the most-used category of the last 30 days, else OTHER.
   useEffect(() => {
@@ -194,6 +239,24 @@ export function ExpenseEntryScreen({ mode, expenseId }: { mode: 'new' | 'edit'; 
     const now = new Date();
     const nowIso = now.toISOString();
     try {
+      if (mode === 'approve') {
+        if (!approval) return;
+        const dateChanged = draft.daysAgo !== daysAgoOf(localDateOf(approval.initial.occurredAt));
+        approval
+          .submit({
+            total,
+            categoryId: draft.categoryId,
+            description: draft.description,
+            note: draft.note,
+            // Keep the bank's timestamp unless the day itself was changed.
+            occurredAt: dateChanged ? occurredAtFor(draft.daysAgo, now) : approval.initial.occurredAt,
+          })
+          .catch(logWriteFailure);
+        haptic('expenseSaved');
+        clear();
+        leave();
+        return;
+      }
       let expense: Expense;
       if (mode === 'new') {
         expense = newPersonalExpense({
@@ -209,7 +272,7 @@ export function ExpenseEntryScreen({ mode, expenseId }: { mode: 'new' | 'edit'; 
       } else {
         if (existing.status !== 'ready') return;
         const original = existing.expense;
-        const dateChanged = draft.daysAgo !== daysAgoOf(original);
+        const dateChanged = draft.daysAgo !== daysAgoOf(original.localDate);
         expense = editPersonalExpense(
           original,
           {
@@ -299,7 +362,9 @@ export function ExpenseEntryScreen({ mode, expenseId }: { mode: 'new' | 'edit'; 
         <Pressable testID="entry-close" accessibilityLabel="Close" hitSlop={12} onPress={() => router.back()}>
           <Ionicons name="close" size={26} color={colors.text} />
         </Pressable>
-        <Text style={styles.eyebrow}>{mode === 'new' ? 'NEW EXPENSE' : 'EDIT EXPENSE'}</Text>
+        <Text style={styles.eyebrow}>
+          {mode === 'new' ? 'NEW EXPENSE' : mode === 'approve' ? 'APPROVE EXPENSE' : 'EDIT EXPENSE'}
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -438,7 +503,11 @@ export function ExpenseEntryScreen({ mode, expenseId }: { mode: 'new' | 'edit'; 
       </ScrollView>
 
       <View testID="entry-save" accessible>
-        <TactileButton label={mode === 'new' ? 'Save' : 'Update'} fullWidth onPress={onSave} />
+        <TactileButton
+          label={mode === 'new' ? 'Save' : mode === 'approve' ? 'Approve' : 'Update'}
+          fullWidth
+          onPress={onSave}
+        />
       </View>
     </KeyboardAvoidingView>
   );

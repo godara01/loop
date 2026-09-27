@@ -1,5 +1,5 @@
 /** The expenses feature's public surface. Import from here, never from a deep path. */
-export { ExpenseEntryScreen } from './screens/expense-entry-screen';
+export { type ApprovalFields, type ApprovalSource, ExpenseEntryScreen } from './screens/expense-entry-screen';
 export { LedgerScreen } from './screens/ledger-screen';
 export { OrbitScreen } from './screens/orbit-screen';
 export { ExpenseRow } from './components/expense-row';

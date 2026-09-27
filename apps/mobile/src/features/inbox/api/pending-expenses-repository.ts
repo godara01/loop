@@ -119,28 +119,32 @@ function commitApprovals(uid: string, approvals: readonly Approval[]): Promise<v
   return Promise.all(commits).then(() => undefined);
 }
 
-/** Approve, or edit-and-approve when `edits` is given. */
-export async function approvePendingExpense(
+/**
+ * Approve, or edit-and-approve when `edits` is given. Invalid input throws
+ * synchronously, before anything is written; the promise is only the write.
+ */
+export function approvePendingExpense(
   uid: string,
   pending: PendingExpense,
   categoryId: string | undefined,
   edits?: ApprovalEdits,
 ): Promise<void> {
   const approval = buildApproval(uid, pending, categoryId, edits, new Date().toISOString());
-  await commitApprovals(uid, [approval]);
+  return commitApprovals(uid, [approval]);
 }
 
 /**
  * Throws `MissingCategoryError` before writing anything if any item lacks a
- * category. Each item's pair is atomic; over 250 items span several batches.
+ * category (synchronously). Each item's pair is atomic; over 250 items span
+ * several batches.
  */
-export async function approveAllPendingExpenses(
+export function approveAllPendingExpenses(
   uid: string,
   items: readonly PendingExpense[],
   choices: CategoryChoices,
 ): Promise<void> {
   const approvals = buildApproveAll(uid, items, choices, new Date().toISOString());
-  await commitApprovals(uid, approvals);
+  return commitApprovals(uid, approvals);
 }
 
 /**
