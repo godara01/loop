@@ -20,6 +20,8 @@ export type {
   DedupeManualExpense,
   DedupePendingExpense,
 } from './sms/dedupe';
+export { bankLabel, buildDisplayHint } from './sms/display-hint';
+export type { DisplayHintFields } from './sms/display-hint';
 export {
   BUNDLED_REGISTRY,
   COMPILED_BUNDLED_REGISTRY,
