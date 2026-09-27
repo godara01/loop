@@ -91,12 +91,12 @@ A task must never lower these counts. A task that adds tests raises them.
 | P4 | `pending-expenses-repository.ts` | P1, P3 | done |
 | N1 | Native `sms-reader` Expo module (code only) | — | done |
 | N2 | Remote Config wrapper (kill switch + template override) | S3 | done |
-| N3 | Pure SMS ingest pipeline | S4, S6, S7, P1 | todo |
+| N3 | Pure SMS ingest pipeline | S4, S6, S7, P1 | done |
 | U1 | Inbox view-model (grouping, badge count, approve-all eligibility) | P1 | done |
 | U2 | `/inbox` route, cards, empty state | U1, P4 | done |
 | U3 | Orbit inbox badge | U1, P4 | done |
-| U4 | Paste-to-parse | U2, N3 | blocked |
-| U5 | Auto-capture explainer + one-time Orbit card + backfill | N1, N2, N3, U2 | blocked |
+| U4 | Paste-to-parse | U2, N3 | todo |
+| U5 | Auto-capture explainer + one-time Orbit card + backfill | N1, N2, N3, U2 | todo |
 | U6 | Author the 8 SMS Maestro flows | U2, U3, U4, U5, A3 | blocked |
 | R1 | Pure rollup maths in `packages/shared` | — | done |
 | R1a | R1 follow-ups: valid test dates, shared empty-rollup rule | R1 | done |
