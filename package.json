@@ -27,7 +27,7 @@
     "check:invariants": "node scripts/check-invariants.mjs",
     "check:testids": "node scripts/check-testids.mjs",
     "test:perf": "bash scripts/perf-ledger.sh",
-    "test:functions": "firebase emulators:exec --config firebase.rules-test.json --only firestore --project demo-loop \"tsx --test tests/functions/*.test.ts\""
+    "test:functions": "firebase emulators:exec --config firebase.rules-test.json --only firestore,storage --project demo-loop \"tsx --test tests/functions/*.test.ts\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",

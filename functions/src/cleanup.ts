@@ -1,4 +1,5 @@
 import type * as admin from 'firebase-admin';
+import { HttpsError } from 'firebase-functions/v2/https';
 
 const DAY_MS = 86_400_000;
 /** Bounded work per scheduled run: at most PAGE_SIZE x MAX_PAGES documents. */
@@ -78,4 +79,38 @@ export async function expireStalePendingExpenses(db: admin.firestore.Firestore, 
     if (snap.size < PAGE_SIZE) break;
   }
   return expired;
+}
+
+// ── C3 · Delete a user's data ─────────────────────────────────────────────
+
+/**
+ * Everything under users/{uid}: the profile doc and every subcollection
+ * (settings, categories, expenses, checkIns, streak, wallet, coinLedger,
+ * pendingExpenses, dailyRollups, monthlyRollups, rollupApplied, groupIndex,
+ * devices — recursiveDelete also catches any added later), plus the Storage
+ * prefix users/{uid}/ (category logos, receipts). Idempotent.
+ */
+export async function deleteUserSubtree(
+  db: admin.firestore.Firestore,
+  bucket: { deleteFiles(options: { prefix: string; force?: boolean }): Promise<unknown> },
+  uid: string,
+): Promise<void> {
+  if (!uid || uid.includes('/')) throw new Error(`Refusing to delete data for uid "${uid}"`);
+  await db.recursiveDelete(db.doc(`users/${uid}`));
+  await bucket.deleteFiles({ prefix: `users/${uid}/`, force: true });
+}
+
+/**
+ * The callable's checks. The uid to delete is the caller's own; a request
+ * naming any other uid is refused rather than silently ignored, so a client
+ * bug can't look like it deleted someone else.
+ */
+export function uidToDelete(auth: { uid: string } | undefined, data: unknown): string {
+  if (!auth) throw new HttpsError('unauthenticated', 'Sign in to delete your data.');
+  const requested =
+    typeof data === 'object' && data !== null && 'uid' in data ? (data as { uid: unknown }).uid : undefined;
+  if (requested !== undefined && requested !== auth.uid) {
+    throw new HttpsError('permission-denied', 'You can only delete your own data.');
+  }
+  return auth.uid;
 }

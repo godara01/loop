@@ -3,7 +3,7 @@ import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/fire
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
-import { cleanupSoftDeletedExpenses, expireStalePendingExpenses } from './cleanup';
+import { cleanupSoftDeletedExpenses, deleteUserSubtree, expireStalePendingExpenses, uidToDelete } from './cleanup';
 import { handleCategoryCreate, handleCheckInCreate, handleExpenseWrite } from './handlers';
 import { rebuildUserRollups } from './rollups';
 
@@ -55,3 +55,9 @@ export const expirePendingExpenses = onSchedule({ schedule: 'every day 03:30', t
   await expireStalePendingExpenses(db, new Date());
 });
 
+/** Reset app / delete account: removes every document and file under the caller's uid. */
+export const deleteUserData = onCall(async (request) => {
+  const uid = uidToDelete(request.auth, request.data);
+  await deleteUserSubtree(db, admin.storage().bucket(), uid);
+  return { deleted: true };
+});

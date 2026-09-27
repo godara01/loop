@@ -106,11 +106,11 @@ A task must never lower these counts. A task that adds tests raises them.
 | R6 | Insights reads rollups for past periods | R5 | todo |
 | C1 | `cleanupSoftDeleted` (90-day) | R2 | done |
 | C2 | Pending-expense expiry sweep (30-day) | P1 | done |
-| C3 | `deleteUserData` callable (full-subtree delete) | — | todo |
+| C3 | `deleteUserData` callable (full-subtree delete) | — | done |
 | X1 | CSV builder/parser with round-trip test | — | done |
 | X2 | You → Export CSV screen | X1 | todo |
 | X3 | Pure reset-app model | — | done |
-| X4 | You → Reset app screen | X3, C3 | blocked |
+| X4 | You → Reset app screen | X3, C3 | todo |
 | H1 | Crashlytics wrapper with key allowlist | A2 | blocked |
 | H2 | App Check wiring | — | todo |
 | H3 | Accessibility/testID audit script | — | todo |
