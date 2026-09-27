@@ -88,7 +88,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | P2 | `pendingExpenses` security rules + rules tests | P1 | done |
 | P3 | Pure approval-batch model | P1 | done |
 | P4 | `pending-expenses-repository.ts` | P1, P3 | done |
-| N1 | Native `sms-reader` Expo module (code only) | — | todo |
+| N1 | Native `sms-reader` Expo module (code only) | — | done |
 | N2 | Remote Config wrapper (kill switch + template override) | S3 | todo |
 | N3 | Pure SMS ingest pipeline | S4, S6, S7, P1 | todo |
 | U1 | Inbox view-model (grouping, badge count, approve-all eligibility) | P1 | done |

@@ -50,6 +50,7 @@
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
       "expo-file-system",
+      "./modules/sms-reader/app.plugin.js",
       [
         "expo-build-properties",
         {
