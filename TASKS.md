@@ -98,7 +98,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | R1 | Pure rollup maths in `packages/shared` | — | done |
 | R1a | R1 follow-ups: valid test dates, shared empty-rollup rule | R1 | done |
 | R2 | `onExpenseWrite` maintains rollups | R1a | done |
-| R3 | `rebuildRollups` callable | R1 | todo |
+| R3 | `rebuildRollups` callable | R1 | done |
 | R4 | Rules test: clients can't write rollups | — | done |
 | R5 | Pure cache + rollup merge for Insights | R1 | todo |
 | R6 | Insights reads rollups for past periods | R5 | blocked |

@@ -1,7 +1,9 @@
 import * as admin from 'firebase-admin';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
 import { handleCategoryCreate, handleCheckInCreate, handleExpenseWrite } from './handlers';
+import { rebuildUserRollups } from './rollups';
 
 if (admin.apps.length === 0) {
   admin.initializeApp();
@@ -29,4 +31,14 @@ export const onCategoryCreate = onDocumentCreated('users/{uid}/categories/{categ
   if (data) {
     await handleCategoryCreate(db, uid, categoryId, data);
   }
+});
+
+/**
+ * Admin/debug: regenerate the CALLER's rollups from their expenses. The uid
+ * comes only from auth — never from the request data — so a user can rebuild
+ * nobody's rollups but their own.
+ */
+export const rebuildRollups = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to rebuild rollups.');
+  return rebuildUserRollups(db, request.auth.uid);
 });

@@ -4,6 +4,7 @@ import * as admin from 'firebase-admin';
 
 import { type Expense, buildRollups, firestorePaths } from '../../packages/shared/src';
 import { handleExpenseWrite } from '../../functions/src/handlers';
+import { rebuildUserRollups } from '../../functions/src/rollups';
 
 process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8085';
 
@@ -45,8 +46,8 @@ async function write(id: string, before: ExpenseData | null, after: ExpenseData 
   await handleExpenseWrite(db, UID, id, before, after);
 }
 
-async function readAll(collection: string): Promise<Record<string, unknown>> {
-  const snap = await db.collection(`users/${UID}/${collection}`).get();
+async function readAll(collection: string, uid = UID): Promise<Record<string, unknown>> {
+  const snap = await db.collection(`users/${uid}/${collection}`).get();
   return Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]));
 }
 
@@ -75,10 +76,14 @@ before(() => {
   db = app.firestore();
 });
 
+const OTHER = 'user-rollups-other';
+
 beforeEach(async () => {
-  for (const col of ['expenses', 'dailyRollups', 'monthlyRollups', 'rollupApplied', 'checkIns', 'coinLedger']) {
-    const snap = await db.collection(`users/${UID}/${col}`).get();
-    await Promise.all(snap.docs.map((d) => d.ref.delete()));
+  for (const uid of [UID, OTHER]) {
+    for (const col of ['expenses', 'dailyRollups', 'monthlyRollups', 'rollupApplied', 'checkIns', 'coinLedger']) {
+      const snap = await db.collection(`users/${uid}/${col}`).get();
+      await Promise.all(snap.docs.map((d) => d.ref.delete()));
+    }
   }
 });
 
@@ -167,5 +172,76 @@ describe('onExpenseWrite — rollups', () => {
     await write('c', c, { ...c, categoryId: 'cat-travel' });
 
     assert.deepEqual(await stored(), await expected());
+  });
+});
+
+describe('rebuildRollups', () => {
+  async function everything(uid = UID) {
+    return {
+      daily: await readAll('dailyRollups', uid),
+      monthly: await readAll('monthlyRollups', uid),
+      markers: await readAll('rollupApplied', uid),
+    };
+  }
+
+  it('fixes a corrupted rollup and removes one with no expenses behind it', async () => {
+    await write('a', null, expense({ amountMinor: 1_500 }));
+    await write('b', null, expense({ amountMinor: 2_500, localDate: '2026-10-02', categoryId: 'cat-travel' }));
+    await db.doc(`users/${UID}/dailyRollups/2026-09-10`).set({ totalMinor: 1, count: 9, byCategory: {} });
+    await db.doc(`users/${UID}/dailyRollups/2026-08-01`).set({ totalMinor: 700, count: 1, byCategory: { x: 700 } });
+    await db.doc(`users/${UID}/monthlyRollups/2026-08`).set({ totalMinor: 700, count: 1, byCategory: {}, byDay: {} });
+
+    const result = await rebuildUserRollups(db, UID);
+
+    assert.deepEqual(await stored(), await expected());
+    assert.deepEqual(result, { expenses: 2, daily: 2, monthly: 2 });
+  });
+
+  it('leaves soft-deleted expenses out', async () => {
+    await write('a', null, expense({ amountMinor: 1_500 }));
+    await db.doc(firestorePaths.expense(UID, 'gone')).set(expense({ deletedAt: '2026-09-11T00:00:00.000Z' }));
+
+    await rebuildUserRollups(db, UID);
+
+    assert.deepEqual((await stored()).daily['2026-09-10'], { totalMinor: 1_500, count: 1, byCategory: { 'cat-food': 1_500 } });
+  });
+
+  it('gives identical documents when run twice', async () => {
+    await write('a', null, expense({ amountMinor: 1_500 }));
+    await write('b', null, expense({ amountMinor: 2_500, localDate: '2026-10-31' }));
+    await db.doc(`users/${UID}/dailyRollups/2026-09-10`).set({ totalMinor: 1, count: 1, byCategory: {} });
+
+    await rebuildUserRollups(db, UID);
+    const first = await everything();
+    await rebuildUserRollups(db, UID);
+
+    assert.deepEqual(await everything(), first);
+  });
+
+  it("rebuilds only the given user's data", async () => {
+    const corrupted = { totalMinor: 1, count: 42, byCategory: {} };
+    await db.doc(`users/${OTHER}/dailyRollups/2026-09-10`).set(corrupted);
+    await db.doc(`users/${OTHER}/rollupApplied/x`).set({ localDate: '2026-09-10', categoryId: 'c', amountMinor: 1, currency: 'INR' });
+    await write('a', null, expense());
+
+    await rebuildUserRollups(db, UID);
+
+    assert.deepEqual(await readAll('dailyRollups', OTHER), { '2026-09-10': corrupted });
+    assert.equal(Object.keys(await readAll('rollupApplied', OTHER)).length, 1);
+  });
+
+  it('resets the markers, so an edit after a rebuild is not double counted', async () => {
+    const v1 = expense({ amountMinor: 1_000 });
+    await write('a', null, v1);
+    // Markers lost, rollups wrong: a rebuild must restore both.
+    await db.doc(`users/${UID}/rollupApplied/a`).delete();
+    await db.doc(`users/${UID}/dailyRollups/2026-09-10`).set({ totalMinor: 5, count: 3, byCategory: {} });
+
+    await rebuildUserRollups(db, UID);
+    await write('a', v1, expense({ amountMinor: 4_000 }));
+
+    assert.deepEqual(await stored(), await expected());
+    const { daily } = await stored();
+    assert.equal((daily['2026-09-10'] as { totalMinor: number }).totalMinor, 4_000);
   });
 });
