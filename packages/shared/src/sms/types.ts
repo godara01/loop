@@ -75,25 +75,3 @@ export interface CompiledRegistry {
   readonly version: number;
   readonly templates: readonly CompiledTemplate[];
 }
-
-// Document types for Firestore
-export interface PendingExpenseDoc {
-  readonly id: string;
-  readonly status: PendingExpenseStatus;
-  readonly amountMinor: number;
-  readonly currency: CurrencyCode;
-  readonly merchant: string | null;
-  readonly accountLast4: string | null;
-  readonly occurredAt: string;
-  readonly receivedAt: string;
-  readonly source: PendingExpenseSource;
-  readonly templateId: string;
-  readonly confidence: number;
-  readonly suggestedCategoryId: string | null;
-  readonly suggestionConfidence: number | null;
-  readonly suggestionModelVersion: string | null;
-  readonly expenseId: string | null;
-  readonly displayHint: string;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
