@@ -22,7 +22,8 @@
  * never a float tolerance.
  */
 
-import type { PendingExpenseSource, PendingExpenseStatus } from './types';
+import type { ExpenseSource } from '../types';
+import type { PendingExpenseStatus } from './types';
 
 /** The incoming, not-yet-stored transaction being checked. */
 export interface DedupeCandidate {
@@ -40,11 +41,15 @@ export interface DedupePendingExpense {
   readonly status: PendingExpenseStatus;
 }
 
-/** An expense the user entered by hand (or already approved into the ledger). */
+/**
+ * An expense already in the ledger. Only `source: 'manual'` ones take part:
+ * an expense approved from a message is already covered, with its account,
+ * by the approved pending item it came from.
+ */
 export interface DedupeManualExpense {
   readonly amountMinor: number;
   readonly occurredAt: string;
-  readonly source: PendingExpenseSource;
+  readonly source: ExpenseSource;
 }
 
 /** Inclusive half-width of the pending/approved window. */
@@ -66,7 +71,10 @@ function withinWindow(a: number, b: number, windowMs: number): boolean {
  *   the same `accountLast4`, within ±10 min. A null `accountLast4` on either
  *   side can never match: without the account there is no evidence the two
  *   messages describe one transaction.
- * - A manual expense matches on the same `amountMinor` alone, within ±30 min.
+ * - A manual expense (`source: 'manual'`) matches on the same `amountMinor`
+ *   alone, within ±30 min. Other sources are skipped: two real ₹100 swipes on
+ *   one card 20 minutes apart must not collapse just because the first was
+ *   approved into the ledger.
  *   Hand-typed entries carry no account number, so amount and time are all
  *   there is to go on, and the wider window absorbs the lag between the swipe
  *   and the user reaching for the phone.
@@ -91,6 +99,7 @@ export function isDuplicatePendingExpense(
   }
 
   for (const manual of existingManual) {
+    if (manual.source !== 'manual') continue;
     if (manual.amountMinor !== candidate.amountMinor) continue;
     if (withinWindow(candidateAt, Date.parse(manual.occurredAt), MANUAL_WINDOW_MS)) {
       return true;

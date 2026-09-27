@@ -33,7 +33,7 @@ const pending = (over: Partial<DedupePendingExpense> = {}): DedupePendingExpense
 const manual = (over: Partial<DedupeManualExpense> = {}): DedupeManualExpense => ({
   amountMinor: 45_000,
   occurredAt: at(0),
-  source: 'pasted',
+  source: 'manual',
   ...over,
 });
 
@@ -191,5 +191,24 @@ describe('isDuplicatePendingExpense — the two-message swipe', () => {
 describe('isDuplicatePendingExpense — empty inputs', () => {
   it('is not a duplicate when there is nothing to compare against', () => {
     assert.equal(isDuplicatePendingExpense(candidate(), [], []), false);
+  });
+});
+
+describe('isDuplicatePendingExpense — only hand-typed expenses use the manual window', () => {
+  it('does not collapse a second real swipe because the first was approved into the ledger', () => {
+    // First ₹ swipe was approved (expense source 'sms'); the same amount on the same
+    // card 20 min later is a new transaction, outside the ±10 min pending window.
+    const approvedExpense = manual({ occurredAt: at(-20 * MIN), source: 'sms' });
+    assert.equal(isDuplicatePendingExpense(candidate(), [], [approvedExpense]), false);
+  });
+
+  it('ignores shared and group expenses too', () => {
+    for (const source of ['shared', 'group'] as const) {
+      assert.equal(isDuplicatePendingExpense(candidate(), [], [manual({ occurredAt: at(-5 * MIN), source })]), false);
+    }
+  });
+
+  it('still matches a hand-typed expense', () => {
+    assert.equal(isDuplicatePendingExpense(candidate(), [], [manual({ occurredAt: at(-5 * MIN) })]), true);
   });
 });
