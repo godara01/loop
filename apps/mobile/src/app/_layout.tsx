@@ -25,10 +25,13 @@ import { BootstrapProvider, useSession } from '@/core/providers/bootstrap-provid
 import { SettingsProvider } from '@/core/providers/settings-provider';
 import { determineResumeStep } from '@/features/onboarding';
 import { initAppCheck } from '@/lib/app-check';
+import { initCrashlytics } from '@/lib/crashlytics';
 
 SplashScreen.preventAutoHideAsync();
 // Before any Firebase call, so the first callable already carries a token. Never throws.
 void initAppCheck();
+// Collection is enabled only outside __DEV__; see lib/crashlytics.ts. Never throws.
+initCrashlytics();
 
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { profile } = useSession();

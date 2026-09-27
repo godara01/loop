@@ -45,11 +45,11 @@
           "imageWidth": 76
         }
       ],
-      "expo-sqlite",
       "expo-secure-store",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
       "@react-native-firebase/app-check",
+      "@react-native-firebase/crashlytics",
       "expo-file-system",
       "./modules/sms-reader/app.plugin.js",
       [

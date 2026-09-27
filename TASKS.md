@@ -112,7 +112,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | X2 | You → Export CSV screen | X1 | done |
 | X3 | Pure reset-app model | — | done |
 | X4 | You → Reset app screen | X3, C3 | done |
-| H1 | Crashlytics wrapper with key allowlist | A2 | todo |
+| H1 | Crashlytics wrapper with key allowlist | A2 | done |
 | H2 | App Check wiring | — | done |
 | H3 | Accessibility/testID audit script | — | done |
 | H4 | Fix every a11y/testID finding | H3 | done |

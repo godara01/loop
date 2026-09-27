@@ -14,6 +14,8 @@
 import { getApp } from '@react-native-firebase/app';
 import { ReactNativeFirebaseAppCheckProvider, initializeAppCheck } from '@react-native-firebase/app-check';
 
+import { recordError } from './crashlytics';
+
 let started = false;
 
 export async function initAppCheck(): Promise<void> {
@@ -28,7 +30,6 @@ export async function initAppCheck(): Promise<void> {
     });
     await initializeAppCheck(getApp(), { provider, isTokenAutoRefreshEnabled: true });
   } catch (error) {
-    // H1's Crashlytics wrapper doesn't exist yet; when it does, report here.
-    if (__DEV__) console.warn('[app-check] could not initialise', error);
+    recordError(error, 'errorCode', 'app-check-init');
   }
 }

@@ -196,6 +196,26 @@ const rules = [
       return violations;
     },
   },
+  {
+    // Crash reports leave the device, so exactly one file may talk to
+    // Crashlytics. That file scrubs keys and values through crash-keys.ts;
+    // a direct import anywhere else would bypass the allowlist.
+    name: 'crashlytics-only-in-wrapper',
+    check(filePath, lines, relPath) {
+      if (relPath === 'apps/mobile/src/lib/crashlytics.ts') return [];
+      if (relPath.startsWith('scripts/check-invariants')) return [];
+      const violations = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (/@react-native-firebase\/crashlytics/.test(lines[i])) {
+          violations.push({
+            line: i + 1,
+            message: '@react-native-firebase/crashlytics imported outside lib/crashlytics.ts',
+          });
+        }
+      }
+      return violations;
+    },
+  },
 ];
 
 function main() {
