@@ -148,7 +148,7 @@ export function CatalogueScreen({ returnTo }: { returnTo: CatalogueReturnTo }) {
             accessibilityRole="button"
             accessibilityLabel="Create a custom category"
             onPress={() =>
-              router.push(returnTo === 'entry' ? '/category/new?fromEntry=1' : '/category/new')
+              router.push(returnTo === 'entry' ? '/category/new?fromEntry=1&viaCatalogue=1' : '/category/new?viaCatalogue=1')
             }
             style={styles.footerLink}>
             <Text style={styles.footerLinkText}>Can't find it? Create your own →</Text>

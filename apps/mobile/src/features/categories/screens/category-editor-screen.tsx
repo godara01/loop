@@ -46,11 +46,18 @@ const ERROR_MESSAGES: Record<string, string> = {
 export function CategoryEditorScreen({
   categoryId,
   fromEntry = false,
+  viaCatalogue = false,
 }: {
   /** Undefined for create; set for edit. */
   categoryId?: string;
   /** Opened from the "+" in the expense sheet — return with the new category selected. */
   fromEntry?: boolean;
+  /**
+   * Opened from the catalogue's "Create your own" footer. Saving finishes the
+   * user's "add a category" task, so it returns past the catalogue — to Manage,
+   * or to the entry sheet — instead of back into a (usually empty) search.
+   */
+  viaCatalogue?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const { uid } = useSession();
@@ -144,7 +151,8 @@ export function CategoryEditorScreen({
       await saveCategory(uid, category);
       if (fromEntry && !editing) updateDraft({ categoryId: category.id });
       haptic('splitConfirm');
-      router.back();
+      if (viaCatalogue && !editing) router.dismiss(2);
+      else router.back();
 
       // The upload itself is never awaited before leaving the screen — only
       // Firestore's write queues offline, Storage's does not. Once it lands,
