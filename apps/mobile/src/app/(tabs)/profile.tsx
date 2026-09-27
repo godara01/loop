@@ -190,7 +190,7 @@ export default function ProfileScreen() {
               testID="profile-manage-categories"
               accessibilityRole="link"
               accessibilityLabel="Manage categories"
-              onPress={() => router.push('/category/index')}
+              onPress={() => router.push('/category')}
               style={styles.manageLink}>
               <Text style={styles.manageLinkText}>Manage categories →</Text>
             </Pressable>
