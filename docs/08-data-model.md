@@ -163,11 +163,16 @@ in [03](03-expenses.md#acceptance-criteria) and [05](05-insights.md#performance)
 
 ## Acceptance criteria
 
-- [ ] `npm run typecheck` passes across all workspaces after the shared changes.
-- [ ] `packages/shared` has zero React, React Native and Firebase imports, with a
+- [x] `npm run typecheck` passes across all workspaces after the shared changes.
+      (proof: `npm run typecheck` exits 0 across @loop/mobile, @loop/shared and @loop/functions)
+- [x] `packages/shared` has zero React, React Native and Firebase imports, with a
       lint rule proving it.
+      (proof: scripts/check-invariants.mjs rule 2 "shared-no-react-native-firebase")
 - [ ] The same `coins.ts` and `streak.ts` functions are imported by both the app
       and Cloud Functions.
-- [ ] A converter given a malformed document throws rather than yielding `NaN`.
-- [ ] Every v1 expense is a valid `ExpenseLike` for `settle.ts` with no mapping.
-- [ ] Export → re-import produces byte-identical `amountMinor` values.
+- [x] A converter given a malformed document throws rather than yielding `NaN`.
+      (proof: packages/shared/src/__tests__/firestore.test.ts › "rejects a document that is not an object at all")
+- [x] Every v1 expense is a valid `ExpenseLike` for `settle.ts` with no mapping.
+      (proof: packages/shared/src/__tests__/expenses.test.ts › "is already a valid settlement input that nets to zero")
+- [x] Export → re-import produces byte-identical `amountMinor` values.
+      (proof: packages/shared/src/__tests__/csv.test.ts › "round-trips Number.MAX_SAFE_INTEGER exactly, with an exact display amount")

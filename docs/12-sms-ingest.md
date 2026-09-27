@@ -245,9 +245,14 @@ Sequenced plan:
 - [ ] `remoteConfig.smsIngestEnabled = false` fully disables capture at runtime.
 - [ ] No SMS body appears in Firestore, Storage, Crashlytics, Analytics, or logs
       — verified by inspection of a real device session.
-- [ ] An OTP message never produces a pending expense.
-- [ ] Bank + card-network duplicates of one transaction produce one pending item.
-- [ ] A manually entered expense suppresses the matching SMS item.
-- [ ] Pending items are absent from every total, chart, streak and coin award.
-- [ ] The parser suite runs with no device and no emulator, against a fixture
+- [x] An OTP message never produces a pending expense.
+      (proof: packages/shared/src/__tests__/sms-parser.test.ts › "returns null for an OTP from an allowlisted bank")
+- [x] Bank + card-network duplicates of one transaction produce one pending item.
+      (proof: packages/shared/src/__tests__/sms-dedupe.test.ts › "collapses a bank SMS and a card-network SMS 2 minutes apart")
+- [x] A manually entered expense suppresses the matching SMS item.
+      (proof: packages/shared/src/__tests__/sms-dedupe.test.ts › "matches a manual expense on amount alone, with no account number in play")
+- [x] Pending items are absent from every total, chart, streak and coin award.
+      (proof: scripts/check-invariants.mjs rule 6 "pending-expenses-location")
+- [x] The parser suite runs with no device and no emulator, against a fixture
       corpus of at least 40 real message shapes.
+      (proof: packages/shared/src/__tests__/sms-corpus.test.ts › "has at least 40 entries covering at least 4 banks")

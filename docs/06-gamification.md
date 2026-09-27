@@ -183,16 +183,21 @@ Never fire two haptics within 150ms — see [07-haptics.md](07-haptics.md#sequen
 
 ## Acceptance criteria
 
-- [ ] Checking in twice in one local day produces one check-in doc and one
+- [x] Checking in twice in one local day produces one check-in doc and one
       `check_in` ledger entry, enforced by document id.
-- [ ] Logging 10 expenses in a day awards at most 6 `expense_logged` coins.
-- [ ] A client cannot write `coinLedger` or `wallet` — proven by a rules test.
+      (proof: tests/functions/functions.test.ts › "double check-in creates one check_in ledger entry and awards zero-spend bonus if no expenses")
+- [x] Logging 10 expenses in a day awards at most 6 `expense_logged` coins.
+      (proof: tests/functions/functions.test.ts › "10 expenses in a day awards at most 6 expense_logged coins (capped at 3) and 3 categorised coins")
+- [x] A client cannot write `coinLedger` or `wallet` — proven by a rules test.
+      (proof: tests/firestore-rules/rules.test.ts › "lets the owner read their wallet but never write it" and "lets the owner read their coin ledger entry but never write it")
 - [ ] `wallet.coinBalance` always equals the sum of the ledger; a rebuild is a
       no-op.
 - [ ] Deleting every expense on a banked day leaves the streak and coins intact.
-- [ ] A backdated expense does not fill a past streak day.
+- [x] A backdated expense does not fill a past streak day.
+      (proof: tests/functions/functions.test.ts › "backdated expense does not create a check-in or award past coins")
 - [ ] Offline: the streak and `+N` chip update instantly and reconcile on
       reconnect with no visible correction in the normal case.
 - [ ] **Keep it plain** hides the capsule, balance, chips and bursts, and no
       gamification haptic fires while it is on.
-- [ ] The app has zero push notifications registered.
+- [x] The app has zero push notifications registered.
+      (proof: scripts/check-invariants.mjs rule 5 "mobile-no-push-registration")

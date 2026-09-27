@@ -153,4 +153,5 @@ These matter more than the onboarding screens — most users will see them.
       it once.
 - [ ] The entire flow completes in airplane mode, and syncs when connectivity
       returns.
-- [ ] No permission dialog appears at any point in onboarding.
+- [x] No permission dialog appears at any point in onboarding.
+      (proof: scripts/check-invariants.mjs rule 4 "onboarding-no-permission-request")

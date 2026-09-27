@@ -124,7 +124,8 @@ regression test the tactile layer has.
 
 ## Acceptance criteria
 
-- [ ] `expo-haptics` is imported in exactly one file in the repo.
+- [x] `expo-haptics` is imported in exactly one file in the repo.
+      (proof: scripts/check-invariants.mjs rule 1 "expo-haptics")
 - [ ] `expenseSaved` and `destructive` exist for both platforms and appear in the
       **You** debug list.
 - [ ] No code path fires two haptics within 150ms.
