@@ -85,7 +85,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | S6 | `dedupe.ts` — `isDuplicatePendingExpense` | A1 | done |
 | S7 | `displayHint` builder | A1 | done |
 | P1 | `pendingExpenses` path + converter pair | — | done |
-| P2 | `pendingExpenses` security rules + rules tests | P1 | todo |
+| P2 | `pendingExpenses` security rules + rules tests | P1 | done |
 | P3 | Pure approval-batch model | P1 | done |
 | P4 | `pending-expenses-repository.ts` | P1, P3 | done |
 | N1 | Native `sms-reader` Expo module (code only) | — | todo |

@@ -69,8 +69,45 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // SMS-derived proposals (docs/12-sms-ingest.md). Never an expense until
+      // approved, never deleted by a client (rejections are the post-MVP
+      // training signal), and never carrying the raw message: the key set is
+      // exact, so a `body` field is refused outright.
       match /pendingExpenses/{pendingId} {
-        allow read, write: if isOwner(uid);
+        function pendingKeys() {
+          return ['status', 'amountMinor', 'currency', 'merchant', 'accountLast4',
+                  'occurredAt', 'receivedAt', 'source', 'templateId', 'confidence',
+                  'suggestedCategoryId', 'suggestionConfidence', 'suggestionModelVersion',
+                  'expenseId', 'displayHint', 'createdAt', 'updatedAt'];
+        }
+
+        allow read: if isOwner(uid);
+
+        allow create: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(pendingKeys())
+          && request.resource.data.keys().hasAll(pendingKeys())
+          && request.resource.data.status == 'pending'
+          && request.resource.data.expenseId == null
+          && request.resource.data.amountMinor is int
+          && request.resource.data.amountMinor > 0
+          && request.resource.data.currency is string
+          && request.resource.data.source in ['sms', 'shared', 'pasted'];
+
+        // Only a decision on a pending item. The amount, currency and dates are
+        // what the bank said and cannot be rewritten; approval must create the
+        // linked expense in the same batch (P4's approve writes both).
+        allow update: if isOwner(uid)
+          && resource.data.status == 'pending'
+          && (
+            (request.resource.data.status == 'approved'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'expenseId', 'updatedAt'])
+              && request.resource.data.expenseId is string
+              && existsAfter(/databases/$(database)/documents/users/$(uid)/expenses/$(request.resource.data.expenseId)))
+            || (request.resource.data.status == 'rejected'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
+          );
+
+        allow delete: if false;
       }
 
       // The document id IS the local date, which is what makes a check-in
