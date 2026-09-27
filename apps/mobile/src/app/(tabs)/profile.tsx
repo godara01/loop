@@ -200,6 +200,18 @@ export default function ProfileScreen() {
 
       <Card>
         <Pressable
+          testID="profile-inbox"
+          accessibilityRole="link"
+          accessibilityLabel="Inbox"
+          onPress={() => {
+            haptic('tap');
+            router.push('/inbox');
+          }}
+          style={styles.manageLink}>
+          <Text style={styles.manageLinkText}>Inbox →</Text>
+        </Pressable>
+        <Perforation />
+        <Pressable
           testID="profile-auto-capture"
           accessibilityRole="link"
           accessibilityLabel="Auto-capture bank messages"
