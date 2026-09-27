@@ -40,7 +40,7 @@ export const onCategoryCreate = onDocumentCreated('users/{uid}/categories/{categ
  * comes only from auth — never from the request data — so a user can rebuild
  * nobody's rollups but their own.
  */
-export const rebuildRollups = onCall(async (request) => {
+export const rebuildRollups = onCall({ enforceAppCheck: true }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to rebuild rollups.');
   return rebuildUserRollups(db, request.auth.uid);
 });
@@ -56,7 +56,7 @@ export const expirePendingExpenses = onSchedule({ schedule: 'every day 03:30', t
 });
 
 /** Reset app / delete account: removes every document and file under the caller's uid. */
-export const deleteUserData = onCall(async (request) => {
+export const deleteUserData = onCall({ enforceAppCheck: true }, async (request) => {
   const uid = uidToDelete(request.auth, request.data);
   await deleteUserSubtree(db, admin.storage().bucket(), uid);
   return { deleted: true };

@@ -24,8 +24,11 @@ import { AuthProvider } from '@/core/providers/auth-provider';
 import { BootstrapProvider, useSession } from '@/core/providers/bootstrap-provider';
 import { SettingsProvider } from '@/core/providers/settings-provider';
 import { determineResumeStep } from '@/features/onboarding';
+import { initAppCheck } from '@/lib/app-check';
 
 SplashScreen.preventAutoHideAsync();
+// Before any Firebase call, so the first callable already carries a token. Never throws.
+void initAppCheck();
 
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { profile } = useSession();
