@@ -59,37 +59,7 @@ class SmsReaderModule : Module() {
 
     /** Starts forwarding each incoming SMS to JS as an `onSms` event. Idempotent. */
     Function("startListening") {
-      if (receiver != null) return@Function
-      val next = object : BroadcastReceiver() {
-        override fun onReceive(ctx: Context, intent: Intent) {
-          if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
-          // One SMS longer than a PDU arrives as several parts from one sender.
-          Telephony.Sms.Intents.getMessagesFromIntent(intent)
-            .filterNotNull()
-            .groupBy { it.originatingAddress ?: "" }
-            .forEach { (sender, parts) ->
-              sendEvent(
-                "onSms",
-                mapOf(
-                  "sender" to sender,
-                  "body" to parts.joinToString("") { it.messageBody ?: "" },
-                  "timestamp" to parts.first().timestampMillis.toDouble()
-                )
-              )
-            }
-        }
-      }
-      // Guarded by BROADCAST_SMS: only the system can deliver to this receiver,
-      // so no other app can inject a fake bank message.
-      ContextCompat.registerReceiver(
-        context,
-        next,
-        IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION),
-        Manifest.permission.BROADCAST_SMS,
-        null,
-        ContextCompat.RECEIVER_EXPORTED
-      )
-      receiver = next
+      startListening()
     }
 
     /** Stops forwarding. Safe to call when not listening. */
@@ -100,6 +70,40 @@ class SmsReaderModule : Module() {
     OnDestroy {
       stop()
     }
+  }
+
+  private fun startListening() {
+    if (receiver != null) return
+    val next = object : BroadcastReceiver() {
+      override fun onReceive(ctx: Context, intent: Intent) {
+        if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
+        // One SMS longer than a PDU arrives as several parts from one sender.
+        Telephony.Sms.Intents.getMessagesFromIntent(intent)
+          .filterNotNull()
+          .groupBy { it.originatingAddress ?: "" }
+          .forEach { (sender, parts) ->
+            sendEvent(
+              "onSms",
+              mapOf(
+                "sender" to sender,
+                "body" to parts.joinToString("") { it.messageBody ?: "" },
+                "timestamp" to parts.first().timestampMillis.toDouble()
+              )
+            )
+          }
+      }
+    }
+    // Guarded by BROADCAST_SMS: only the system can deliver to this receiver,
+    // so no other app can inject a fake bank message.
+    ContextCompat.registerReceiver(
+      context,
+      next,
+      IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION),
+      Manifest.permission.BROADCAST_SMS,
+      null,
+      ContextCompat.RECEIVER_EXPORTED
+    )
+    receiver = next
   }
 
   private fun stop() {
