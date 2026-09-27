@@ -35,6 +35,7 @@ import { Card, MonoTag } from '@/components/ui/surface';
 import { useSession } from '@/core/providers/bootstrap-provider';
 import { useSettings } from '@/core/providers/settings-provider';
 import { useCategories } from '@/features/categories';
+import { EMPTY_STATES } from '@/lib/empty-states';
 import { haptic } from '@/lib/haptics';
 
 import { type ExpensesState, useExpensesForPeriod } from '../hooks/use-expenses';
@@ -160,7 +161,7 @@ export function InsightsScreen() {
       {rollups.status === 'error' ? <Text style={styles.error}>{rollups.message}</Text> : null}
       {needsConnection ? <Text testID="insights-needs-connection" style={styles.thinData}>Needs a connection once.</Text> : null}
       {expenses.status === 'ready' && rollups.status !== 'loading' && model.stats.count === 0 ? (
-        <Text testID="insights-empty" style={styles.empty}>Nothing logged in this window.</Text>
+        <Text testID="insights-empty" style={styles.empty}>{EMPTY_STATES.insights}</Text>
       ) : (
         <>
           <Card hero accent="credit" style={styles.hero}>
@@ -172,7 +173,7 @@ export function InsightsScreen() {
             </View>
           </Card>
 
-          {model.days.filter((day) => day.count > 0).length < 3 ? <Text style={styles.thinData}>Trends become clearer after about a week.</Text> : null}
+          {model.days.filter((day) => day.count > 0).length < 3 ? <Text style={styles.thinData}>{EMPTY_STATES.insightsThinData}</Text> : null}
 
           <Text style={styles.section}>BY CATEGORY</Text>
           <Card style={styles.list}>

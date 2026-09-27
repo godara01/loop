@@ -15,6 +15,7 @@ import { MonoTag } from '@/components/ui/surface';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { useSession } from '@/core/providers/bootstrap-provider';
 import { useCategories } from '@/features/categories';
+import { EMPTY_STATES } from '@/lib/empty-states';
 import { haptic } from '@/lib/haptics';
 
 import {
@@ -26,8 +27,6 @@ import { PendingCard } from '../components/pending-card';
 import { usePendingExpenses } from '../hooks/use-pending-expenses';
 import type { CategoryChoices, PendingExpense } from '../model/approval';
 import { canApproveAll, groupByDay } from '../model/inbox-view';
-
-export const INBOX_EMPTY_COPY = 'Transaction messages will show up here for you to approve.';
 
 const logWriteFailure = (error: unknown) => console.warn('[inbox] write rejected', error);
 
@@ -156,7 +155,7 @@ export function InboxScreen() {
           ) : (
             <View style={styles.emptyState} testID="inbox-empty">
               <Ionicons name="mail-open-outline" size={40} color={colors.textMuted} />
-              <Text style={styles.empty}>{INBOX_EMPTY_COPY}</Text>
+              <Text style={styles.empty}>{EMPTY_STATES.inbox}</Text>
             </View>
           )
         }

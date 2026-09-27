@@ -35,6 +35,7 @@ import {
   useWallet,
 } from '@/features/gamification/hooks/use-gamification';
 import { haptic } from '@/lib/haptics';
+import { EMPTY_STATES } from '@/lib/empty-states';
 
 import { ExpenseRow } from '../components/expense-row';
 import { useExpensesForLastDays, useRecentExpenses } from '../hooks/use-expenses';
@@ -122,7 +123,7 @@ export function OrbitScreen() {
         </Text>
         <Text style={styles.caption} testID="orbit-today-count">
           {todays.length === 0
-            ? 'Nothing logged today.'
+            ? EMPTY_STATES.orbit
             : `${todays.length} ${todays.length === 1 ? 'expense' : 'expenses'} logged`}
         </Text>
       </Card>

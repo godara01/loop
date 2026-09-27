@@ -13,6 +13,7 @@ import { MonoTag } from '@/components/ui/surface';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { useSession } from '@/core/providers/bootstrap-provider';
 import { useCategories } from '@/features/categories';
+import { EMPTY_STATES } from '@/lib/empty-states';
 
 import { ExpenseRow } from '../components/expense-row';
 import { useLedgerExpenses } from '../hooks/use-expenses';
@@ -111,7 +112,7 @@ export function LedgerScreen() {
             </Text>
           ) : (
             <View style={styles.emptyState} testID="ledger-empty">
-              <Text style={styles.empty}>Your ledger starts here.</Text>
+              <Text style={styles.empty}>{EMPTY_STATES.ledger}</Text>
               <TactileButton label="Log an expense" onPress={() => router.push('/expense/new')} />
             </View>
           )

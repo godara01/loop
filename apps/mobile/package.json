@@ -63,7 +63,7 @@
     "start:tunnel": "expo start --tunnel",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "web": "expo start --web",
-    "test": "tsx --test src/features/*/model/*.test.ts"
+    "test": "tsx --test src/features/*/model/*.test.ts src/lib/*.test.ts"
   },
   "private": true
 }
