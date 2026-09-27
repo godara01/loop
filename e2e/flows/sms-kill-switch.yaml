@@ -40,7 +40,7 @@ env:
 - tapOn:
     id: "auto-capture-back"
 - tapOn:
-    id: "tab-orbit"
+    id: "tab-index"
 
 - waitForAnimationToEnd:
     timeout: 30000

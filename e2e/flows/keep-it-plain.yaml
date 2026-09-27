@@ -1,5 +1,6 @@
-# Keep it plain switch hides gamification UI.
-# See docs/06-gamification.md#restraint-rules.
+# Keep it plain hides the streak capsule and coin balance, keeps them hidden
+# through new activity, and toggling back loses nothing.
+# See docs/06-gamification.md#restraint-rules (rule 5).
 appId: com.getter.loop
 ---
 - runFlow: ../subflows/reset.yaml
@@ -7,21 +8,29 @@ appId: com.getter.loop
 - assertVisible:
     id: "screen-orbit"
 
-# Initial state: capsule and coins visible
+# Bank today so there is a streak and a coin balance to hide.
+- tapOn:
+    id: "check-in-button"
+- extendedWaitUntil:
+    visible: "DAY BANKED"
+    timeout: 15000
 - assertVisible:
-    testID: "orbit-coin-balance"
+    id: "streak-capsule"
+# Coins are awarded by onCheckInCreate on the server.
+- extendedWaitUntil:
+    visible:
+      id: "orbit-coin-balance"
+    timeout: 30000
 
-# Go to profile
+# Turn Keep it plain on.
+# The You screen is taller than the viewport and the tab dock floats over
+# its bottom: centre the row first so the tap lands on it, not the dock.
 - tapOn:
     id: "tab-profile"
 - extendedWaitUntil:
     visible:
       id: "screen-profile"
     timeout: 10000
-
-# Toggle "Keep it plain"
-# The You screen is taller than the viewport and the tab dock floats over
-# its bottom: centre the row first so the tap lands on it, not the dock.
 - scrollUntilVisible:
     element:
       id: "profile-keep-it-plain-switch"
@@ -29,14 +38,55 @@ appId: com.getter.loop
 - tapOn:
     id: "profile-keep-it-plain-switch"
 
-# Return to orbit
 - tapOn:
-    id: "tab-orbit"
+    id: "tab-index"
 - extendedWaitUntil:
     visible:
       id: "screen-orbit"
     timeout: 10000
-
-# Verify capsule and coin balance are hidden
 - assertNotVisible:
-    testID: "orbit-coin-balance"
+    id: "streak-capsule"
+- assertNotVisible:
+    id: "orbit-coin-balance"
+
+# New activity still shows nothing gamified.
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-4"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+- assertNotVisible:
+    id: "streak-capsule"
+- assertNotVisible:
+    id: "orbit-coin-balance"
+
+# Toggle back: the ledger kept accruing, so everything returns.
+- tapOn:
+    id: "tab-profile"
+- scrollUntilVisible:
+    element:
+      id: "profile-keep-it-plain-switch"
+    centerElement: true
+- tapOn:
+    id: "profile-keep-it-plain-switch"
+- tapOn:
+    id: "tab-index"
+- extendedWaitUntil:
+    visible:
+      id: "streak-capsule"
+    timeout: 10000
+- assertVisible:
+    id: "orbit-coin-balance"

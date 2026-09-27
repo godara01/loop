@@ -1,37 +1,52 @@
-# Check-in offline, kill app, reconnect, verify sync (no duplicate check-in).
-# See docs/02-onboarding.md and docs/06-gamification.md#idempotency.
+# Check in offline: the day banks instantly, survives a kill and relaunch while
+# still offline, and reconciles on reconnect to exactly one check-in doc and a
+# server-awarded balance. See docs/06-gamification.md acceptance criteria.
 appId: com.getter.loop
+# Never leave the emulator offline for the next flow, pass or fail.
+onFlowComplete:
+  - setAirplaneMode: disabled
 ---
 - runFlow: ../subflows/reset.yaml
 - runFlow: ../subflows/onboarded.yaml
 - assertVisible:
     id: "screen-orbit"
 
-# Enter airplane mode
-- setAirplaneMode: on
+- setAirplaneMode: enabled
 
-# Tap check-in
+# Optimistic: the plate and streak update with no server.
 - tapOn:
-    id: "check-in-plate"
-- wait: 2000
+    id: "check-in-button"
+- extendedWaitUntil:
+    visible: "DAY BANKED"
+    timeout: 5000
+- assertVisible:
+    id: "streak-capsule"
+    text: "1 day streak"
 
-# Kill and relaunch
-- stopApp
-- openLink: "exp+loop://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+# Kill and relaunch, still offline: the banked day comes back from the cache.
+# (Metro is reached over adb reverse, which airplane mode does not cut.)
+- runFlow: ../subflows/launch.yaml
 - extendedWaitUntil:
     visible:
       id: "screen-orbit"
     timeout: 30000
+- assertVisible: "DAY BANKED"
 
-# Should still be checked in (offline cached)
+- setAirplaneMode: disabled
+
+# Reconcile: onCheckInCreate awards coins once the write lands.
+- extendedWaitUntil:
+    visible:
+      id: "orbit-coin-balance"
+    timeout: 60000
+- assertVisible: "DAY BANKED"
 - assertVisible:
-    id: "check-in-plate"
+    id: "streak-capsule"
+    text: "1 day streak"
 
-# Exit airplane mode
-- setAirplaneMode: off
-- wait: 3000
-
-# Verify only one check-in on server
+# Exactly one check-in on the server.
 - runScript:
-    file: ../scripts/query-check-ins.js
-- assertTrue: "${output.docs.length == 1}"
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "checkIns"
+- assertTrue: ${output.docs.length == 1}

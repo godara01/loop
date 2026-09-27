@@ -7,7 +7,7 @@ import { DEFAULT_SETTINGS, type UserSettings } from '@loop/shared';
 import { type ReactNode, createContext, useContext, useEffect, useState } from 'react';
 
 import { observeSettings, saveSettings } from '@/core/firebase/settings-repository';
-import { setHapticsEnabled } from '@/lib/haptics';
+import { setHapticsEnabled, setKeepItPlainHaptics } from '@/lib/haptics';
 
 import { useSession } from './bootstrap-provider';
 
@@ -43,6 +43,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setHapticsEnabled(settings.hapticsEnabled);
   }, [settings.hapticsEnabled]);
+
+  useEffect(() => {
+    setKeepItPlainHaptics(settings.keepItPlain);
+  }, [settings.keepItPlain]);
 
   const update = (patch: Partial<UserSettings>) => {
     const next = { ...settings, ...patch };

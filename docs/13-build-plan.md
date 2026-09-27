@@ -155,6 +155,14 @@ getting faster as the strip learns.
 
 ### M6 — Streak, check-in, coins
 
+> **Device-verified — 2026-09-27 (D3).** On Loop_API35 with dev build
+> `3b37050f`, `check-in-zero-spend`, `check-in-offline-reconcile` and
+> `keep-it-plain` each passed twice. Found and fixed: offline, check-in
+> awaited the Firestore write (which resolves only on server ack), so the
+> haptic and `+N` never fired and the streak stayed at 0 until reconnect;
+> the capsule now predicts with the shared `recordActivity`. The same await
+> pattern in onboarding would have stranded an offline user on steps 1, 3 and 4.
+
 - Check-in plate, streak capsule, optimistic prediction on device
 - `onExpenseWrite` / `onCheckInCreate` Functions, coin ledger, wallet
 - Coins history screen; **Keep it plain** switch

@@ -41,6 +41,8 @@ import {
 import { saveCheckIn } from '@/features/gamification/api/gamification-repository';
 import { haptic } from '@/lib/haptics';
 
+const logWriteFailure = (error: unknown) => console.warn('[onboarding] write rejected', error);
+
 export function FirstExpenseStepScreen() {
   const insets = useSafeAreaInsets();
   const { uid, profile } = useSession();
@@ -99,9 +101,12 @@ export function FirstExpenseStepScreen() {
         now,
       });
 
-      await saveExpense(uid, expense);
-      await saveCheckIn(uid, today);
-      await updateProfile(uid, { onboardedAt: now });
+      // Not awaited: a Firestore write resolves only on server ack, so offline
+      // (docs/02 airplane-mode run) awaiting would strand the user here. The
+      // local cache has all three at once; the bootstrap gate reads it.
+      saveExpense(uid, expense).catch(logWriteFailure);
+      saveCheckIn(uid, today).catch(logWriteFailure);
+      updateProfile(uid, { onboardedAt: now }).catch(logWriteFailure);
 
       haptic('expenseSaved');
       router.replace('/(tabs)');
@@ -117,7 +122,7 @@ export function FirstExpenseStepScreen() {
     setSaving(true);
     try {
       const now = new Date().toISOString();
-      await updateProfile(uid, { onboardedAt: now });
+      updateProfile(uid, { onboardedAt: now }).catch(logWriteFailure);
       haptic('press');
       router.replace('/(tabs)');
     } catch (err) {

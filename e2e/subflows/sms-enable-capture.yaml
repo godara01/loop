@@ -37,4 +37,4 @@ appId: com.getter.loop
 - tapOn:
     id: "auto-capture-back"
 - tapOn:
-    id: "tab-orbit"
+    id: "tab-index"

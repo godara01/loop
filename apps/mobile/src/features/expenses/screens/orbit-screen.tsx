@@ -9,6 +9,7 @@ import {
   formatMoney,
   layout,
   money,
+  recordActivity,
   space,
   sum,
   todayISO,
@@ -29,6 +30,7 @@ import { saveCheckIn } from '@/features/gamification/api/gamification-repository
 import { CheckInPlate } from '@/features/gamification/components/check-in-plate';
 import { CoinAwardChip } from '@/features/gamification/components/coin-award-chip';
 import { StreakBurst } from '@/features/gamification/components/streak-burst';
+import { claimCelebration } from '@/features/gamification/model/celebration-budget';
 import {
   useStreak,
   useTodayCheckIn,
@@ -77,22 +79,34 @@ export function OrbitScreen() {
   );
   const zeroSpend = todays.length === 0;
 
-  const streakDays = streakState.status === 'ready' ? streakState.snapshot.streak.current : 0;
   const walletCoins = walletState.status === 'ready' ? walletState.snapshot.wallet.coinBalance : 0;
-  const todayCheckedIn = checkInState.status === 'ready' && checkInState.snapshot.todayExists;
+  // Today is banked by a check-in doc, or by an expense logged today — which the
+  // server turns into that doc (onExpenseWrite). Both are in the local cache at
+  // once, so offline the plate banks immediately rather than after reconnect.
+  const todayCheckedIn = (checkInState.status === 'ready' && checkInState.snapshot.todayExists) || !zeroSpend;
+  // The streak doc is server-written, so offline (or before the Function
+  // lands) it hasn't counted today yet. Predict with the same recordActivity
+  // the Function runs, so the capsule moves instantly and the server agrees.
+  const serverStreak = streakState.status === 'ready' ? streakState.snapshot.streak : null;
+  const streakDays = serverStreak
+    ? todayCheckedIn
+      ? recordActivity(serverStreak, todayIso).current
+      : serverStreak.current
+    : 0;
 
-  const handleCheckIn = useCallback(async () => {
-    try {
-      await saveCheckIn(uid, todayIso);
-      haptic('streakAdvance');
-      if (!settings.keepItPlain) {
-        setOptimisticCoins(zeroSpend ? 8 : 5);
-        if (streakDays + 1 === 7 || streakDays + 1 === 30 || streakDays + 1 === 100) {
-          setShowBurst(true);
-        }
-      }
-    } catch (err) {
+  const handleCheckIn = useCallback(() => {
+    // Not awaited: a Firestore write's promise resolves only on server ack, so
+    // offline nothing after an await would run. The local cache has the
+    // check-in at once; a rejected write surfaces through the listener.
+    saveCheckIn(uid, todayIso).catch((err: unknown) => {
       console.warn('Check-in error:', err);
+    });
+    haptic('streakAdvance');
+    if (!settings.keepItPlain) {
+      setOptimisticCoins(zeroSpend ? 8 : 5);
+      if ((streakDays + 1 === 7 || streakDays + 1 === 30 || streakDays + 1 === 100) && claimCelebration()) {
+        setShowBurst(true);
+      }
     }
   }, [uid, todayIso, zeroSpend, settings.keepItPlain, streakDays]);
 
@@ -148,7 +162,7 @@ export function OrbitScreen() {
             <StreakCapsule
               days={streakDays}
               onPress={() => {
-                if (streakDays === 7 || streakDays === 30 || streakDays === 100) {
+                if ((streakDays === 7 || streakDays === 30 || streakDays === 100) && claimCelebration()) {
                   setShowBurst(true);
                 }
               }}

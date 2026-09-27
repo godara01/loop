@@ -60,12 +60,22 @@ export function areHapticsEnabled(): boolean {
   return enabled;
 }
 
+/** Events that exist only to celebrate. docs/07: Keep it plain suppresses them. */
+const GAMIFICATION_EVENTS: ReadonlySet<HapticEvent> = new Set<HapticEvent>(['streakAdvance']);
+let keepItPlain = false;
+
+/** Wire this to the Keep it plain setting (docs/06 restraint rule 5). */
+export function setKeepItPlainHaptics(next: boolean): void {
+  keepItPlain = next;
+}
+
 /**
  * Trigger a semantic haptic. Safe to call from anywhere, including gesture
  * callbacks — it never throws and never blocks.
  */
 export function haptic(event: HapticEvent): void {
   if (!enabled) return;
+  if (keepItPlain && GAMIFICATION_EVENTS.has(event)) return;
   void run(event).catch(() => {
     // A device without a motor, or a denied vibrate permission, is not an error.
   });

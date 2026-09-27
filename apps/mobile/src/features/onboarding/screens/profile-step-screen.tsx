@@ -47,10 +47,12 @@ export function ProfileStepScreen() {
 
     setSaving(true);
     try {
-      await updateProfile(uid, {
+      // Not awaited: offline, a Firestore write resolves only on server ack
+      // (docs/02 airplane-mode run). The local cache has it at once.
+      updateProfile(uid, {
         displayName: displayName.trim(),
         currency,
-      });
+      }).catch((err: unknown) => console.warn('Profile save error:', err));
       haptic('press');
       router.push('/onboarding/feel' as any);
     } catch (err) {

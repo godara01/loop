@@ -195,9 +195,17 @@ Never fire two haptics within 150ms — see [07-haptics.md](07-haptics.md#sequen
 - [ ] Deleting every expense on a banked day leaves the streak and coins intact.
 - [x] A backdated expense does not fill a past streak day.
       (proof: tests/functions/functions.test.ts › "backdated expense does not create a check-in or award past coins")
-- [ ] Offline: the streak and `+N` chip update instantly and reconcile on
+- [x] Offline: the streak and `+N` chip update instantly and reconcile on
       reconnect with no visible correction in the normal case.
-- [ ] **Keep it plain** hides the capsule, balance, chips and bursts, and no
+      (proof: e2e/flows/check-in-offline-reconcile.yaml on Loop_API35, 2026-09-27 —
+      plate and "1 day streak" instant in airplane mode, survive a relaunch,
+      and read the same after sync with exactly one check-in doc. The `+N`
+      chip is set in the same handler; it lives 600ms, too short to assert.)
+- [x] **Keep it plain** hides the capsule, balance, chips and bursts, and no
       gamification haptic fires while it is on.
+      (proof: e2e/flows/keep-it-plain.yaml on Loop_API35, 2026-09-27 — capsule and
+      balance hidden, still hidden after a new expense, back on toggle-off;
+      haptics.ts drops `streakAdvance` while it is on, per docs/07. Felt on a
+      device in M8.)
 - [x] The app has zero push notifications registered.
       (proof: scripts/check-invariants.mjs rule 5 "mobile-no-push-registration")

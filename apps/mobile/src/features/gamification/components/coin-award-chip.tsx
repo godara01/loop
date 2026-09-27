@@ -12,6 +12,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 export function CoinAwardChip({
   amount,
@@ -32,9 +33,9 @@ export function CoinAwardChip({
       opacity.value = withSequence(
         withTiming(1, { duration: 400 }),
         withTiming(0, { duration: 200 }, (finished) => {
-          if (finished && onFinish) {
-            // Callback when finished
-          }
+          // Clears the parent's optimistic amount; without it the faded chip
+          // stayed mounted holding a stale +N.
+          if (finished && onFinish) scheduleOnRN(onFinish);
         }),
       );
     } else {
@@ -50,7 +51,7 @@ export function CoinAwardChip({
   if (!amount || amount <= 0) return null;
 
   return (
-    <Animated.View style={[styles.chip, animatedStyle]} pointerEvents="none">
+    <Animated.View testID="coin-award-chip" style={[styles.chip, animatedStyle]} pointerEvents="none">
       <Text style={styles.plus}>+</Text>
       <Text style={styles.amount}>{amount}</Text>
       <Text style={styles.label}> COINS</Text>

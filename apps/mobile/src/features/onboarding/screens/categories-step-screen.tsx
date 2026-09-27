@@ -25,6 +25,8 @@ import { saveCategory } from '@/features/categories/api/category-repository';
 import { useCategories } from '@/features/categories/hooks/use-categories';
 import { haptic } from '@/lib/haptics';
 
+const logWriteFailure = (error: unknown) => console.warn('[onboarding] write rejected', error);
+
 export function CategoriesStepScreen() {
   const insets = useSafeAreaInsets();
   const { uid } = useSession();
@@ -62,16 +64,18 @@ export function CategoriesStepScreen() {
       return;
     }
 
+    // Writes are not awaited: offline, a Firestore write resolves only on
+    // server ack (docs/02 airplane-mode run). The local cache has them at once.
     try {
       const now = new Date().toISOString();
       for (const cat of categories) {
         const isSelected = selectedIds.has(cat.id);
         if (isSelected && cat.archivedAt !== null) {
           const unarchived = unarchiveCategory(cat);
-          await saveCategory(uid, unarchived);
+          saveCategory(uid, unarchived).catch(logWriteFailure);
         } else if (!isSelected && cat.archivedAt === null) {
           const archived = archiveCategory(cat, now);
-          await saveCategory(uid, archived);
+          saveCategory(uid, archived).catch(logWriteFailure);
         }
       }
       haptic('press');

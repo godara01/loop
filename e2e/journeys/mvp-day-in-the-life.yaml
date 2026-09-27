@@ -282,7 +282,7 @@ appId: com.getter.loop
 
 # ── 5. Offline: add, kill, relaunch, still there, reconnect, synced
 - tapOn:
-    id: "tab-orbit"
+    id: "tab-index"
 - setAirplaneMode: enabled
 - tapOn:
     id: "dock-add"
@@ -394,7 +394,7 @@ appId: com.getter.loop
 - tapOn:
     id: "profile-keep-it-plain-switch"
 - tapOn:
-    id: "tab-orbit"
+    id: "tab-index"
 - assertNotVisible:
     id: "orbit-coin-balance"
 - assertNotVisible:
