@@ -44,8 +44,15 @@ appId: com.getter.loop
 - runFlow: ../subflows/dismiss-stylus-tip.yaml
 - tapOn:
     id: "catalogue-item-GYM"
-# The Add button sits at the bottom, under the open keyboard.
-- hideKeyboard
+# The Add button can sit under the keyboard. Tapping an item may already have
+# closed it, and hideKeyboard on Android presses Back, which closes the
+# catalogue, so only hide it when the button isn't reachable.
+- runFlow:
+    when:
+      notVisible:
+        id: "catalogue-add"
+    commands:
+      - hideKeyboard
 - tapOn:
     id: "catalogue-add"
 

@@ -38,8 +38,11 @@ appId: com.getter.loop
     id: "editor-name"
 - inputText: "Book Club"
 - runFlow: ../subflows/dismiss-stylus-tip.yaml
-# The keyboard covers the glyph grid, colours and Save.
-- hideKeyboard
+# Close the keyboard (it covers the glyph grid, colours and Save) by tapping
+# plain text in the form, as a user would. hideKeyboard presses Back on
+# Android, which closes the editor whenever the keyboard is already down.
+- tapOn:
+    text: "ICON"
 - assertVisible:
     text: "BOOKCLUB"
 

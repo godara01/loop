@@ -52,8 +52,15 @@ appId: com.getter.loop
 - runFlow: ../subflows/dismiss-stylus-tip.yaml
 - tapOn:
     id: "catalogue-item-COFFEE"
-# The Add button sits at the bottom, under the open keyboard.
-- hideKeyboard
+# The Add button can sit under the keyboard. Tapping an item may already have
+# closed it, and hideKeyboard on Android presses Back, which closes the
+# catalogue, so only hide it when the button isn't reachable.
+- runFlow:
+    when:
+      notVisible:
+        id: "catalogue-add"
+    commands:
+      - hideKeyboard
 - tapOn:
     id: "catalogue-add"
 - extendedWaitUntil:
@@ -192,8 +199,11 @@ appId: com.getter.loop
     id: "editor-name"
 - inputText: "Snacks"
 - runFlow: ../subflows/dismiss-stylus-tip.yaml
-# The keyboard covers the glyph grid, colours and Save.
-- hideKeyboard
+# Close the keyboard (it covers the glyph grid, colours and Save) by tapping
+# plain text in the form, as a user would. hideKeyboard presses Back on
+# Android, which closes the editor whenever the keyboard is already down.
+- tapOn:
+    text: "ICON"
 - tapOn:
     id: "color-amber"
 - tapOn:

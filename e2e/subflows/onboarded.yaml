@@ -25,7 +25,8 @@ appId: com.getter.loop
       - tapOn:
           id: "onboarding-name-input"
       - inputText: "Flow User"
-      - hideKeyboard
+      # No hideKeyboard: on Android it presses Back, which can pop to Welcome.
+      # The currency chips sit above the keyboard and take taps through it.
       - tapOn:
           id: "onboarding-currency-INR"
       - tapOn:
