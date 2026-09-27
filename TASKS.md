@@ -80,7 +80,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | S3 | Versioned, serializable template registry + override merge | A1 | done |
 | S4 | `parser.ts` — `parseTransactionSms` | S1, S2, S3 | blocked |
 | S5 | ≥40-message fixture corpus + privacy test | S4 | blocked |
-| S6 | `dedupe.ts` — `isDuplicatePendingExpense` | A1 | todo |
+| S6 | `dedupe.ts` — `isDuplicatePendingExpense` | A1 | done |
 | S7 | `displayHint` builder | A1 | todo |
 | P1 | `pendingExpenses` path + converter pair | — | done |
 | P2 | `pendingExpenses` security rules + rules tests | P1 | todo |
