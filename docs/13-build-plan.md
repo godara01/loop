@@ -115,6 +115,15 @@ milestone that tells you whether the 10-second target is real.
 > Decisions and a rules bug the tests caught are in
 > [11-firebase.md](11-firebase.md#decisions-made-while-building-m4).
 >
+> **Device-verified — 2026-09-27 (D1).** On the Loop_API35 emulator with EAS
+> dev build `3b37050f`, `catalogue-add`, `category-archive-unarchive`,
+> `category-custom-glyph`, `category-custom-logo` and
+> `category-from-entry-sheet` each passed twice. Correction to the note above:
+> `@react-native-firebase/storage`, `expo-image-manipulator` and
+> `react-native-draggable-flatlist` ship no config plugin — listing them in
+> `app.json` broke `expo config` / prebuild; they autolink and are no longer
+> listed there.
+>
 > **Scope trim:** the catalogue is bundled-only in v1 — no live
 > `catalog/categories/entries/*` override from Firestore. Docs 04/11 described
 > that as a way to add catalogue entries without an app update; it earns its

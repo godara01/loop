@@ -833,7 +833,7 @@ These need the `Loop_API35` emulator, an EAS dev build, or both. Code agents
 | ID | What | Unlocks after | Ticks |
 |---|---|---|---|
 | D0 | Get `npm run firebase:emulators` starting cleanly. Install an EAS dev build with the M4 native deps. **Done 2026-09-27:** emulators start Auth/Firestore/Functions/Storage (functions now esbuild-bundled); EAS dev build `3b37050f` (all native deps through H1/X2/X4) installed on Loop_API35 and boots against Metro + emulators into onboarding. | — | — |
-| D1 | M4 flows: `catalogue-add`, `category-archive-unarchive`, `category-custom-glyph`, `category-custom-logo`, `category-from-entry-sheet`, each passing twice | D0 | M4 status in `docs/13` |
+| D1 | M4 flows: `catalogue-add`, `category-archive-unarchive`, `category-custom-glyph`, `category-custom-logo`, `category-from-entry-sheet`, each passing twice. **Done 2026-09-27:** all five passed twice on Loop_API35 (10/10). Found and fixed on the way: new users skipped onboarding steps 1–2; Orbit crashed before the first coin; "Manage categories" opened the New category editor; custom-category save returned into the catalogue; Metro crashed on `.opencodework/`; flows updated for the onboarding gate (`subflows/onboarded.yaml`). | D0 | M4 status in `docs/13` |
 | D2 | M5 flows: `insights-*` (6), each passing twice. 3,000-expense render under 300ms. | D0 | `docs/05` perf |
 | D3 | M6 flows: `check-in-zero-spend`, `check-in-offline-reconcile`, `keep-it-plain`. Manual pass on the `docs/06` restraint rules. | D0 | `docs/06` offline and Keep-it-plain |
 | D4 | Onboarding flows (full, resume, skip). Bootstrap-gate escape attempts. Kill and resume at every step. Airplane-mode run, 90-second run. | D0 | `docs/02` (all) |
