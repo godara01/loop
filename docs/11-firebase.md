@@ -344,12 +344,16 @@ the same way `firestore/paths.ts` and `firestore.rules` already aren't.
 
 - [ ] The app is fully usable in airplane mode: log, edit, delete, browse
       insights for cached periods.
-- [ ] A client cannot write `wallet`, `coinLedger` or any rollup — proven by a
+- [x] A client cannot write `wallet`, `coinLedger` or any rollup — proven by a
       rules test, not by inspection.
-- [ ] An expense with a float or negative `amountMinor` is rejected by rules.
+      (proof: tests/firestore-rules/rules.test.ts › "lets the owner read their wallet but never write it", "lets the owner read their coin ledger entry but never write it", "lets the owner read their daily rollup but never write it" and "lets the owner read their monthly rollup but never write it")
+- [x] An expense with a float or negative `amountMinor` is rejected by rules.
+      (proof: tests/firestore-rules/rules.test.ts › "rejects a fractional amount — money is never a float" and "rejects zero and negative amounts")
 - [ ] Killing the app immediately after a save loses nothing once it reopens.
-- [ ] `packages/shared` has zero Firebase imports and is imported by both the app
+- [x] `packages/shared` has zero Firebase imports and is imported by both the app
       and Functions.
+      (proof: scripts/check-invariants.mjs rule 2 "shared-no-react-native-firebase")
 - [ ] App Check is enforced on Firestore, Storage and Functions before the first
       external tester build.
-- [ ] Deleting an account removes every document and file for that uid.
+- [x] Deleting an account removes every document and file for that uid.
+      (proof: tests/functions/delete-user.test.ts › "leaves a fully populated user with zero docs and zero files" and "leaves a second user's data untouched")

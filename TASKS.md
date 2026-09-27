@@ -77,7 +77,7 @@ A task must never lower these counts. A task that adds tests raises them.
 | A1 | Make the SMS unit tests actually run | — | done |
 | A2 | Invariant-check script (`npm run check:invariants`) | — | done |
 | A3 | Maestro testID cross-check script | — | done |
-| A4 | Tick code-provable acceptance criteria in docs | A1, A2 | todo |
+| A4 | Tick code-provable acceptance criteria in docs | A1, A2 | done |
 | S1 | DLT sender registry | A1 | done |
 | S2 | SMS shape filters (OTP/balance/promo/declined/reversal/credit) | A1 | done |
 | S3 | Versioned, serializable template registry + override merge | A1 | done |

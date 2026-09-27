@@ -184,7 +184,9 @@ the expenses, the expenses win and the rollup is regenerated.
       and the boundary is local time, not UTC — verified with a non-UTC device.
 - [x] Archived categories still appear in periods containing their expenses.
 - [ ] Insights renders under 300ms with 3,000 seeded expenses.
-- [ ] Client-computed current-month totals and Function-computed rollups agree
+- [x] Client-computed current-month totals and Function-computed rollups agree
       exactly, to the minor unit, for the same period.
-- [ ] Pending (unapproved) SMS expenses appear in no total, chart or average.
+      (proof: tests/functions/rollups.test.ts › "a sequence of creates, edits and deletes ends equal to buildRollups of what is left" and packages/shared/src/__tests__/insights.test.ts › "equals an all-cache computation of the same data exactly")
+- [x] Pending (unapproved) SMS expenses appear in no total, chart or average.
+      (proof: scripts/check-invariants.mjs rule 6 "pending-expenses-location")
 - [x] Every number on screen is JetBrains Mono.
