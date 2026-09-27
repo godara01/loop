@@ -32,6 +32,7 @@ export {
   SMS_TEMPLATES,
 } from './sms/templates';
 export { MIN_PARSE_CONFIDENCE, type ParseOptions, parseTransactionSms } from './sms/parser';
+export { parseTemplateOverride } from './sms/registry-override';
 export { type ExclusionReason, classifyExclusion, isCredit } from './sms/filters';
 export type {
   CompiledRegistry,
