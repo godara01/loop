@@ -245,10 +245,12 @@ Sequenced plan:
       (proof: e2e/flows/sms-permission-denied.yaml on Loop_API35, build `6d928d7b`,
       2026-09-28 — both permissions denied, then log, coins, ledger, Insights and
       the inbox's paste path)
-- [ ] `remoteConfig.smsIngestEnabled = false` fully disables capture at runtime.
-      *(2026-09-28: with the flag unset (the live template is empty, so the
-      default `false` applies) a delivered bank SMS created nothing. Flipping it
-      at runtime needs the flag published to `loop-app-0403` — owner.)*
+- [x] `remoteConfig.smsIngestEnabled = false` fully disables capture at runtime.
+      (proof: Loop_API35, build `6d928d7b`, 2026-09-28 — flag published to
+      loop-app-0403: on → an SMS is captured; off → after the app next comes to
+      the foreground an SMS is ignored; on again → captured. Real-time updates
+      never arrived on the emulator, so `lib/remote-config.ts` re-fetches on every
+      foreground (15 min minimum in release) rather than relying on them.)
 - [ ] No SMS body appears in Firestore, Storage, Crashlytics, Analytics, or logs
       — verified by inspection of a real device session.
 - [x] An OTP message never produces a pending expense.

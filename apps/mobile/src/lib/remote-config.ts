@@ -16,6 +16,7 @@ import {
   getString,
   onConfigUpdate,
 } from '@react-native-firebase/remote-config';
+import { AppState } from 'react-native';
 import { type CompiledRegistry, parseTemplateOverride } from '@loop/shared';
 
 export const REMOTE_CONFIG_KEYS = {
@@ -34,10 +35,22 @@ let enabled = false;
 const listeners = new Set<Listener>();
 let started = false;
 
+/**
+ * The SDK default is 12h, which would leave a flipped kill switch unseen for
+ * half a day. Real-time updates are meant to cover that, but on device
+ * (2026-09-28, D5) the stream never delivered, so every foreground re-fetches
+ * too, at most this often.
+ */
+const MINIMUM_FETCH_INTERVAL_MS = __DEV__ ? 0 : 15 * 60 * 1000;
+
+let instance: ReturnType<typeof getRemoteConfig> | null = null;
+
 function config() {
-  const rc = getRemoteConfig();
-  rc.defaultConfig = DEFAULTS;
-  return rc;
+  if (instance) return instance;
+  instance = getRemoteConfig();
+  instance.defaultConfig = DEFAULTS;
+  instance.settings = { minimumFetchIntervalMillis: MINIMUM_FETCH_INTERVAL_MS, fetchTimeoutMillis: 60_000 };
+  return instance;
 }
 
 function refresh(): void {
@@ -61,6 +74,12 @@ export async function initRemoteConfig(): Promise<void> {
     // Offline or throttled: keep the last activated values (or the defaults).
   }
   refresh();
+  AppState.addEventListener('change', (state) => {
+    if (state !== 'active') return;
+    fetchAndActivate(config()).then(refresh, () => {
+      // Offline or throttled: keep what is active.
+    });
+  });
   onConfigUpdate(rc, {
     next: () => {
       activate(rc).then(refresh, () => {});

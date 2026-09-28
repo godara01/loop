@@ -1,0 +1,9 @@
+{
+  "parameters": {
+    "sms_ingest_enabled": {
+      "defaultValue": { "value": "true" },
+      "valueType": "BOOLEAN",
+      "description": "Kill switch for SMS auto-capture (docs/12). false stops the listener on every device at once."
+    }
+  }
+}
