@@ -244,6 +244,12 @@ appId: com.getter.loop
 # Android, which closes the editor whenever the keyboard is already down.
 - tapOn:
     text: "ICON"
+# The colour row sits past the glyph grid, under the fixed Save button.
+- scrollUntilVisible:
+    element:
+      id: "color-amber"
+    direction: DOWN
+    timeout: 8000
 - tapOn:
     id: "color-amber"
 - tapOn:
@@ -255,9 +261,10 @@ appId: com.getter.loop
 - assertVisible: "₹45"
 - tapOn:
     id: "entry-save"
+# The sheet returns to whichever tab opened it (here the ledger).
 - extendedWaitUntil:
     visible:
-      id: "screen-orbit"
+      id: "screen-orbit|screen-ledger"
     timeout: 15000
 
 # ── 4. Bank message -> inbox -> approve; OTP -> nothing; duplicate -> one card
@@ -425,11 +432,12 @@ appId: com.getter.loop
 - assertVisible: "7 expenses exported."
 
 # ── 9. Keep it plain hides the game
-# The You screen is taller than the viewport and the tab dock floats over
-# its bottom: centre the row first so the tap lands on it, not the dock.
+# The export row is near the bottom of You, so the switch is above: scroll up
+# and centre it so the tap lands on it, not the floating dock.
 - scrollUntilVisible:
     element:
       id: "profile-keep-it-plain-switch"
+    direction: UP
     centerElement: true
 - tapOn:
     id: "profile-keep-it-plain-switch"
