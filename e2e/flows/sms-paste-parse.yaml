@@ -29,10 +29,26 @@ appId: com.getter.loop
 - inputText: "lunch was 450 bucks"
 - tapOn:
     id: "paste-submit"
+# The emulator's handwriting IME can swallow the first tap after typing while
+# it dismisses; tap again only if the sheet hasn't reacted.
+- runFlow:
+    when:
+      notVisible:
+        id: "paste-error"
+    commands:
+      - tapOn:
+          id: "paste-submit"
 - assertVisible:
     id: "paste-error"
 - tapOn:
     id: "paste-cancel"
+- runFlow:
+    when:
+      visible:
+        id: "paste-sheet"
+    commands:
+      - tapOn:
+          id: "paste-cancel"
 - runScript:
     file: ../scripts/query.js
     env:
@@ -47,6 +63,13 @@ appId: com.getter.loop
 - inputText: "Dear UPI user A/C X4321 debited by 200.0 on date 12Sep26 trf to SWIGGY Refno 625812345678. -SBI"
 - tapOn:
     id: "paste-submit"
+- runFlow:
+    when:
+      visible:
+        id: "paste-sheet"
+    commands:
+      - tapOn:
+          id: "paste-submit"
 - extendedWaitUntil:
     visible: "SBI ••4321 · SWIGGY"
     timeout: 10000

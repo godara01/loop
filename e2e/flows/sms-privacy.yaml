@@ -1,13 +1,15 @@
 # The raw message never leaves the device: after capture AND approval, no
 # document anywhere under the user contains text from the SMS body beyond the
 # merchant. See docs/12-sms-ingest.md#privacy-commitments.
-# Runner (D6): deliver adb emu sms send "$SMS_SENDER" "$SMS_BODY". NEEDLE is a
 # body fragment no parsed field may contain.
 appId: com.getter.loop
 env:
   SMS_SENDER: "AD-HDFCBK"
   SMS_BODY: "Rs.777.00 spent on HDFC Bank Card x9090 at PRIVACYCAFE on 2026-09-12:20:15:11.Avl bal: Rs.31,337.42 Ref ZQXJ-PRIV-4471"
   NEEDLE: "ZQXJ-PRIV-4471"
+  # scripts/e2e-flow.mjs delivers these once SMS_AFTER shows in the output.
+  SMS_AFTER: "Run \\.\\./subflows/sms-enable-capture\\.yaml\\.\\.\\. COMPLETED"
+  SMS_SEND: "SMS_BODY"
 ---
 - runFlow: ../subflows/reset.yaml
 - runFlow: ../subflows/onboarded.yaml

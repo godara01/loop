@@ -1,28 +1,26 @@
 # One swipe, two alerts (card alert + account alert, same amount and card,
 # a minute apart) produce ONE pending item. See docs/12-sms-ingest.md#deduplication.
-# Runner (D6): deliver both, ~60 s apart:
-#   adb emu sms send "$SMS_SENDER" "$SMS_BODY"
-#   adb emu sms send "$SMS_SENDER" "$SMS_BODY_2"
 appId: com.getter.loop
 env:
   SMS_SENDER: "AD-HDFCBK"
   SMS_BODY: "Rs.450.00 spent on HDFC Bank Card x1234 at SWIGGY on 2026-09-12:20:15:11."
   SMS_BODY_2: "Dear Customer, your account xxxx1234 has been debited for Rs. 450.00 at Swiggy."
+  CONTROL_SENDER: "AD-HDFCBK"
+  CONTROL_BODY: "Rs.111.00 spent on HDFC Bank Card x1234 at CONTROLCAFE on 2026-09-12:20:15:11.Avl bal: Rs.80,000.00"
+  # scripts/e2e-flow.mjs delivers these once SMS_AFTER shows in the output.
+  SMS_AFTER: "Run \\.\\./subflows/sms-enable-capture\\.yaml\\.\\.\\. COMPLETED"
+  SMS_SEND: "SMS_BODY,5,SMS_BODY_2,4,CONTROL_BODY"
 ---
 - runFlow: ../subflows/reset.yaml
 - runFlow: ../subflows/onboarded.yaml
 - runFlow: ../subflows/sms-enable-capture.yaml
 
-- extendedWaitUntil:
-    visible:
-      id: "orbit-inbox-badge"
-    timeout: 60000
-# Leave time for the second alert to arrive too.
-- waitForAnimationToEnd:
-    timeout: 90000
+# Both alerts, then the control. One pending for the swipe, one for the control.
+- runFlow: ../subflows/sms-await-control.yaml
 - runScript:
     file: ../scripts/query.js
     env:
       COLLECTION: "pendingExpenses"
-- assertTrue: ${output.docs.length == 1}
-- assertTrue: ${output.docs[0].amountMinor == 45000}
+- assertTrue: ${output.docs.length == 2}
+- assertTrue: ${output.docs.filter(d => d.amountMinor == 45000).length == 1}
+- assertTrue: ${output.docs.filter(d => d.merchant == "CONTROLCAFE").length == 1}

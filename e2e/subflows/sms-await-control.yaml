@@ -1,0 +1,15 @@
+# The D6 runner sends the message under test, then a control debit at
+# CONTROLCAFE. Messages are handled in arrival order, so once the control is in
+# the inbox the message before it has been processed too — a "nothing was
+# created" assertion after this is real, not a race with delivery.
+appId: com.getter.loop
+---
+- extendedWaitUntil:
+    visible:
+      id: "orbit-inbox-badge"
+    timeout: 60000
+- tapOn:
+    id: "orbit-inbox-badge"
+- extendedWaitUntil:
+    visible: "CONTROLCAFE"
+    timeout: 30000

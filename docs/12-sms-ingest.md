@@ -251,8 +251,15 @@ Sequenced plan:
       the foreground an SMS is ignored; on again → captured. Real-time updates
       never arrived on the emulator, so `lib/remote-config.ts` re-fetches on every
       foreground (15 min minimum in release) rather than relying on them.)
-- [ ] No SMS body appears in Firestore, Storage, Crashlytics, Analytics, or logs
+- [x] No SMS body appears in Firestore, Storage, Crashlytics, Analytics, or logs
       — verified by inspection of a real device session.
+      (proof: Loop_API35, build `6d928d7b`, 2026-09-28 — sms-privacy's Firestore
+      scans for a unique body fragment before and after approval; a full logcat
+      of that session has no line with the fragment, the balance or the merchant
+      from any process, and none of Loop's 834 lines has the amount, card or
+      "Avl bal"; Storage holds only category logos. No Analytics SDK is in the
+      app; Crashlytics' only call site is `app-check-init`. Emulator, not a
+      physical phone — repeat once on the Redmi.)
 - [x] An OTP message never produces a pending expense.
       (proof: packages/shared/src/__tests__/sms-parser.test.ts › "returns null for an OTP from an allowlisted bank")
 - [x] Bank + card-network duplicates of one transaction produce one pending item.

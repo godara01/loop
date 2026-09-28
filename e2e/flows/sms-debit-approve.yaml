@@ -1,12 +1,12 @@
 # A bank debit SMS becomes a pending card; approving it creates a real expense
 # with source "sms" and leaves the inbox empty. See docs/12-sms-ingest.md#the-inbox.
-# Runner (D6): once the flow is waiting on the badge, deliver
-#   adb emu sms send "$SMS_SENDER" "$SMS_BODY"
-# (If the emulator only accepts numeric senders, D5's __DEV__ fallback applies.)
 appId: com.getter.loop
 env:
   SMS_SENDER: "AD-HDFCBK"
   SMS_BODY: "Rs.450.00 spent on HDFC Bank Card x1234 at SWIGGY on 2026-09-12:20:15:11.Avl bal: Rs.84,550.00"
+  # scripts/e2e-flow.mjs delivers these once SMS_AFTER shows in the output.
+  SMS_AFTER: "Run \\.\\./subflows/sms-enable-capture\\.yaml\\.\\.\\. COMPLETED"
+  SMS_SEND: "SMS_BODY"
 ---
 - runFlow: ../subflows/reset.yaml
 - runFlow: ../subflows/onboarded.yaml

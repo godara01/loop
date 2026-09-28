@@ -8,6 +8,8 @@ cd "$(dirname "$0")/.."
 
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 # Maestro's launcher is a JVM app and does not infer JAVA_HOME on its own.
+# A JAVA_HOME left over from an uninstalled JDK is worse than none: ignore it.
+[ -x "${JAVA_HOME:-}/bin/java" ] || unset JAVA_HOME
 export JAVA_HOME="${JAVA_HOME:-$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")}"
 ADB="$ANDROID_HOME/platform-tools/adb"
 MAESTRO="${MAESTRO:-$HOME/.maestro/bin/maestro}"
@@ -22,8 +24,11 @@ up http://127.0.0.1:8080/ || fail "Firestore emulator down — npm run firebase:
 up http://127.0.0.1:9099/ || fail "Auth emulator down — npm run firebase:emulators"
 curl -s --max-time 2 http://127.0.0.1:8081/status | grep -q running || fail "Metro down — npm run mobile"
 
-# Lost on every emulator reboot.
+# Lost on every emulator reboot and every `adb root`.
 "$ADB" -s "$SERIAL" reverse tcp:8081 tcp:8081 >/dev/null
+# Heads-up notifications (an injected SMS lands in Messages too) cover the top
+# of the screen, where Orbit's inbox badge is.
+"$ADB" -s "$SERIAL" shell settings put global heads_up_notifications_enabled 0
 
 TARGETS=("$@")
 [ ${#TARGETS[@]} -eq 0 ] && TARGETS=(e2e/flows)

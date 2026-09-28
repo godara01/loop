@@ -1,12 +1,15 @@
 # With the Remote Config kill switch off, granting the permission reads nothing
 # and says so; an arriving debit creates nothing. See docs/12-sms-ingest.md.
-# Preconditions (D5/D6): Remote Config `sms_ingest_enabled = false` for the dev
-# project (the dev override), published before the flow starts.
-# Runner: while the flow waits, deliver adb emu sms send "$SMS_SENDER" "$SMS_BODY".
+# REMOTE_CONFIG_SMS_INGEST below makes scripts/e2e-flow.mjs publish
+# `sms_ingest_enabled = false` to loop-app-0403 for the run, and back after.
 appId: com.getter.loop
 env:
   SMS_SENDER: "AD-HDFCBK"
   SMS_BODY: "Rs.450.00 spent on HDFC Bank Card x1234 at SWIGGY on 2026-09-12:20:15:11."
+  # scripts/e2e-flow.mjs delivers these once SMS_AFTER shows in the output.
+  SMS_AFTER: "Tap on id: auto-capture-back\\.\\.\\. COMPLETED"
+  SMS_SEND: "SMS_BODY"
+  REMOTE_CONFIG_SMS_INGEST: "false"
 ---
 - runFlow: ../subflows/reset.yaml
 - runFlow: ../subflows/onboarded.yaml
@@ -42,8 +45,12 @@ env:
 - tapOn:
     id: "tab-index"
 
-- waitForAnimationToEnd:
-    timeout: 30000
+# Nothing may arrive: give the delivered SMS 20s to (not) become a badge.
+- extendedWaitUntil:
+    visible:
+      id: "orbit-inbox-badge"
+    timeout: 20000
+    optional: true
 - assertNotVisible:
     id: "orbit-inbox-badge"
 - runScript:

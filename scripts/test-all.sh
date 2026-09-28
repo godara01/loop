@@ -46,33 +46,13 @@ run_step() {
   return 1
 }
 
-# Delivers the SMS a flow declares in its `env:` block (SMS_SENDER, SMS_BODY,
-# SMS_BODY_2) while the flow waits for it. Delays are tuned in D6.
-send_flow_sms() {
-  local flow="$1"
-  node -e '
-    const { parseAllDocuments } = require("yaml");
-    const env = parseAllDocuments(require("fs").readFileSync(process.argv[1], "utf8"))[0].toJS().env || {};
-    for (const key of ["SMS_BODY", "SMS_BODY_2"]) if (env[key]) console.log(env.SMS_SENDER + "\t" + env[key]);
-  ' "$flow" | {
-    local delay="${SMS_FIRST_DELAY:-45}"
-    while IFS=$'\t' read -r sender body; do
-      sleep "$delay"
-      adb emu sms send "$sender" "$body" >/dev/null
-      delay="${SMS_NEXT_DELAY:-60}"
-    done
-  }
-}
-
+# Every flow runs through scripts/e2e-flow.mjs, which also delivers the SMS a
+# flow declares (SMS_AFTER / SMS_SEND in its env:) and flips the Remote Config
+# kill switch for the one flow that needs it off.
 run_device() {
-  local failed=0 flow
+  local flow
   for flow in e2e/flows/*.yaml e2e/journeys/*.yaml; do
-    send_flow_sms "$flow" &
-    local sender=$!
-    if ! run_step "$(basename "$flow" .yaml)" "maestro test '$flow'"; then failed=1; fi
-    kill "$sender" 2>/dev/null
-    wait "$sender" 2>/dev/null
-    [ "$failed" = 1 ] && return 1
+    run_step "$(basename "$flow" .yaml)" "node scripts/e2e-flow.mjs '$flow'" || return 1
   done
   return 0
 }

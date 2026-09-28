@@ -17,12 +17,24 @@ onFlowComplete:
       visible: "This is the developer menu.*"
     commands:
       - tapOn: "Continue"
+      # The dev menu opens next. Turn off its floating tools button: it sits
+      # top-right over Orbit's inbox badge and swallowed taps meant for it.
+      - scrollUntilVisible:
+          element:
+            text: "Tools button"
+          timeout: 10000
+      - tapOn: "Tools button"
 # ...after which the dev client opens its menu over the app.
 - runFlow:
     when:
       visible: "Close"
     commands:
       - tapOn: "Close"
+- runFlow:
+    when:
+      visible: "Tools button"
+    commands:
+      - back
 - extendedWaitUntil:
     visible: "Connect once to set up"
     timeout: 60000
