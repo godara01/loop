@@ -19,6 +19,8 @@
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
+import { scheduleHaptic } from './haptic-schedule';
+
 export type HapticEvent =
   /** Generic light acknowledgement — icon taps, nav. */
   | 'tap'
@@ -76,10 +78,19 @@ export function setKeepItPlainHaptics(next: boolean): void {
 export function haptic(event: HapticEvent): void {
   if (!enabled) return;
   if (keepItPlain && GAMIFICATION_EVENTS.has(event)) return;
-  void run(event).catch(() => {
-    // A device without a motor, or a denied vibrate permission, is not an error.
-  });
+  const slot = scheduleHaptic(nextFreeAt, event, Date.now());
+  if (!slot) return;
+  nextFreeAt = slot.nextFreeAt;
+  const fire = () =>
+    void run(event).catch(() => {
+      // A device without a motor, or a denied vibrate permission, is not an error.
+    });
+  if (slot.delay === 0) fire();
+  else setTimeout(fire, slot.delay);
 }
+
+/** See haptic-schedule.ts: no two haptics within 150ms, on any path. */
+let nextFreeAt = 0;
 
 async function run(event: HapticEvent): Promise<void> {
   if (Platform.OS === 'android') return runAndroid(event);

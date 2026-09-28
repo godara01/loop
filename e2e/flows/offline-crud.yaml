@@ -1,0 +1,126 @@
+# docs/03 + docs/11: with no network at all, add, edit and delete work with no
+# spinner, and Insights for the cached period still reads correctly; on
+# reconnect the server ends up with exactly the offline result.
+appId: com.getter.loop
+onFlowComplete:
+  - setAirplaneMode: disabled
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
+
+# Online: one synced expense to edit later.
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-description"
+- inputText: "Lunch"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "orbit-coin-balance"
+    timeout: 60000
+
+- setAirplaneMode: enabled
+
+# Add offline.
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-6"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-TRANSPORT"
+- tapOn:
+    id: "entry-description"
+- inputText: "Chai"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "orbit-today-total"
+      text: "₹160.00"
+    timeout: 10000
+
+# Edit offline: Lunch 100 → 120.
+- tapOn:
+    id: "tab-activity"
+- tapOn:
+    text: "Lunch"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 10000
+# The amount opens as "100.00": clear it, then type the new one.
+- repeat:
+    times: 6
+    commands:
+      - tapOn:
+          id: "pad-key-backspace"
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-2"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible: "₹120.00"
+    timeout: 10000
+
+# Delete offline: Chai.
+- tapOn:
+    text: "Chai"
+- extendedWaitUntil:
+    visible:
+      id: "entry-delete"
+    timeout: 10000
+- tapOn:
+    id: "entry-delete"
+- tapOn:
+    text: "Delete"
+- extendedWaitUntil:
+    notVisible: "Chai"
+    timeout: 10000
+
+# Insights for the current (cached) period, still offline.
+- tapOn:
+    id: "tab-insights"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+      text: "₹120.00"
+    timeout: 15000
+
+# Reconnect: the server matches what was done offline.
+- setAirplaneMode: disabled
+- retry:
+    maxRetries: 10
+    commands:
+      - runScript:
+          file: ../scripts/query.js
+          env:
+            COLLECTION: "expenses"
+      - assertTrue: ${output.docs.length == 2}
+      - assertTrue: ${output.docs.filter(d => d.description == "Lunch")[0].amountMinor == 12000}
+      - assertTrue: ${output.docs.filter(d => d.description == "Chai")[0].deletedAt != null}

@@ -6,9 +6,12 @@
 import {
   type Category,
   colors,
+  completesWeek,
+  evaluateCoinEvent,
   formatMoney,
   layout,
   money,
+  previewAward,
   recordActivity,
   space,
   sum,
@@ -103,12 +106,20 @@ export function OrbitScreen() {
     });
     haptic('streakAdvance');
     if (!settings.keepItPlain) {
-      setOptimisticCoins(zeroSpend ? 8 : 5);
-      if ((streakDays + 1 === 7 || streakDays + 1 === 30 || streakDays + 1 === 100) && claimCelebration()) {
+      // The same coins.ts / streak.ts the onCheckInCreate Function runs, so the
+      // +N shown now is the number it will write (docs/08).
+      const nextStreak = serverStreak ? recordActivity(serverStreak, todayIso).current : 1;
+      const ctx = { localDate: todayIso, createdAt: new Date().toISOString(), entriesToday: [], onceRulesAwarded: [] };
+      const banked = evaluateCoinEvent({ kind: 'day_banked', zeroSpend }, ctx);
+      const week = completesWeek(nextStreak)
+        ? evaluateCoinEvent({ kind: 'week_completed' }, { ...ctx, entriesToday: banked })
+        : [];
+      setOptimisticCoins(previewAward([...banked, ...week]));
+      if ((nextStreak === 7 || nextStreak === 30 || nextStreak === 100) && claimCelebration()) {
         setShowBurst(true);
       }
     }
-  }, [uid, todayIso, zeroSpend, settings.keepItPlain, streakDays]);
+  }, [uid, todayIso, zeroSpend, settings.keepItPlain, serverStreak]);
 
   const showGamification = !settings.keepItPlain;
 

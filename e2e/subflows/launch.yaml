@@ -29,7 +29,10 @@ appId: com.getter.loop
                 element:
                   text: "Tools button"
                 timeout: 10000
-            - tapOn: "Tools button"
+                optional: true
+            - tapOn:
+                text: "Tools button"
+                optional: true
       - runFlow:
           when:
             visible: "Close"

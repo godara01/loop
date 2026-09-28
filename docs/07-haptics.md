@@ -126,8 +126,12 @@ regression test the tactile layer has.
 
 - [x] `expo-haptics` is imported in exactly one file in the repo.
       (proof: scripts/check-invariants.mjs rule 1 "expo-haptics")
-- [ ] `expenseSaved` and `destructive` exist for both platforms and appear in the
+- [x] `expenseSaved` and `destructive` exist for both platforms and appear in the
       **You** debug list.
-- [ ] No code path fires two haptics within 150ms.
+      (proof: haptics.ts handles both in `runIOS` and `runAndroid`; both are in the
+      You screen's EVENTS bench list)
+- [x] No code path fires two haptics within 150ms.
+      (proof: enforced centrally by apps/mobile/src/lib/haptic-schedule.ts —
+      deferred, or dropped for continuous ticks; unit-tested)
 - [ ] With haptics off, the full expense flow works and nothing vibrates.
 - [ ] On a device reporting no vibrator, no unhandled rejection is logged.

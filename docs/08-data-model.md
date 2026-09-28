@@ -168,8 +168,11 @@ in [03](03-expenses.md#acceptance-criteria) and [05](05-insights.md#performance)
 - [x] `packages/shared` has zero React, React Native and Firebase imports, with a
       lint rule proving it.
       (proof: scripts/check-invariants.mjs rule 2 "shared-no-react-native-firebase")
-- [ ] The same `coins.ts` and `streak.ts` functions are imported by both the app
+- [x] The same `coins.ts` and `streak.ts` functions are imported by both the app
       and Cloud Functions.
+      (proof: functions/src/handlers.ts imports `evaluateCoinEvent`, `completesWeek` and
+      `recordActivity`; apps/mobile orbit-screen.tsx imports the same three for the
+      optimistic streak and `+N` — 2026-09-28)
 - [x] A converter given a malformed document throws rather than yielding `NaN`.
       (proof: packages/shared/src/__tests__/firestore.test.ts › "rejects a document that is not an object at all")
 - [x] Every v1 expense is a valid `ExpenseLike` for `settle.ts` with no mapping.

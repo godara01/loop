@@ -14,7 +14,7 @@ import {
 } from '@loop/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -36,14 +36,18 @@ export function CategoriesStepScreen() {
 
   const categories = categoriesState.status === 'ready' ? categoriesState.snapshot.categories : [];
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const seenIds = useRef<Set<string>>(new Set());
 
-  // Default all active categories to selected initially
+  // Every active category starts selected — including one added from the
+  // catalogue or "+ New" while on this step. Only categories seen for the
+  // first time are added, so a deselection the user made sticks; without this
+  // a category added here was archived by Continue a moment later.
   useEffect(() => {
-    if (categories.length > 0 && selectedIds.size === 0) {
-      const activeIds = categories.filter((c) => c.archivedAt === null).map((c) => c.id);
-      setSelectedIds(new Set(activeIds));
-    }
-  }, [categories, selectedIds.size]);
+    const fresh = categories.filter((c) => c.archivedAt === null && !seenIds.current.has(c.id));
+    for (const c of categories) seenIds.current.add(c.id);
+    if (fresh.length === 0) return;
+    setSelectedIds((current) => new Set([...current, ...fresh.map((c) => c.id)]));
+  }, [categories]);
 
   const toggleCategory = (id: string) => {
     const next = new Set(selectedIds);

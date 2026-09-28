@@ -23,7 +23,10 @@ onFlowComplete:
           element:
             text: "Tools button"
           timeout: 10000
-      - tapOn: "Tools button"
+          optional: true
+      - tapOn:
+          text: "Tools button"
+          optional: true
 # ...after which the dev client opens its menu over the app.
 - runFlow:
     when:

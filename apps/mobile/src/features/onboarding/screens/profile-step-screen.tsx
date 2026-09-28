@@ -65,15 +65,16 @@ export function ProfileStepScreen() {
   };
 
   return (
+    // Continue sits outside the ScrollView so it rides above the keyboard.
+    // edgeToEdgeEnabled stops Android resizing the window for the keyboard, so
+    // 'height' is needed there too (docs/03, the entry sheet's same fix).
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         testID="screen-onboarding-profile"
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + space.xl, paddingBottom: insets.bottom + space.xl },
-        ]}
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + space.xl, paddingBottom: space.lg }]}
         keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.eyebrow}>STEP 1 OF 4</Text>
@@ -127,17 +128,17 @@ export function ProfileStepScreen() {
             })}
           </View>
         </View>
-
-        <View style={styles.footer}>
-          <TactileButton
-            testID="onboarding-profile-continue"
-            label="Continue"
-            fullWidth
-            disabled={!canContinue || saving}
-            onPress={handleContinue}
-          />
-        </View>
       </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: insets.bottom + space.xl }]}>
+        <TactileButton
+          testID="onboarding-profile-continue"
+          label="Continue"
+          fullWidth
+          disabled={!canContinue || saving}
+          onPress={handleContinue}
+        />
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -214,7 +215,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   footer: {
-    marginTop: 'auto',
     paddingTop: space.md,
+    paddingHorizontal: layout.screenMargin,
   },
 });

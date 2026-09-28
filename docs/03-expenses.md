@@ -189,8 +189,10 @@ for the second, unrelated hazard this surfaced.
 ## Acceptance criteria
 
 - [ ] Cold launch → saved expense in under 10s, measured on a mid-range Android.
-- [ ] `1000 / 3` style inputs and every currency in `CurrencyCode` round-trip
+- [x] `1000 / 3` style inputs and every currency in `CurrencyCode` round-trip
       through `parseAmount` → store → `formatMoney` with zero drift.
+      (proof: packages/shared/src/__tests__/money-roundtrip.test.ts — all five
+      currencies, parse → Firestore doc → formatMoney → parse, plus 1000 split three ways)
 - [ ] Force-quitting mid-entry loses the draft but never corrupts stored data.
 - [ ] The whole add / edit / delete flow works in airplane mode, with no spinner.
 - [ ] A failed save keeps the sheet open with input intact.
@@ -200,4 +202,6 @@ for the second, unrelated hazard this surfaced.
       46ms p99 frames, 2.3% janky, over 20 flings. The emulator's own Settings app
       scrolls at 20ms median (GPU 18ms), so 60fps is unmeasurable here — needs
       the mid-range phone.)*
-- [ ] No two haptics fire within 150ms of each other on any path in this doc.
+- [x] No two haptics fire within 150ms of each other on any path in this doc.
+      (proof: apps/mobile/src/lib/haptic-schedule.ts, applied to every `haptic()` call;
+      haptic-schedule.test.ts › "never lets any two starts be closer than the gap")

@@ -137,7 +137,7 @@ export function FirstExpenseStepScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         testID="screen-onboarding-first-expense"
@@ -190,25 +190,25 @@ export function FirstExpenseStepScreen() {
             setAmount(next);
           }}
         />
-
-        <View style={styles.buttonGroup}>
-          <TactileButton
-            testID="onboarding-save-expense"
-            label="Save"
-            fullWidth
-            disabled={saving || !canSave(amount, currency)}
-            onPress={handleSave}
-          />
-          <TactileButton
-            testID="onboarding-skip-expense"
-            label="Skip for now"
-            variant="secondary"
-            fullWidth
-            disabled={saving}
-            onPress={handleSkip}
-          />
-        </View>
       </ScrollView>
+      {/* Outside the ScrollView so Save rides above the keyboard (docs/03). */}
+      <View style={[styles.buttonGroup, { paddingBottom: insets.bottom + space.md }]}>
+        <TactileButton
+          testID="onboarding-save-expense"
+          label="Save"
+          fullWidth
+          disabled={saving || !canSave(amount, currency)}
+          onPress={handleSave}
+        />
+        <TactileButton
+          testID="onboarding-skip-expense"
+          label="Skip for now"
+          variant="secondary"
+          fullWidth
+          disabled={saving}
+          onPress={handleSkip}
+        />
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   },
   buttonGroup: {
     gap: space.xs,
-    marginTop: space.sm,
-    paddingBottom: space.md,
+    paddingTop: space.sm,
+    paddingHorizontal: layout.screenMargin,
   },
 });

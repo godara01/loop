@@ -1,0 +1,126 @@
+# Stored data survives the ways an app gets interrupted, and coins/streak never
+# move backwards. docs/11 (kill right after a save), docs/03 (force-quit
+# mid-entry; deleting a day's last expense), docs/06 (wallet = ledger sum;
+# deleting a banked day's expenses keeps streak and coins).
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
+
+# 1. Save, then kill the app at once. The expense must be there on reopen.
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-2"
+- tapOn:
+    id: "pad-key-3"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-description"
+- inputText: "Kept"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn:
+    id: "entry-save"
+- stopApp
+- runFlow: ../subflows/launch.yaml
+- extendedWaitUntil:
+    visible:
+      id: "orbit-today-total"
+      text: "₹123.00"
+    timeout: 30000
+# It reached the server too: the Function has awarded coins for it.
+- extendedWaitUntil:
+    visible:
+      id: "orbit-coin-balance"
+    timeout: 60000
+
+# 2. Force-quit mid-entry: the draft is lost, stored data is untouched.
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-9"
+- tapOn:
+    id: "pad-key-9"
+- tapOn:
+    id: "pad-key-9"
+- stopApp
+- runFlow: ../subflows/launch.yaml
+- extendedWaitUntil:
+    visible:
+      id: "orbit-today-total"
+      text: "₹123.00"
+    timeout: 30000
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "expenses"
+- assertTrue: ${output.docs.length == 1}
+- assertTrue: ${output.docs[0].amountMinor == 12300}
+- assertTrue: ${output.docs[0].deletedAt == null}
+
+# 3. The wallet is exactly the sum of the ledger.
+- runScript:
+    file: ../scripts/query.js
+    env:
+      DOC: "wallet/main"
+- evalScript: ${output.balance = output.doc.coinBalance}
+- assertTrue: ${output.balance > 0}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "coinLedger"
+- assertTrue: ${output.docs.reduce((s, d) => s + d.coins, 0) == output.balance}
+
+# 4. Delete the banked day's only expense: streak and coins stay.
+- tapOn:
+    id: "tab-activity"
+- tapOn:
+    text: "Kept"
+- extendedWaitUntil:
+    visible:
+      id: "entry-delete"
+    timeout: 15000
+- tapOn:
+    id: "entry-delete"
+- tapOn:
+    text: "Delete"
+- extendedWaitUntil:
+    visible:
+      id: "snackbar"
+    timeout: 15000
+# Wait until the delete has reached the server (onExpenseWrite then sees it;
+# nothing may come of that for coins or streak).
+- retry:
+    maxRetries: 10
+    commands:
+      - runScript:
+          file: ../scripts/query.js
+          env:
+            COLLECTION: "expenses"
+      - assertTrue: ${output.docs[0].deletedAt != null}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      DOC: "wallet/main"
+- assertTrue: ${output.doc.coinBalance == output.balance}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      DOC: "streak/main"
+- assertTrue: ${output.doc.current == 1}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "checkIns"
+- assertTrue: ${output.docs.length == 1}

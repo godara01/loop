@@ -74,12 +74,15 @@ appId: com.getter.loop
       id: "screen-onboarding-first-expense"
     timeout: 15000
 - tapOn:
-    id: "entry-amount"
-- inputText: "500"
+    id: "pad-key-5"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "pad-key-0"
 - tapOn:
     id: "category-chip-FOOD"
 - tapOn:
-    id: "entry-save"
+    id: "onboarding-save-expense"
 - extendedWaitUntil:
     visible:
       id: "screen-orbit"
@@ -87,6 +90,11 @@ appId: com.getter.loop
 - assertVisible:
     id: "streak-capsule"
 - assertVisible: "1 day streak"
+# Coins come from the Function once the expense reaches the server.
+- extendedWaitUntil:
+    visible:
+      id: "orbit-coin-balance"
+    timeout: 60000
 - runScript:
     file: ../scripts/query.js
     env:
@@ -102,6 +110,17 @@ appId: com.getter.loop
     id: "pad-key-2"
 - tapOn:
     id: "pad-key-0"
+# The strip scrolls sideways; category-chip-COFFEE sits past the four chips on screen.
+- repeat:
+    while:
+      notVisible:
+        id: "category-chip-COFFEE"
+    times: 5
+    commands:
+      - swipe:
+          start: "85%, 25%"
+          end: "15%, 25%"
+          duration: 400
 - tapOn:
     id: "category-chip-COFFEE"
 - tapOn:
@@ -191,8 +210,29 @@ appId: com.getter.loop
 - swipe:
     start: "85%,21%"
     end: "10%,21%"
+# The strip scrolls sideways; category-chip-add sits past the four chips on screen.
+- repeat:
+    while:
+      notVisible:
+        id: "category-chip-add"
+    times: 5
+    commands:
+      - swipe:
+          start: "85%, 25%"
+          end: "15%, 25%"
+          duration: 400
 - tapOn:
     id: "category-chip-add"
+# A search that matches nothing collapses the catalogue to its empty state,
+# which puts "Create your own" on screen without scrolling.
+- extendedWaitUntil:
+    visible:
+      id: "catalogue-search"
+    timeout: 15000
+- tapOn:
+    id: "catalogue-search"
+- inputText: "zzznomatch"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
 - tapOn:
     id: "catalogue-create-custom"
 - tapOn:

@@ -55,10 +55,15 @@ function rollupPart(period: Period, cacheFrom: string): Period | null {
   return { startDate: period.startDate, endDate: period.endDate < cacheFrom ? period.endDate : cacheFrom };
 }
 
-/** Synced expenses only — as before, a write the server hasn't accepted isn't counted yet. */
-function confirmedRecords(state: ExpensesState) {
-  if (state.status !== 'ready') return [];
-  return state.snapshot.expenses.filter((expense) => !state.snapshot.pendingIds.has(expense.id));
+/**
+ * Every cached expense, synced or not. Insights must work fully offline
+ * (docs/05, docs/11) and agree with Orbit and the ledger, which show unsynced
+ * writes too. The cached part is this month only — past days come from
+ * rollups — so an unsynced write can't be counted twice. ("Pending" in docs/05
+ * means unapproved SMS items, a separate collection that never reaches here.)
+ */
+function cachedRecords(state: ExpensesState) {
+  return state.status === 'ready' ? state.snapshot.expenses : [];
 }
 
 const PERIOD_LABEL: Record<PeriodKind, string> = { week: 'WEEK', month: 'MONTH', rolling30: '30 DAYS', custom: 'CUSTOM' };
@@ -88,7 +93,7 @@ export function InsightsScreen() {
       currency: profile.currency,
       cacheFrom,
       rollups: rollups.status === 'ready' ? rollups.rollups : {},
-      cached: confirmedRecords(expenses),
+      cached: cachedRecords(expenses),
     });
     return {
       ...merged,
@@ -119,7 +124,7 @@ export function InsightsScreen() {
         currency: profile.currency,
         cacheFrom,
         rollups: previousRollups.status === 'ready' ? previousRollups.rollups : {},
-        cached: confirmedRecords(previousExpenses),
+        cached: cachedRecords(previousExpenses),
       }).total
     : null;
   const needsConnection = rollups.status === 'ready' && rollups.maybeUnfetched;
