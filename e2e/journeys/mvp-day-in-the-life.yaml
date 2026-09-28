@@ -261,10 +261,10 @@ appId: com.getter.loop
 - assertVisible: "₹45"
 - tapOn:
     id: "entry-save"
-# The sheet returns to whichever tab opened it (here the ledger).
+# The sheet returns to whichever tab opened it (here the ledger): wait for the dock.
 - extendedWaitUntil:
     visible:
-      id: "screen-orbit|screen-ledger"
+      id: "tab-dock"
     timeout: 15000
 
 # ── 4. Bank message -> inbox -> approve; OTP -> nothing; duplicate -> one card
