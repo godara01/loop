@@ -17,11 +17,13 @@ SERIAL="${LOOP_SERIAL:-emulator-5554}"
 
 fail() { echo "e2e: $*" >&2; exit 1; }
 up() { curl -s -o /dev/null --max-time 2 "$1"; }
+# Waits up to 60s: a supervised emulator suite may be mid-restart.
+waitup() { for _ in $(seq 1 30); do up "$1" && return 0; sleep 2; done; return 1; }
 
 [ -x "$MAESTRO" ] || fail "Maestro not found at $MAESTRO"
 "$ADB" devices | grep -q "^$SERIAL[[:space:]]*device" || fail "$SERIAL not attached — npm run emulator"
-up http://127.0.0.1:8080/ || fail "Firestore emulator down — npm run firebase:emulators"
-up http://127.0.0.1:9099/ || fail "Auth emulator down — npm run firebase:emulators"
+waitup http://127.0.0.1:8080/ || fail "Firestore emulator down — npm run firebase:emulators"
+waitup http://127.0.0.1:9099/ || fail "Auth emulator down — npm run firebase:emulators"
 curl -s --max-time 2 http://127.0.0.1:8081/status | grep -q running || fail "Metro down — npm run mobile"
 
 # Lost on every emulator reboot and every `adb root`.

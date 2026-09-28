@@ -161,14 +161,19 @@ than Expo Go. Open the installed **Loop (dev)** app and it will connect.
 
 On the device, open the **You** tab:
 
-- [ ] The **Build** card reads `LINKED` and shows `project loop-app-0403`.
-      Reading `NOT LINKED` means the app is running in Expo Go, or the config
-      file is missing from `apps/mobile/firebase/`.
-- [ ] Fonts render — the numbers are monospaced, not a system fallback.
+- [x] The **Account** card reads `Firebase · project loop-app-0403`, tagged
+      `EMULATOR` (a dev build with `apps/mobile/.env`) or `LIVE`. No card, or
+      `project unknown`, means the config file is missing from
+      `apps/mobile/firebase/`.
+      *(Verified on Loop_API35, dev build `6d928d7b`, 2026-09-28.)*
+- [x] Fonts render — the numbers are monospaced, not a system fallback.
+      *(Verified in the D8 max-font-scale walk, 2026-09-28.)*
 - [ ] Every row in the **Haptic bench** produces a distinct feel. Do this on the
       mid-range Android specifically; that is where the mapping is hardest
       ([07-haptics.md](07-haptics.md#testing)).
-- [ ] The Orbit, Ledger and Squads tabs render the seeded mock data.
+- [x] Orbit, Ledger and Insights render real data from the emulators.
+      *(Every e2e flow. This line used to say "Squads tabs render the seeded
+      mock data" — `mock.ts` was deleted in M3 and Squads is post-v1.)*
 
 That is M0 complete.
 
