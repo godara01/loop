@@ -1,18 +1,68 @@
-# link-phone.yaml
-# Flow: Link phone number for account
-# Covers docs/16-account-linking.md (account linking section)
+# Link phone number for account.
+# Uses +91 99999 00001; the code is read from the local Auth emulator.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
 
-description: "User links phone number"
-name: link-phone
-trigger: "tap on testID profile-account-link"
-steps:
-  - tap: "testID profile-account-link"
-  - waitFor: "testID account-phone-button"
-  - tap: "testID account-phone-button"
-  - setText: { target: "testID account-phone-input", text: "9999999999" }
-  - tap: "testID account-phone-send"
-  - waitFor: "testID account-otp-input"
-  - setText: { target: "testID account-otp-input", text: "123456" }
-  - tap: "testID account-otp-verify"
-  - waitFor: "testID account-unlink-button"
-  - assertVisible: "testID account-unlink-button"
+# Navigate to Profile (You) screen
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-manage-categories"
+    timeout: 15000
+
+# Scroll to the "You" row and tap it to open the Account screen
+- scrollUntilVisible:
+    element:
+      id: "profile-account-link"
+    centerElement: true
+- tapOn:
+    id: "profile-account-link"
+
+# Wait for the Account screen
+- extendedWaitUntil:
+    visible:
+      id: "screen-account"
+    timeout: 15000
+
+# Scroll to phone button (sits below the Google button)
+- scrollUntilVisible:
+    element:
+      id: "account-phone-button"
+    centerElement: true
+- tapOn:
+    id: "account-phone-button"
+
+# Phone input appears; clear default +91 prefix and type the test number
+- extendedWaitUntil:
+    visible:
+      id: "account-phone-input"
+    timeout: 15000
+- tapOn:
+    id: "account-phone-input"
+- eraseText: 10
+- inputText: "+919999900001"
+- tapOn:
+    id: "account-phone-send"
+
+# OTP sheet; the emulator issues a random code, read it back over its REST API
+- extendedWaitUntil:
+    visible:
+      id: "account-otp-input"
+    timeout: 15000
+- runScript: ../scripts/get-phone-code.js
+- tapOn:
+    id: "account-otp-input"
+- inputText: ${output.code}
+- tapOn:
+    id: "account-otp-verify"
+
+# Success: phone is linked: sign out appears (unlink needs 2+ providers)
+- extendedWaitUntil:
+    visible:
+      id: "account-signout-button"
+    timeout: 15000
+- assertVisible:
+    id: "account-signout-button"

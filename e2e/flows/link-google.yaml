@@ -1,13 +1,33 @@
-# link-google.yaml
-# Flow: Link Google account for data import
-# Covers docs/16-account-linking.md (account linking section)
+# Link Google account.
+# NOTE: Real Google sign-in cannot complete on the emulator (no Google account).
+# Owner-run: tap account-google-button and manually complete the system picker.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
 
-description: "User links Google account"
-name: link-google
-trigger: "tap on testID profile-account-link"
-steps:
-  - tap: "testID profile-account-link"
-  - waitFor: "testID account-google-button"
-  - tap: "testID account-google-button"
-  - waitFor: "testID account-unlink-button"
-  - assertVisible: "testID account-unlink-button"
+# Navigate to Profile (You) screen
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-manage-categories"
+    timeout: 15000
+
+# Scroll to the "You" row and tap it to open the Account screen
+- scrollUntilVisible:
+    element:
+      id: "profile-account-link"
+    centerElement: true
+- tapOn:
+    id: "profile-account-link"
+
+# Wait for the Account screen
+- extendedWaitUntil:
+    visible:
+      id: "screen-account"
+    timeout: 15000
+
+# Tap Google sign-in button
+- tapOn:
+    id: "account-google-button"

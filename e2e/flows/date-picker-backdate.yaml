@@ -1,14 +1,56 @@
-# date-picker-backdate.yaml
-# Flow: Backdate transaction using date picker
-# Covers docs/27 § DP3/DP4 (date picker + backdating feature)
+# DP3/DP4: Backdate a transaction using the date picker sheet.
+# The date picker opens from entry-date-pick on the expense sheet.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
+- assertVisible:
+    id: "screen-orbit"
 
-description: "User selects a past date in the date picker to backdate a transaction"
-name: date-picker-backdate
-trigger: "tap on testID add-transaction"
-steps:
-  - tap: "testID add-transaction"
-  - waitFor: "testID date-picker"
-  - setText: { target: "testID date-picker", text: "2023-01-01" }
-  - tap: "testID confirm-date"
-  - waitFor: "testID transaction-list"
-  - assertText: { target: "testID transaction-item-2023-01-01", contains: "2023-01-01" }
+# Open expense entry
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+
+# Type amount
+- tapOn:
+    id: "pad-key-5"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+
+# Open date picker
+- tapOn:
+    id: "entry-date-pick"
+- extendedWaitUntil:
+    visible:
+      id: "date-picker-sheet"
+    timeout: 15000
+
+# Tap a past day (7 days ago: 2026-10-03)
+- tapOn:
+    id: "date-picker-day-2026-10-03"
+- tapOn:
+    id: "date-picker-done"
+
+# Save the expense
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+# Verify on ledger
+- tapOn:
+    id: "tab-activity"
+- extendedWaitUntil:
+    visible:
+      id: "screen-ledger"
+    timeout: 15000

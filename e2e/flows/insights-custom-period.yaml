@@ -1,17 +1,70 @@
-# insights-custom-period.yaml
-# Flow: Set custom period in insights
-# Covers docs/27 § DP5 (insights custom period)
+# DP5: Set custom period in insights.
+# The custom picker opens in range mode with start=addDays(today,-29).
+# With emulator date 2026-10-11, start defaults to 2026-09-12 → opens on September 2026.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
 
-description: "User sets a custom date range in the insights tab"
-name: insights-custom-period
-trigger: "tap on testID insights-tab"
-steps:
-  - tap: "testID insights-tab"
-  - waitFor: "testID insights-date-range-button"
-  - tap: "testID insights-date-range-button"
-  - tap: "testID custom-period-option"
-  - setText: { target: "testID custom-start-date", text: "2023-01-01" }
-  - setText: { target: "testID custom-end-date", text: "2023-01-31" }
-  - tap: "testID apply-custom-period"
-  - waitFor: "testID insights-chart"
-  - assertText: { target: "testID insights-chart-label", contains: "Jan 2023" }
+# Create a test expense so Insights has data to show
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+# Navigate to Insights
+- tapOn:
+    id: "tab-insights"
+- extendedWaitUntil:
+    visible:
+      id: "insights-period-total"
+    timeout: 15000
+
+# Tap the CUSTOM period chip — opens the range date picker
+- tapOn:
+    id: "insights-period-custom"
+- extendedWaitUntil:
+    visible:
+      id: "date-picker-sheet"
+    timeout: 15000
+
+# Picker opens on September 2026 (addDays(2026-10-11, -29) = 2026-09-12).
+# Tap start: September 15
+- tapOn:
+    id: "date-picker-day-2026-09-15"
+
+# Navigate forward one month to October 2026 for the end date
+- tapOn:
+    id: "date-picker-next"
+
+# Tap end: October 1 (safe, always in-month and in the past)
+- tapOn:
+    id: "date-picker-day-2026-10-01"
+
+# Confirm the selection
+- tapOn:
+    id: "date-picker-done"
+
+# Verify the custom period label is now active
+- extendedWaitUntil:
+    visible:
+      id: "insights-custom-label"
+    timeout: 15000
+- assertVisible:
+    id: "insights-empty"   # the picked range (Sep 15 - Oct 1) holds no expenses

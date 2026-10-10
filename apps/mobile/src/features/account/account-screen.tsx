@@ -20,6 +20,7 @@ import {
   linkPhoneCredential,
 } from '@/core/auth/link-service';
 import { linkErrorState } from '@/core/auth/link-errors';
+import { normalizePhone } from '@/core/auth/phone';
 import { OTPSheet } from './otp-sheet';
 import { SwitchSheet } from './switch-sheet';
 
@@ -97,8 +98,11 @@ export const AccountScreen = () => {
 
   const handlePhoneLinkStart = useCallback(async () => {
     clearError();
-    const norm = phoneNumber.trim();
-    if (!norm) return;
+    const norm = normalizePhone(phoneNumber);
+    if (!norm) {
+      handleErrorCode('auth/invalid-phone-number');
+      return;
+    }
     setIsWorking(true);
     try {
       const confirmation = await sendPhoneOtp(norm);
@@ -160,7 +164,7 @@ export const AccountScreen = () => {
 
   const handleOtpResend = useCallback(async () => {
     clearError();
-    const norm = phoneNumber.trim();
+    const norm = normalizePhone(phoneNumber);
     if (!norm) return;
     try {
       const confirmation = await sendPhoneOtp(norm);

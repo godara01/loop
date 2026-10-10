@@ -1,16 +1,43 @@
-# switch-account.yaml
-# Flow: Switch to another linked account
-# Covers docs/27 § (switch account flow)
+# docs/27 L4: switch-account flow.
+# account-switch-button is inside SwitchSheet, opened only on a credential-already-in-use
+# error — reachable only with a real linked Google account on a physical device.
+# OWNER-RUN: complete the switch sheet steps manually after linking a Google account.
+#
+# What this flow covers on the emulator (anonymous user):
+# - Account screen is reachable via profile-account-link
+# - Link options (google + phone) are visible for an anonymous user
+# - Sign-out and unlink buttons are absent (confirming anonymous state)
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
 
-description: "User switches to another linked account"
-name: switch-account
-trigger: "tap on testID account-switch-continue"
-steps:
-  - tap: "testID account-switch-continue"
-  - waitFor: "testID account-switch-button"
-  - tap: "testID account-switch-button"
-  - waitFor: "testID account-switch-confirm-input"
-  - setText: { target: "testID account-switch-confirm-input", text: "TestUser" }
-  - tap: "testID account-switch-continue"
-  - waitFor: "testID account-unlink-button"
-  - assertVisible: "testID account-unlink-button"
+# Navigate to Profile (You) screen
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-manage-categories"
+    timeout: 15000
+
+# Scroll to the "You" row and tap it to open the Account screen
+- scrollUntilVisible:
+    element:
+      id: "profile-account-link"
+    centerElement: true
+- tapOn:
+    id: "profile-account-link"
+
+# Wait for the Account screen
+- extendedWaitUntil:
+    visible:
+      id: "screen-account"
+    timeout: 15000
+
+# For an anonymous user: link options are shown, sign-out is absent
+- assertVisible:
+    id: "account-google-button"
+- assertVisible:
+    id: "account-phone-button"
+- assertNotVisible:
+    id: "account-signout-button"

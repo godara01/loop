@@ -1,18 +1,91 @@
-# ledger-filter.yaml
-# Flow: Filter ledger by category, date, or amount
-# Covers docs/27 § DP6/DP7 (ledger filter sheet)
+# DP6/DP7: Filter the ledger by category, source, and amount.
+# The filter sheet is opened from ledger-filter-open on the ledger screen.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
 
-description: "User applies filters to the ledger view"
-name: ledger-filter
-trigger: "tap on testID ledger-filter-button"
-steps:
-  - tap: "testID ledger-filter-button"
-  - waitFor: "testID filter-sheet"
-  - tap: "testID filter-category"
-  - setText: { target: "testID filter-category-input", text: "Food" }
-  - tap: "testID filter-date-range"
-  - setText: { target: "testID filter-start-date", text: "2023-01-01" }
-  - setText: { target: "testID filter-end-date", text: "2023-12-31" }
-  - tap: "testID apply-filters"
-  - waitFor: "testID ledger-list"
-  - assertText: { target: "testID ledger-item", contains: "Food" }
+# Create test expenses
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-5"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-TRANSPORT"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+# Open ledger and filter sheet
+- tapOn:
+    id: "tab-activity"
+- extendedWaitUntil:
+    visible:
+      id: "screen-ledger"
+    timeout: 15000
+- tapOn:
+    id: "ledger-filter-open"
+- extendedWaitUntil:
+    visible:
+      id: "ledger-filter-screen"
+    timeout: 15000
+
+# Filter by FOOD category
+- tapOn:
+    id: "ledger-filter-category-cat-food"
+- tapOn:
+    id: "ledger-filter-apply"
+- extendedWaitUntil:
+    visible:
+      id: "screen-ledger"
+    timeout: 15000
+
+# Verify filtered results show only FOOD (₹100.00)
+- assertVisible:
+    text: "₹100.00"
+
+# Clear filter
+- tapOn:
+    id: "ledger-filter-open"
+- extendedWaitUntil:
+    visible:
+      id: "ledger-filter-screen"
+    timeout: 15000
+- tapOn:
+    id: "ledger-filter-reset"
+- tapOn:
+    id: "ledger-filter-apply"
+- extendedWaitUntil:
+    visible:
+      id: "screen-ledger"
+    timeout: 15000

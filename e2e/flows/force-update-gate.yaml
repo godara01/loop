@@ -1,13 +1,12 @@
-# force-update-gate.yaml
-# Flow: Force update gate appears when app build is below min_supported_build
-# Covers docs/27 § DP1 (force-update gate)
+# DP1: Force update gate appears when build is outdated.
+# Note: Triggering the gate requires Remote Config manipulation (owner-run).
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
 
-description: "Force update gate appears when current build is outdated"
-name: force-update-gate
-trigger: "launch app"
-steps:
-  - runFlow: ../subflows/reset.yaml
-  - assertVisible:
-      id: "update-gate"
-  - assertVisible:
-      id: "update-gate-update"
+# Verify the update gate is visible
+- assertVisible:
+    id: "update-gate"
+- assertVisible:
+    id: "update-gate-update"

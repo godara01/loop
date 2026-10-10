@@ -57,6 +57,10 @@ const TEMPLATE_ALLOWLIST = [
   // -category-<slug>, -approve, -edit, -dismiss children
   { prefix: 'inbox-day-' },
   { prefix: 'pending-card-' },
+  // date-picker-sheet.tsx: `date-picker-day-${cell.date}` — dates like 2026-10-03
+  { prefix: 'date-picker-day-' },
+  // ledger-filter-screen.tsx: `ledger-filter-category-${category.id}`
+  { prefix: 'ledger-filter-category-' },
 ];
 
 function parseArgs() {

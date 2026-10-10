@@ -1,55 +1,71 @@
-# sign-out-pending-writes.yaml
-# Flow: Sign out when there are pending writes (offline changes)
-# Covers docs/16-account-linking.md (sign out with pending writes)
-
-description: "User signs out while there are pending writes from offline changes"
-name: sign-out-pending-writes
-trigger: "launch app"
-steps:
-  - setAirplaneMode: enabled
-  - runFlow: ../subflows/reset.yaml
-  - runFlow: ../subflows/onboarded.yaml
-  - assertVisible:
-      id: "screen-orbit"
-  - tapOn:
-      id: "dock-add"
-  - extendedWaitUntil:
-      visible:
-        id: "entry-amount"
-      timeout: 15000
-  - tapOn:
-      id: "pad-key-1"
-  - tapOn:
-      id: "pad-key-0"
-  - tapOn:
-      id: "pad-key-0"
-  - tapOn:
-      id: "category-chip-FOOD"
-  - tapOn:
-      id: "entry-description"
-  - inputText: "Test"
-  - runFlow: ../subflows/dismiss-stylus-tip.yaml
-  - tapOn:
-      id: "entry-save"
-  - extendedWaitUntil:
-      visible:
-        id: "orbit-today-total"
-      text: "₹100.00"
-      timeout: 15000
+# docs/27 L4: sign-out with pending writes.
+# account-signout-button is only shown for linked accounts.
+# OWNER-RUN: to test sign-out with pending writes, first link an account (see link-phone.yaml),
+# go offline, create expenses, reconnect and sign out from the account screen.
+#
+# What this flow covers on the emulator (anonymous user):
+# - Offline write scenario: create an expense while in airplane mode, reconnect
+# - Account screen is reachable via profile-account-link
+# - Sign-out button is absent for anonymous users (confirming state)
+# - Link options are present (google + phone)
+appId: com.getter.loop
+onFlowComplete:
   - setAirplaneMode: disabled
-  - extendedWaitUntil:
-      visible:
-        id: "tab-account"
-      timeout: 15000
-  - tapOn:
-      id: "tab-account"
-  - extendedWaitUntil:
-      visible:
-        id: "account-signout-button"
-      timeout: 15000
-  - tapOn:
-      id: "account-signout-button"
-  - extendedWaitUntil:
-      visible:
-        id: "screen-onboarding-welcome"
-      timeout: 30000
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
+- assertVisible:
+    id: "screen-orbit"
+
+# Go offline and create a pending write
+- setAirplaneMode: enabled
+
+- tapOn:
+    id: "dock-add"
+- extendedWaitUntil:
+    visible:
+      id: "entry-amount"
+    timeout: 15000
+- tapOn:
+    id: "pad-key-1"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "pad-key-0"
+- tapOn:
+    id: "category-chip-FOOD"
+- tapOn:
+    id: "entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "screen-orbit"
+    timeout: 15000
+
+# Reconnect
+- setAirplaneMode: disabled
+
+# Navigate to Account screen via Profile tab
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-manage-categories"
+    timeout: 15000
+
+- scrollUntilVisible:
+    element:
+      id: "profile-account-link"
+    centerElement: true
+- tapOn:
+    id: "profile-account-link"
+
+- extendedWaitUntil:
+    visible:
+      id: "screen-account"
+    timeout: 15000
+
+# Anonymous user: link options visible, sign-out absent
+- assertVisible:
+    id: "account-google-button"
+- assertNotVisible:
+    id: "account-signout-button"
