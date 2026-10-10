@@ -18,6 +18,7 @@ function expense(overrides: Partial<Expense> = {}): Expense {
     note: null,
     occurredAt: NOW,
     localDate: '2026-09-23',
+    createdLocalDate: '2026-09-23',
     source: 'manual',
     receiptPath: null,
     pendingId: null,

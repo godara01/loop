@@ -72,6 +72,11 @@ export interface Expense {
    * defeat the index and get the timezone wrong.
    */
   readonly localDate: string;
+  /**
+   * The device-local date at creation. Used to detect backdating correctly.
+   * Null for v1 documents that predate this field. See docs/06-gamification.md.
+   */
+  readonly createdLocalDate: string | null;
   readonly source: ExpenseSource;
   /** Cloud Storage path, not a URL. */
   readonly receiptPath: string | null;

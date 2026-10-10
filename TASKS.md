@@ -891,7 +891,7 @@ changes no behaviour and may start now.
 | **P1 — v1.1 Complete v1** | | | |
 | DP0 | Fix the import-rule drift (`use-rollups`, `profile.tsx`, `day/[date].tsx`) | — | done |
 | DP1 | Force-update gate (`min_supported_build`) | — | todo |
-| DP2 | `createdLocalDate` + backdating fix | — | todo |
+| DP2 | `createdLocalDate` + backdating fix | — | done |
 | DP3 | `DatePickerSheet` model + component | — | todo |
 | DP4 | Entry draft `localDate` + `composeOccurredAt` | DP3 | todo |
 | DP5 | Insights custom-period UI | DP3 | todo |
@@ -1045,7 +1045,7 @@ one first.
   - Both route files are under 40 lines (`wc -l`).
 
 ### DP1 · Force-update gate
-- **Needs:** — · **Owns:** `apps/mobile/src/lib/remote-config.ts` (new key), `apps/mobile/src/core/update-gate/{model.ts,model.test.ts,update-gate.tsx}`, `app/_layout.tsx` (one wrapper), `remoteconfig.template.json`
+- **Needs:** — · **Owns:** `apps/mobile/src/lib/remote-config.ts` (new key), `apps/mobile/src/core/update-gate/{model.ts,model.test.ts,update-gate.tsx}`, `app/_layout.tsx` (one wrapper), `remoteconfig.template.json`, `apps/mobile/package.json` (expo-application)
 - **Spec:** `docs/27` § Force-update gate.
 - **Build:**
   - Pure `isBuildSupported(current, minSupported | null)`.

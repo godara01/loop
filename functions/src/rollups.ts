@@ -59,6 +59,7 @@ function asExpense(c: Contribution | null): Expense | null {
     note: null,
     occurredAt: '',
     localDate: c.localDate,
+    createdLocalDate: null,
     source: 'manual',
     receiptPath: null,
     pendingId: null,

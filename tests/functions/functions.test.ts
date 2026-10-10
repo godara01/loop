@@ -192,6 +192,95 @@ describe('L3 Functions — Expenses & Daily Caps', () => {
     assert.equal(wallet.coinBalance, 0);
   });
 
+  it('expense with createdLocalDate allows west-of-UTC evening logging (not backdated)', async () => {
+    // New York user logging at 20:30 local (2026-03-03), which is 01:30 UTC (2026-03-04)
+    const createdAt = '2026-03-04T01:30:00.000Z';
+    const occurredAt = createdAt;
+    const localDate = '2026-03-03';
+    const createdLocalDate = '2026-03-03';
+
+    const expenseData = {
+      amountMinor: 5000,
+      currency: 'USD',
+      localDate,
+      createdLocalDate,
+      categoryId: 'cat-food',
+      createdAt,
+      occurredAt,
+      deletedAt: null,
+    };
+
+    await handleExpenseWrite(db, ALICE, 'exp-ny-evening', null, expenseData, createdAt);
+
+    // Check-in should be created for 2026-03-03
+    const checkInSnap = await db.doc(firestorePaths.checkIn(ALICE, localDate)).get();
+    assert.equal(checkInSnap.exists, true, 'check-in created for local date');
+
+    const ledger = await getLedger(ALICE);
+    assert.ok(ledger.length > 0, 'coins awarded (not backdated)');
+
+    const wallet = await getWallet(ALICE);
+    assert.ok(wallet.coinBalance > 0, 'coins awarded');
+  });
+
+  it('v1 expense without createdLocalDate uses old UTC-based comparison', async () => {
+    // Simulate a v1 document without createdLocalDate
+    const date = '2026-09-10';
+    const createdAt = `${date}T10:00:00.000Z`;
+    const occurredAt = createdAt;
+
+    const expenseData = {
+      amountMinor: 5000,
+      currency: 'INR',
+      localDate: date,
+      // No createdLocalDate field
+      categoryId: 'cat-food',
+      createdAt,
+      occurredAt,
+      deletedAt: null,
+    };
+
+    await handleExpenseWrite(db, ALICE, 'exp-v1', null, expenseData, createdAt);
+
+    // Check-in should be created
+    const checkInSnap = await db.doc(firestorePaths.checkIn(ALICE, date)).get();
+    assert.equal(checkInSnap.exists, true, 'check-in created using fallback logic');
+
+    const ledger = await getLedger(ALICE);
+    assert.ok(ledger.length > 0, 'coins awarded with v1 fallback');
+  });
+
+  it('genuinely backdated expense with createdLocalDate awards no check-in or coins', async () => {
+    // Expense with localDate earlier than createdLocalDate
+    const createdAt = '2026-03-10T10:00:00.000Z';
+    const occurredAt = '2026-03-03T10:00:00.000Z';
+    const localDate = '2026-03-03';
+    const createdLocalDate = '2026-03-10';
+
+    const expenseData = {
+      amountMinor: 5000,
+      currency: 'USD',
+      localDate,
+      createdLocalDate,
+      categoryId: 'cat-food',
+      createdAt,
+      occurredAt,
+      deletedAt: null,
+    };
+
+    await handleExpenseWrite(db, ALICE, 'exp-truly-backdated', null, expenseData, createdAt);
+
+    // Check-in should NOT be created
+    const checkInSnap = await db.doc(firestorePaths.checkIn(ALICE, localDate)).get();
+    assert.equal(checkInSnap.exists, false, 'no check-in for genuinely backdated expense');
+
+    const ledger = await getLedger(ALICE);
+    assert.equal(ledger.length, 0, 'no coins for genuinely backdated expense');
+
+    const wallet = await getWallet(ALICE);
+    assert.equal(wallet.coinBalance, 0);
+  });
+
   it('handler run twice on the same expense is completely idempotent', async () => {
     const date = '2026-09-05';
     const now = `${date}T10:00:00.000Z`;

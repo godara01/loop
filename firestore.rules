@@ -62,6 +62,9 @@ service cloud.firestore {
           && request.resource.data.amountMinor > 0
           && request.resource.data.currency is string
           && isLocalDate(request.resource.data.localDate)
+          && (!('createdLocalDate' in request.resource.data) 
+              || request.resource.data.createdLocalDate == null 
+              || isLocalDate(request.resource.data.createdLocalDate))
           && request.resource.data.categoryId is string;
 
         // Deletion is soft — an update setting deletedAt. Hard deletes are a

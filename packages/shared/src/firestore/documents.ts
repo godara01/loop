@@ -297,6 +297,7 @@ export interface ExpenseDoc {
   readonly note: string | null;
   readonly occurredAt: string;
   readonly localDate: string;
+  readonly createdLocalDate: string | null;
   readonly source: ExpenseSource;
   readonly receiptPath: string | null;
   readonly pendingId: string | null;
@@ -337,6 +338,7 @@ export function expenseToDoc(expense: Expense): ExpenseDoc {
     note: expense.note,
     occurredAt: expense.occurredAt,
     localDate: expense.localDate,
+    createdLocalDate: expense.createdLocalDate,
     source: expense.source,
     receiptPath: expense.receiptPath,
     pendingId: expense.pendingId,
@@ -385,6 +387,7 @@ export function parseExpense(uid: string, expenseId: string, data: unknown): Exp
     note: d.note === null || d.note === undefined ? null : anyString(path, d, 'note'),
     occurredAt: instant(path, d, 'occurredAt'),
     localDate: localDate(path, d, 'localDate'),
+    createdLocalDate: optionalLocalDate(path, d, 'createdLocalDate'),
     source: oneOf(path, d, 'source', EXPENSE_SOURCES),
     receiptPath: optionalText(path, d, 'receiptPath'),
     pendingId: optionalText(path, d, 'pendingId'),

@@ -71,7 +71,8 @@ export async function handleExpenseWrite(
   const categoryId = afterData.categoryId ?? 'OTHER';
 
   // Backdating rule: if localDate is before the day it was created, it's backdated.
-  const loggedDate = localDateOf(createdAt);
+  const createdLocalDate = afterData.createdLocalDate ?? null;
+  const loggedDate = createdLocalDate ?? localDateOf(createdAt);
   const isBackdated = localDate < loggedDate;
 
   if (isBackdated) {

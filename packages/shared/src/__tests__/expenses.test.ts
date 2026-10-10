@@ -77,6 +77,11 @@ describe('building a personal expense', () => {
     assert.equal(expense.localDate, localDateOf(expense.occurredAt));
   });
 
+  it('sets createdLocalDate from the creation timestamp', () => {
+    const expense = coffee();
+    assert.equal(expense.createdLocalDate, localDateOf(expense.createdAt));
+  });
+
   it('trims the description and stores an empty note as null', () => {
     const expense = coffee();
     assert.equal(expense.description, 'Filter coffee');
@@ -105,6 +110,12 @@ describe('editing', () => {
     assert.equal(edited.localDate, localDateOf('2026-09-14T09:00:00.000Z'));
   });
 
+  it('preserves createdLocalDate when editing', () => {
+    const original = coffee();
+    const edited = editPersonalExpense(original, { description: 'Espresso' }, '2026-09-16T11:00:00.000Z');
+    assert.equal(edited.createdLocalDate, original.createdLocalDate);
+  });
+
   it('never changes currency or createdAt', () => {
     const original = coffee();
     assert.throws(() => editPersonalExpense(original, { total: money(100, 'USD') }, NOW), ExpenseError);
@@ -131,6 +142,11 @@ describe('delete, undo, duplicate', () => {
     assert.equal(copy.source, 'manual');
     assert.equal(copy.pendingId, null);
     assert.equal(copy.deletedAt, null);
+  });
+
+  it('sets a new createdLocalDate when duplicating', () => {
+    const copy = duplicateExpense(coffee(), 'e-2', NOW);
+    assert.equal(copy.createdLocalDate, localDateOf(NOW));
   });
 });
 
@@ -168,5 +184,23 @@ describe('expense documents', () => {
   it('accepts an empty description — it renders as the category name', () => {
     const expense = coffee({ description: '' });
     assert.equal(parseExpense(UID, expense.id, expenseToDoc(expense)).description, '');
+  });
+
+  it('parses v1 documents without createdLocalDate as null', () => {
+    const doc = expenseToDoc(coffee());
+    const { createdLocalDate, ...v1Doc } = doc;
+    const parsed = parseExpense(UID, 'e-1', v1Doc);
+    assert.equal(parsed.createdLocalDate, null);
+  });
+
+  it('round-trips createdLocalDate correctly', () => {
+    const expense = coffee();
+    const parsed = parseExpense(UID, expense.id, expenseToDoc(expense));
+    assert.equal(parsed.createdLocalDate, expense.createdLocalDate);
+  });
+
+  it('rejects malformed createdLocalDate', () => {
+    const doc = { ...expenseToDoc(coffee()), createdLocalDate: 'not-a-date' };
+    assert.throws(() => parseExpense(UID, 'e-1', doc), /createdLocalDate/);
   });
 });
