@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { haptic } from '@/lib/haptics';
 
@@ -24,7 +24,8 @@ export interface DatePickerSheetProps {
   mode: 'single' | 'range';
   value: string | { start: string; end: string };
   onChange: (value: string | { start: string; end: string }) => void;
-  onCancel?: () => void;
+  /** Cancel, Android back, a backdrop tap and a drag-down all call this. Never onChange. */
+  onCancel: () => void;
   allowFuture?: boolean;
   minDate?: string;
   maxRangeDays?: number;
@@ -118,7 +119,7 @@ export function DatePickerSheet({
   }, [mode, rangeState, onChange]);
 
   const handleCancel = useCallback(() => {
-    if (onCancel) onCancel();
+    onCancel();
   }, [onCancel]);
 
   const handleJumpToMonth = useCallback((year: number, month: number) => {
@@ -128,15 +129,25 @@ export function DatePickerSheet({
     haptic('selection');
   }, []);
 
+  // Horizontal fling on the grid steps months. runOnJS: the callbacks are plain
+  // JS (state + haptics), not worklets. activeOffsetX leaves day taps alone.
   const swipeGesture = Gesture.Pan()
+    .runOnJS(true)
+    .activeOffsetX([-20, 20])
+    .failOffsetY([-15, 15])
     .onEnd((event) => {
       if (Math.abs(event.velocityX) > 500) {
-        if (event.velocityX > 0) {
-          handleStepMonth(-1);
-        } else {
-          handleStepMonth(1);
-        }
+        handleStepMonth(event.velocityX > 0 ? -1 : 1);
       }
+    });
+
+  // Dragging the sheet down (from the header) cancels, per docs/03.
+  const dismissGesture = Gesture.Pan()
+    .runOnJS(true)
+    .activeOffsetY(15)
+    .failOffsetX([-20, 20])
+    .onEnd((event) => {
+      if (event.translationY > 60 || event.velocityY > 800) handleCancel();
     });
 
   const isDaySelected = useCallback(
@@ -166,119 +177,124 @@ export function DatePickerSheet({
       transparent
       onRequestClose={handleCancel}
       testID="date-picker-sheet">
-      <Pressable style={styles.backdrop} onPress={handleDone} accessibilityRole="button" accessibilityLabel="Close date picker" testID="date-picker-backdrop">
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()} accessibilityRole="none" testID="date-picker-sheet-content">
-          {showJumpGrid ? (
-            <JumpGrid
-              currentYear={viewYear}
-              currentMonth={viewMonth}
-              today={today}
-              allowFuture={allowFuture}
-              minDate={minDate}
-              onSelect={handleJumpToMonth}
-              onClose={() => setShowJumpGrid(false)}
-            />
-          ) : (
-            <>
-              <View style={styles.header}>
-                <Pressable
-                  onPress={() => handleStepMonth(-1)}
-                  style={styles.stepper}
-                  disabled={!canStepMonth(-1, { year: viewYear, month: viewMonth }, today, allowFuture, minDate)}
-                  testID="date-picker-prev"
-                  accessibilityLabel="Previous month">
-                  <Text style={styles.stepperText}>◀</Text>
-                </Pressable>
+      {/* Gestures inside an RN Modal need their own root on Android. */}
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <Pressable style={styles.backdrop} onPress={handleCancel} accessibilityRole="button" accessibilityLabel="Close date picker" testID="date-picker-backdrop">
+          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()} accessibilityRole="none" testID="date-picker-sheet-content">
+            {showJumpGrid ? (
+              <JumpGrid
+                currentYear={viewYear}
+                currentMonth={viewMonth}
+                today={today}
+                allowFuture={allowFuture}
+                minDate={minDate}
+                onSelect={handleJumpToMonth}
+                onClose={() => setShowJumpGrid(false)}
+              />
+            ) : (
+              <>
+                <GestureDetector gesture={dismissGesture}>
+                  <View style={styles.header}>
+                    <Pressable
+                      onPress={() => handleStepMonth(-1)}
+                      style={styles.stepper}
+                      disabled={!canStepMonth(-1, { year: viewYear, month: viewMonth }, today, allowFuture, minDate)}
+                      testID="date-picker-prev"
+                      accessibilityLabel="Previous month">
+                      <Text style={styles.stepperText}>◀</Text>
+                    </Pressable>
 
-                <Pressable
-                  onPress={() => setShowJumpGrid(true)}
-                  accessibilityLabel={`${MONTH_NAMES[viewMonth - 1]} ${viewYear}`}
-                  accessibilityRole="button"
-                  testID="date-picker-month-title">
-                  <Text style={styles.monthTitle}>
-                    {MONTH_NAMES[viewMonth - 1]} {viewYear}
-                  </Text>
-                </Pressable>
+                    <Pressable
+                      onPress={() => setShowJumpGrid(true)}
+                      accessibilityLabel={`${MONTH_NAMES[viewMonth - 1]} ${viewYear}`}
+                      accessibilityRole="button"
+                      testID="date-picker-month-title">
+                      <Text style={styles.monthTitle}>
+                        {MONTH_NAMES[viewMonth - 1]} {viewYear}
+                      </Text>
+                    </Pressable>
 
-                <Pressable
-                  onPress={() => handleStepMonth(1)}
-                  style={styles.stepper}
-                  disabled={!canStepMonth(1, { year: viewYear, month: viewMonth }, today, allowFuture, minDate)}
-                  testID="date-picker-next"
-                  accessibilityLabel="Next month">
-                  <Text style={styles.stepperText}>▶</Text>
-                </Pressable>
-              </View>
+                    <Pressable
+                      onPress={() => handleStepMonth(1)}
+                      style={styles.stepper}
+                      disabled={!canStepMonth(1, { year: viewYear, month: viewMonth }, today, allowFuture, minDate)}
+                      testID="date-picker-next"
+                      accessibilityLabel="Next month">
+                      <Text style={styles.stepperText}>▶</Text>
+                    </Pressable>
+                  </View>
+                </GestureDetector>
 
-              <View style={styles.dayNames}>
-                {DAY_NAMES.map((name) => (
-                  <Text key={name} style={styles.dayName}>
-                    {name}
-                  </Text>
-                ))}
-              </View>
-
-              <GestureDetector gesture={swipeGesture}>
-                <View style={styles.gridContainer}>
-                  {grid.weeks.map((week, weekIndex) => (
-                    <View key={weekIndex} style={styles.week}>
-                      {week.map((cell) => {
-                        const selectable = isSelectable(cell.date, today, { allowFuture, minDate });
-                        const selected = isDaySelected(cell.date);
-                        const inRange = isDayInRange(cell.date);
-                        const isToday = cell.date === today;
-
-                        return (
-                          <Pressable
-                            key={cell.date}
-                            onPress={() => handleDayPress(cell.date)}
-                            disabled={!selectable}
-                            style={[
-                              styles.dayCell,
-                              inRange && styles.dayCellInRange,
-                              selected && styles.dayCellSelected,
-                              isToday && styles.dayCellToday,
-                            ]}
-                            testID={`date-picker-day-${cell.date}`}
-                            accessibilityLabel={`${cell.day} ${MONTH_NAMES[viewMonth - 1]} ${viewYear}`}>
-                            <Text
-                              style={[
-                                styles.dayNumber,
-                                cell.outOfMonth && styles.dayNumberOutOfMonth,
-                                !selectable && styles.dayNumberDisabled,
-                                selected && styles.dayNumberSelected,
-                              ]}>
-                              {cell.day}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
+                <View style={styles.dayNames}>
+                  {DAY_NAMES.map((name) => (
+                    <Text key={name} style={styles.dayName}>
+                      {name}
+                    </Text>
                   ))}
                 </View>
-              </GestureDetector>
 
-              <View style={styles.actions}>
-                <Pressable
-                  onPress={handleCancel}
-                  style={styles.actionButton}
-                  testID="date-picker-cancel"
-                  accessibilityLabel="Cancel">
-                  <Text style={styles.actionText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleDone}
-                  disabled={!canConfirm}
-                  style={[styles.actionButton, styles.actionButtonPrimary, !canConfirm && styles.actionButtonDisabled]}
-                  testID="date-picker-done"
-                  accessibilityLabel="Done">
-                  <Text style={[styles.actionText, styles.actionTextPrimary]}>Done</Text>
-                </Pressable>
-              </View>
-            </>
-          )}
+                <GestureDetector gesture={swipeGesture}>
+                  <View style={styles.gridContainer}>
+                    {grid.weeks.map((week, weekIndex) => (
+                      <View key={weekIndex} style={styles.week}>
+                        {week.map((cell) => {
+                          const selectable = isSelectable(cell.date, today, { allowFuture, minDate });
+                          const selected = isDaySelected(cell.date);
+                          const inRange = isDayInRange(cell.date);
+                          const isToday = cell.date === today;
+
+                          return (
+                            <Pressable
+                              key={cell.date}
+                              onPress={() => handleDayPress(cell.date)}
+                              disabled={!selectable}
+                              style={[
+                                styles.dayCell,
+                                inRange && styles.dayCellInRange,
+                                selected && styles.dayCellSelected,
+                                isToday && styles.dayCellToday,
+                              ]}
+                              testID={`date-picker-day-${cell.date}`}
+                              accessibilityLabel={`${cell.day} ${MONTH_NAMES[viewMonth - 1]} ${viewYear}`}>
+                              <Text
+                                style={[
+                                  styles.dayNumber,
+                                  cell.outOfMonth && styles.dayNumberOutOfMonth,
+                                  !selectable && styles.dayNumberDisabled,
+                                  selected && styles.dayNumberSelected,
+                                ]}>
+                                {cell.day}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    ))}
+                  </View>
+                </GestureDetector>
+
+                <View style={styles.actions}>
+                  <Pressable
+                    onPress={handleCancel}
+                    style={styles.actionButton}
+                    testID="date-picker-cancel"
+                    accessibilityLabel="Cancel">
+                    <Text style={styles.actionText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleDone}
+                    disabled={!canConfirm}
+                    style={[styles.actionButton, styles.actionButtonPrimary, !canConfirm && styles.actionButtonDisabled]}
+                    testID="date-picker-done"
+                    accessibilityLabel="Done">
+                    <Text style={[styles.actionText, styles.actionTextPrimary]}>Done</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -348,6 +364,7 @@ function JumpGrid({ currentYear, currentMonth, today, allowFuture, minDate, onSe
 }
 
 const styles = StyleSheet.create({
+  gestureRoot: { flex: 1 },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(11, 15, 25, 0.85)',
