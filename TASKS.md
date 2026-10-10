@@ -889,7 +889,7 @@ changes no behaviour and may start now.
 |---|---|---|---|
 | DOC1 | Docs 16–27 and post-v1 updates to docs 00–14 | — | done |
 | **P1 — v1.1 Complete v1** | | | |
-| DP0 | Fix the import-rule drift (`use-rollups`, `profile.tsx`, `day/[date].tsx`) | — | todo |
+| DP0 | Fix the import-rule drift (`use-rollups`, `profile.tsx`, `day/[date].tsx`) | — | done |
 | DP1 | Force-update gate (`min_supported_build`) | — | todo |
 | DP2 | `createdLocalDate` + backdating fix | — | todo |
 | DP3 | `DatePickerSheet` model + component | — | todo |
