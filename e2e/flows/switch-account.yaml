@@ -1,0 +1,16 @@
+# switch-account.yaml
+# Flow: Switch to another linked account
+# Covers docs/27 § (switch account flow)
+
+description: "User switches to another linked account"
+name: switch-account
+trigger: "tap on testID account-switch-continue"
+steps:
+  - tap: "testID account-switch-continue"
+  - waitFor: "testID account-switch-button"
+  - tap: "testID account-switch-button"
+  - waitFor: "testID account-switch-confirm-input"
+  - setText: { target: "testID account-switch-confirm-input", text: "TestUser" }
+  - tap: "testID account-switch-continue"
+  - waitFor: "testID account-unlink-button"
+  - assertVisible: "testID account-unlink-button"

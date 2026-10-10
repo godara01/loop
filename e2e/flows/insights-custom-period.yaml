@@ -1,0 +1,17 @@
+# insights-custom-period.yaml
+# Flow: Set custom period in insights
+# Covers docs/27 § DP5 (insights custom period)
+
+description: "User sets a custom date range in the insights tab"
+name: insights-custom-period
+trigger: "tap on testID insights-tab"
+steps:
+  - tap: "testID insights-tab"
+  - waitFor: "testID insights-date-range-button"
+  - tap: "testID insights-date-range-button"
+  - tap: "testID custom-period-option"
+  - setText: { target: "testID custom-start-date", text: "2023-01-01" }
+  - setText: { target: "testID custom-end-date", text: "2023-01-31" }
+  - tap: "testID apply-custom-period"
+  - waitFor: "testID insights-chart"
+  - assertText: { target: "testID insights-chart-label", contains: "Jan 2023" }

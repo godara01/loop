@@ -1,0 +1,13 @@
+# force-update-gate.yaml
+# Flow: Force update gate appears when app build is below min_supported_build
+# Covers docs/27 § DP1 (force-update gate)
+
+description: "Force update gate appears when current build is outdated"
+name: force-update-gate
+trigger: "launch app"
+steps:
+  - runFlow: ../subflows/reset.yaml
+  - assertVisible:
+      id: "update-gate"
+  - assertVisible:
+      id: "update-gate-update"

@@ -1,0 +1,18 @@
+# ledger-filter.yaml
+# Flow: Filter ledger by category, date, or amount
+# Covers docs/27 § DP6/DP7 (ledger filter sheet)
+
+description: "User applies filters to the ledger view"
+name: ledger-filter
+trigger: "tap on testID ledger-filter-button"
+steps:
+  - tap: "testID ledger-filter-button"
+  - waitFor: "testID filter-sheet"
+  - tap: "testID filter-category"
+  - setText: { target: "testID filter-category-input", text: "Food" }
+  - tap: "testID filter-date-range"
+  - setText: { target: "testID filter-start-date", text: "2023-01-01" }
+  - setText: { target: "testID filter-end-date", text: "2023-12-31" }
+  - tap: "testID apply-filters"
+  - waitFor: "testID ledger-list"
+  - assertText: { target: "testID ledger-item", contains: "Food" }

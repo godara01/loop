@@ -1,0 +1,14 @@
+# sign-in-existing.yaml
+# Flow: Sign in with existing account (Google)
+# Covers docs/16-account-linking.md (account linking section)
+
+description: "User signs in with existing Google account"
+name: sign-in-existing
+trigger: "tap on testID onboarding-already-use-loop"
+steps:
+  - tap: "testID onboarding-already-use-loop"
+  - waitFor: "testID screen-onboarding-welcome"
+  - assertNotVisible: "testID onboarding-already-use-loop"
+  # Assuming after successful sign-in we go to the orbit screen
+  - waitFor: "testID screen-orbit"
+  - assertVisible: "testID screen-orbit"

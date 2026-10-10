@@ -62,6 +62,7 @@ export function FirstExpenseStepScreen() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Default select the first active category
@@ -193,23 +194,31 @@ export function FirstExpenseStepScreen() {
         />
       </ScrollView>
       {/* Outside the ScrollView so Save rides above the keyboard (docs/03). */}
-      <View style={[styles.buttonGroup, { paddingBottom: insets.bottom + space.md }]}>
-        <TactileButton
-          testID="onboarding-save-expense"
-          label="Save"
-          fullWidth
-          disabled={saving || !canSave(amount, currency)}
-          onPress={handleSave}
-        />
-        <TactileButton
-          testID="onboarding-skip-expense"
-          label="Skip for now"
-          variant="secondary"
-          fullWidth
-          disabled={saving}
-          onPress={handleSkip}
-        />
-      </View>
+      {showSuccess ? (
+        <View style={[styles.successState, { paddingBottom: insets.bottom + space.xl }]}>
+          <Text style={styles.successNote}>
+            Your first expense is logged.{'\n'}Your Loop starts now.
+          </Text>
+        </View>
+      ) : (
+        <View style={[styles.buttonGroup, { paddingBottom: insets.bottom + space.md }]}>
+          <TactileButton
+            testID="onboarding-save-expense"
+            label="Save"
+            fullWidth
+            disabled={saving || !canSave(amount, currency)}
+            onPress={handleSave}
+          />
+          <TactileButton
+            testID="onboarding-skip-expense"
+            label="Skip for now"
+            variant="secondary"
+            fullWidth
+            disabled={saving}
+            onPress={handleSkip}
+          />
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -251,5 +260,15 @@ const styles = StyleSheet.create({
     gap: space.xs,
     paddingTop: space.sm,
     paddingHorizontal: layout.screenMargin,
+  },
+  successState: {
+    alignItems: 'center',
+    paddingTop: space.lg,
+    paddingHorizontal: layout.screenMargin,
+  },
+  successNote: {
+    ...type.bodyMd,
+    color: colors.textMuted,
+    textAlign: 'center',
   },
 });

@@ -1,0 +1,18 @@
+# link-phone.yaml
+# Flow: Link phone number for account
+# Covers docs/16-account-linking.md (account linking section)
+
+description: "User links phone number"
+name: link-phone
+trigger: "tap on testID profile-account-link"
+steps:
+  - tap: "testID profile-account-link"
+  - waitFor: "testID account-phone-button"
+  - tap: "testID account-phone-button"
+  - setText: { target: "testID account-phone-input", text: "9999999999" }
+  - tap: "testID account-phone-send"
+  - waitFor: "testID account-otp-input"
+  - setText: { target: "testID account-otp-input", text: "123456" }
+  - tap: "testID account-otp-verify"
+  - waitFor: "testID account-unlink-button"
+  - assertVisible: "testID account-unlink-button"

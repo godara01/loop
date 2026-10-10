@@ -1,0 +1,14 @@
+# date-picker-backdate.yaml
+# Flow: Backdate transaction using date picker
+# Covers docs/27 § DP3/DP4 (date picker + backdating feature)
+
+description: "User selects a past date in the date picker to backdate a transaction"
+name: date-picker-backdate
+trigger: "tap on testID add-transaction"
+steps:
+  - tap: "testID add-transaction"
+  - waitFor: "testID date-picker"
+  - setText: { target: "testID date-picker", text: "2023-01-01" }
+  - tap: "testID confirm-date"
+  - waitFor: "testID transaction-list"
+  - assertText: { target: "testID transaction-item-2023-01-01", contains: "2023-01-01" }

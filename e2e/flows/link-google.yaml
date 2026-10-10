@@ -1,0 +1,13 @@
+# link-google.yaml
+# Flow: Link Google account for data import
+# Covers docs/16-account-linking.md (account linking section)
+
+description: "User links Google account"
+name: link-google
+trigger: "tap on testID profile-account-link"
+steps:
+  - tap: "testID profile-account-link"
+  - waitFor: "testID account-google-button"
+  - tap: "testID account-google-button"
+  - waitFor: "testID account-unlink-button"
+  - assertVisible: "testID account-unlink-button"

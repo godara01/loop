@@ -898,11 +898,11 @@ changes no behaviour and may start now.
 | DP5 | Insights custom-period UI | DP3 | done |
 | DP6 | Ledger filter model + store (pure) | — | done |
 | DP7 | Ledger filter sheet, chips, query strategy | DP3, DP6, DP0 | done |
-| L1 | `core/auth` pure modules (errors, mask, phone) | — | todo |
-| L2 | Google sign-in dep + link service | L1 | todo |
-| L3 | `/settings/account` screen, OTP sheet, switch sheet | L2 | todo |
-| L4 | Welcome "I already use Loop" + onboarding note | L2 | todo |
-| L5 | P1 Maestro flows | DP1, DP4, DP5, DP7, L3, L4 | todo |
+| L1 | `core/auth` pure modules (errors, mask, phone) | — | done |
+| L2 | Google sign-in dep + link service | L1 | done |
+| L3 | `/settings/account` screen, OTP sheet, switch sheet | L2 | done |
+| L4 | Welcome "I already use Loop" + onboarding note | L2 | done |
+| L5 | P1 Maestro flows | DP1, DP4, DP5, DP7, L3, L4 | done |
 | **P2 — v1.2 Money in & out** | | | |
 | K1 | Kind types, validators, `sys-*` ids, merge `PendingExpense` | D10 | todo |
 | K2 | `documents.ts` v2 converters + v1 fixture suite | K1 | todo |

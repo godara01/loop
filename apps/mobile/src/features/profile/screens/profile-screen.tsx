@@ -149,13 +149,19 @@ export function ProfileScreen() {
           </MonoTag>
         </View>
         <Perforation />
-        <View style={styles.row}>
+        <Pressable
+          testID="profile-account-link"
+          accessibilityRole="link"
+          accessibilityLabel="Account settings"
+          onPress={() => router.push('/settings/account' as any)}
+          style={styles.row}
+        >
           <View style={styles.info}>
             <Text style={styles.label}>You</Text>
             <Text style={styles.mono}>{uid.slice(0, 12)}…</Text>
           </View>
           <MonoTag>{profile.isAnonymous ? 'anonymous' : 'linked'}</MonoTag>
-        </View>
+        </Pressable>
       </Card>
 
       <View style={styles.sectionHeader}>

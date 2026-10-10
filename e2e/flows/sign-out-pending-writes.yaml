@@ -1,0 +1,55 @@
+# sign-out-pending-writes.yaml
+# Flow: Sign out when there are pending writes (offline changes)
+# Covers docs/16-account-linking.md (sign out with pending writes)
+
+description: "User signs out while there are pending writes from offline changes"
+name: sign-out-pending-writes
+trigger: "launch app"
+steps:
+  - setAirplaneMode: enabled
+  - runFlow: ../subflows/reset.yaml
+  - runFlow: ../subflows/onboarded.yaml
+  - assertVisible:
+      id: "screen-orbit"
+  - tapOn:
+      id: "dock-add"
+  - extendedWaitUntil:
+      visible:
+        id: "entry-amount"
+      timeout: 15000
+  - tapOn:
+      id: "pad-key-1"
+  - tapOn:
+      id: "pad-key-0"
+  - tapOn:
+      id: "pad-key-0"
+  - tapOn:
+      id: "category-chip-FOOD"
+  - tapOn:
+      id: "entry-description"
+  - inputText: "Test"
+  - runFlow: ../subflows/dismiss-stylus-tip.yaml
+  - tapOn:
+      id: "entry-save"
+  - extendedWaitUntil:
+      visible:
+        id: "orbit-today-total"
+      text: "₹100.00"
+      timeout: 15000
+  - setAirplaneMode: disabled
+  - extendedWaitUntil:
+      visible:
+        id: "tab-account"
+      timeout: 15000
+  - tapOn:
+      id: "tab-account"
+  - extendedWaitUntil:
+      visible:
+        id: "account-signout-button"
+      timeout: 15000
+  - tapOn:
+      id: "account-signout-button"
+  - extendedWaitUntil:
+      visible:
+        id: "screen-onboarding-welcome"
+      timeout: 30000
