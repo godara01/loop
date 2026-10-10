@@ -4,3 +4,4 @@ export * from './screens/profile-step-screen';
 export * from './screens/feel-step-screen';
 export * from './screens/categories-step-screen';
 export * from './screens/first-expense-step-screen';
+export * from './screens/reset-screen';

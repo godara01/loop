@@ -7,3 +7,8 @@ export { ExpenseRow } from './components/expense-row';
 export type { ExpensesSnapshot } from './api/expense-repository';
 export { useExpensesForLastDays, useExpensesForPeriod, useLedgerExpenses, useRecentExpenses } from './hooks/use-expenses';
 export { useExportCsv } from './hooks/use-export-csv';
+export { InsightsScreen } from './screens/insights-screen';
+export { newExpenseId, saveExpense } from './api/expense-repository';
+export { AmountPad } from './components/amount-pad';
+export { CategoryStrip } from './components/category-strip';
+export { EMPTY_AMOUNT, amountOf, canSave, displayAmount } from './model/amount-input';

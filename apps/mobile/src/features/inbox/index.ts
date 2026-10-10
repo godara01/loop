@@ -6,3 +6,4 @@ export type { PendingExpense } from './model/approval';
 export { CaptureCard } from './components/capture-card';
 export { InboxBadge } from './components/inbox-badge';
 export { badgeCount } from './model/inbox-view';
+export { AutoCaptureScreen } from './screens/auto-capture-screen';

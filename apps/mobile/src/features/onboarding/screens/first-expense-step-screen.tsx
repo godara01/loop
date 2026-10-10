@@ -28,17 +28,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { updateProfile } from '@/core/firebase/session-repository';
 import { useSession } from '@/core/providers/bootstrap-provider';
-import { useCategories } from '@/features/categories/hooks/use-categories';
-import { newExpenseId, saveExpense } from '@/features/expenses/api/expense-repository';
-import { AmountPad } from '@/features/expenses/components/amount-pad';
-import { CategoryStrip } from '@/features/expenses/components/category-strip';
+import { useCategories } from '@/features/categories';
 import {
+  AmountPad,
+  CategoryStrip,
   EMPTY_AMOUNT,
   amountOf,
   canSave,
   displayAmount,
-} from '@/features/expenses/model/amount-input';
-import { saveCheckIn } from '@/features/gamification/api/gamification-repository';
+  newExpenseId,
+  saveExpense,
+} from '@/features/expenses';
+import { saveCheckIn } from '@/features/gamification';
 import { haptic } from '@/lib/haptics';
 import { useRecordOnboardingStep } from '../hooks/use-record-onboarding-step';
 

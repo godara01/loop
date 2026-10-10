@@ -1,5 +1,3 @@
-import { CoinsHistoryScreen } from '@/features/gamification/screens/coins-history-screen';
+import { CoinsHistoryScreen } from '@/features/gamification';
 
-export default function CoinsRoute() {
-  return <CoinsHistoryScreen />;
-}
+export default CoinsHistoryScreen;

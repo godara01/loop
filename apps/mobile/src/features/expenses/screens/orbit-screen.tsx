@@ -29,16 +29,16 @@ import { TactileButton } from '@/components/ui/tactile-button';
 import { useSession } from '@/core/providers/bootstrap-provider';
 import { useSettings } from '@/core/providers/settings-provider';
 import { useCategories } from '@/features/categories';
-import { saveCheckIn } from '@/features/gamification/api/gamification-repository';
-import { CheckInPlate } from '@/features/gamification/components/check-in-plate';
-import { CoinAwardChip } from '@/features/gamification/components/coin-award-chip';
-import { StreakBurst } from '@/features/gamification/components/streak-burst';
-import { claimCelebration } from '@/features/gamification/model/celebration-budget';
 import {
+  CheckInPlate,
+  CoinAwardChip,
+  StreakBurst,
+  claimCelebration,
+  saveCheckIn,
   useStreak,
   useTodayCheckIn,
   useWallet,
-} from '@/features/gamification/hooks/use-gamification';
+} from '@/features/gamification';
 import { haptic } from '@/lib/haptics';
 import { EMPTY_STATES } from '@/lib/empty-states';
 

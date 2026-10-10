@@ -1,3 +1,3 @@
-import { InsightsScreen } from '@/features/expenses/screens/insights-screen';
+import { InsightsScreen } from '@/features/expenses';
 
 export default InsightsScreen;

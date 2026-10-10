@@ -21,8 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '@/components/ui/surface';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { useSession } from '@/core/providers/bootstrap-provider';
-import { saveCategory } from '@/features/categories/api/category-repository';
-import { useCategories } from '@/features/categories/hooks/use-categories';
+import { saveCategory, useCategories } from '@/features/categories';
 import { haptic } from '@/lib/haptics';
 import { useRecordOnboardingStep } from '../hooks/use-record-onboarding-step';
 

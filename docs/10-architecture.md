@@ -89,6 +89,17 @@ P1 fixes them (TASKS `DP0`):
   (rules 3 and 4). It moves to a screen component.
 - `app/day/[date].tsx` holds a whole screen inline (rule 4).
 
+DP0 fixed those three (`e8af9a1`). A re-audit then found more of the same,
+fixed in a follow-up commit: `app/settings/reset.tsx` and
+`app/settings/auto-capture.tsx` held whole screens (moved to
+`features/onboarding/screens/reset-screen.tsx` and
+`features/inbox/screens/auto-capture-screen.tsx`). `orbit-screen` and two
+onboarding steps deep-imported other features (now through each `index.ts`).
+`use-resolved-image-uri.ts` called the Storage SDK from a hook (moved to
+`features/categories/api/logo-url.ts`). Check with:
+`grep -rn "@react-native-firebase" apps/mobile/src/features/*/hooks` (no
+output), plus a scan for `@/features/<other>/<deep path>` imports.
+
 ### Import rules
 
 These are enforceable with an ESLint boundary rule and should be, before the

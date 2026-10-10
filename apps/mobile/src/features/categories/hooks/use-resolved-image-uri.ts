@@ -13,9 +13,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { getDownloadURL, ref } from '@react-native-firebase/storage';
-
-import { firebase } from '@/core/firebase/client';
+import { resolveLogoUrl } from '../api/logo-url';
 
 const cache = new Map<string, string>();
 
@@ -30,8 +28,7 @@ export function useResolvedImageUri(path: string): string | null {
     }
     setUri(null);
     let cancelled = false;
-    const { storage } = firebase();
-    getDownloadURL(ref(storage, path))
+    resolveLogoUrl(path)
       .then((url) => {
         cache.set(path, url);
         if (!cancelled) setUri(url);
