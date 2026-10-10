@@ -10,7 +10,8 @@
       "distribution": "internal",
       "channel": "development",
       "env": {
-        "EXPO_PUBLIC_FIREBASE_ENV": "dev"
+        "EXPO_PUBLIC_FIREBASE_ENV": "dev",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "786081644010-nm45jstdl4toravsg3f8lhv4s93rvr96.apps.googleusercontent.com"
       },
       "android": {
         "buildType": "apk"
@@ -23,6 +24,9 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "786081644010-nm45jstdl4toravsg3f8lhv4s93rvr96.apps.googleusercontent.com"
+      },
       "android": {
         "buildType": "apk"
       },
@@ -31,6 +35,9 @@
     "production": {
       "channel": "production",
       "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "786081644010-nm45jstdl4toravsg3f8lhv4s93rvr96.apps.googleusercontent.com"
+      },
       "environment": "production"
     }
   },
