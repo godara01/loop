@@ -892,7 +892,7 @@ changes no behaviour and may start now.
 | DP0 | Fix the import-rule drift (`use-rollups`, `profile.tsx`, `day/[date].tsx`) | — | done |
 | DP1 | Force-update gate (`min_supported_build`) | — | todo |
 | DP2 | `createdLocalDate` + backdating fix | — | done |
-| DP3 | `DatePickerSheet` model + component | — | todo |
+| DP3 | `DatePickerSheet` model + component | — | done |
 | DP4 | Entry draft `localDate` + `composeOccurredAt` | DP3 | todo |
 | DP5 | Insights custom-period UI | DP3 | todo |
 | DP6 | Ledger filter model + store (pure) | — | todo |

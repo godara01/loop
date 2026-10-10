@@ -19,6 +19,7 @@
     "@react-native-firebase/storage": "^26.4.0",
     "@shopify/react-native-skia": "2.6.2",
     "expo": "~57.0.20",
+    "expo-application": "~57.0.3",
     "expo-build-properties": "~57.0.17",
     "expo-constants": "~57.0.17",
     "expo-dev-client": "~57.0.18",
@@ -66,7 +67,7 @@
     "start:tunnel": "expo start --tunnel",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "web": "expo start --web",
-    "test": "tsx --test src/features/*/model/*.test.ts src/lib/*.test.ts"
+    "test": "tsx --test src/features/*/model/*.test.ts src/lib/*.test.ts src/core/**/*.test.ts src/components/ui/*.test.ts"
   },
   "private": true
 }
