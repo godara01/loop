@@ -12,6 +12,8 @@ export * from './types';
 export * from './theme';
 export * from './firestore';
 export * from './storage-paths';
+export * from './merchants';
+export * from './merchants-aliases';
 export * from './dates';
 
 // SMS exports (selective to avoid duplication with types.ts)
