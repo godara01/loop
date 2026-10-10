@@ -47,6 +47,7 @@ apps/mobile/src/
   features/
     onboarding/
     expenses/          Entry, ledger, ledger filters, insights, refunds, split lines
+      state/           ledger-filter-store.ts (v1.1) — feature-owned Zustand store
       api/             expense-repository.ts        Firestore reads/writes
       hooks/           use-expenses.ts, use-rollups.ts, use-export-csv.ts
       components/      amount-pad.tsx, category-strip.tsx, expense-row.tsx
@@ -70,7 +71,7 @@ apps/mobile/src/
     auth/              providers.ts link-service.ts link-errors.ts mask.ts phone.ts (v1.1)
     notifications/     notifications.ts reminder-plan.ts tokens.ts — the ONLY place
                        that imports expo-notifications (v1.4)
-    state/             draft-store.ts undo-store.ts ledger-filter-store.ts (v1.1)
+    state/             draft-store.ts undo-store.ts
     providers/         auth-provider.tsx bootstrap-provider.tsx settings-provider.tsx
   components/ui/       Design-system primitives (+ date-picker-sheet.tsx, v1.1)
   lib/                 haptics.ts haptic-schedule.ts crashlytics.ts remote-config.ts

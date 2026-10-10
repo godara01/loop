@@ -895,7 +895,7 @@ changes no behaviour and may start now.
 | DP3 | `DatePickerSheet` model + component | — | done |
 | DP4 | Entry draft `localDate` + `composeOccurredAt` | DP3 | done |
 | DP5 | Insights custom-period UI | DP3 | done |
-| DP6 | Ledger filter model + store (pure) | — | todo |
+| DP6 | Ledger filter model + store (pure) | — | done |
 | DP7 | Ledger filter sheet, chips, query strategy | DP3, DP6, DP0 | todo |
 | L1 | `core/auth` pure modules (errors, mask, phone) | — | todo |
 | L2 | Google sign-in dep + link service | L1 | todo |
@@ -1119,7 +1119,7 @@ one first.
   - A pure test shows a saved custom period restores from settings unchanged.
 
 ### DP6 · Ledger filter model + store
-- **Needs:** — · **Owns:** `features/expenses/model/ledger-filter.ts` (+ test), `core/state/ledger-filter-store.ts`
+- **Needs:** — · **Owns:** `features/expenses/model/ledger-filter.ts` (+ test), `features/expenses/state/ledger-filter-store.ts`, `features/expenses/model/ledger.ts` (`matchesText`)
 - **Spec:** `docs/03` § Ledger filters → Model, Query strategy.
 - **Build:** `LedgerFilter`, `matches()`, `serverQueryFor()`, `isEmpty()`, and the
   store with `set/clear/fromDrillDown`.

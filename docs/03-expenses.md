@@ -332,7 +332,8 @@ function serverQueryFor(filter): ServerQuery;    // picks the ONE indexed constr
 function isEmpty(filter): boolean;
 ```
 
-The filter lives in a Zustand store (`core/state/ledger-filter-store.ts`) and
+The filter lives in a Zustand store (`features/expenses/state/ledger-filter-store.ts`;
+not `core/state`, because core may not import a feature's types) and
 persists for the session. It is not saved across launches, because a ledger that
 opens filtered would confuse people.
 

@@ -46,7 +46,19 @@ export function dayLabel(date: string, today: string, locale = 'en-IN'): string 
   }).format(new Date(`${date}T00:00:00Z`));
 }
 
-/** Matches description, note, category name or tag, case-insensitively. */
+/** Matches description, note, category name or slug, case-insensitively. `needle` is already trimmed and lower-cased. */
+export function matchesText(expense: Expense, needle: string, categoriesById: ReadonlyMap<string, Category>): boolean {
+  if (needle === '') return true;
+  const category = categoriesById.get(expense.categoryId);
+  return (
+    expense.description.toLowerCase().includes(needle) ||
+    (expense.note?.toLowerCase().includes(needle) ?? false) ||
+    (category !== undefined &&
+      (category.name.toLowerCase().includes(needle) || category.slug.toLowerCase().includes(needle)))
+  );
+}
+
+/** Matches description, note, category name or slug, case-insensitively. */
 export function searchExpenses(
   expenses: readonly Expense[],
   query: string,
@@ -54,15 +66,7 @@ export function searchExpenses(
 ): Expense[] {
   const needle = query.trim().toLowerCase();
   if (needle === '') return [...expenses];
-  return expenses.filter((expense) => {
-    const category = categoriesById.get(expense.categoryId);
-    return (
-      expense.description.toLowerCase().includes(needle) ||
-      (expense.note?.toLowerCase().includes(needle) ?? false) ||
-      (category !== undefined &&
-        (category.name.toLowerCase().includes(needle) || category.slug.toLowerCase().includes(needle)))
-    );
-  });
+  return expenses.filter((expense) => matchesText(expense, needle, categoriesById));
 }
 
 /** How often each category was used on or after `sinceDate` — the input `orderForEntry` takes. */
