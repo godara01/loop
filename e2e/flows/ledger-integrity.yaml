@@ -94,7 +94,7 @@ appId: com.getter.loop
 - tapOn:
     id: "entry-delete"
 - tapOn:
-    text: "Delete"
+    id: "delete-confirm"
 - extendedWaitUntil:
     visible:
       id: "snackbar"

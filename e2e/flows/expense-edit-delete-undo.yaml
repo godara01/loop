@@ -76,9 +76,9 @@ appId: com.getter.loop
 - tapOn:
     id: "entry-delete"
 - assertVisible:
-    text: "Delete this expense?"
+    id: "delete-sheet"
 - tapOn:
-    text: "Delete"
+    id: "delete-confirm"
 
 - extendedWaitUntil:
     visible:

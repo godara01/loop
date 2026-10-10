@@ -98,7 +98,7 @@ onFlowComplete:
 - tapOn:
     id: "entry-delete"
 - tapOn:
-    text: "Delete"
+    id: "delete-confirm"
 - extendedWaitUntil:
     notVisible: "Chai"
     timeout: 10000
