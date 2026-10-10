@@ -201,6 +201,17 @@ describe('expenses', () => {
     await assertFails(setDoc(ref(), validExpense({ localDate: '13/09/2026' })));
   });
 
+  it('accepts createdLocalDate as a local date, null, or absent (v1 docs)', async () => {
+    await assertSucceeds(setDoc(ref(), validExpense({ createdLocalDate: '2026-09-13' })));
+    await assertSucceeds(setDoc(ref(), validExpense({ createdLocalDate: null })));
+    await assertSucceeds(setDoc(ref(), validExpense()));
+  });
+
+  it('rejects a malformed createdLocalDate', async () => {
+    await assertFails(setDoc(ref(), validExpense({ createdLocalDate: '13/09/2026' })));
+    await assertFails(setDoc(ref(), validExpense({ createdLocalDate: 20260913 })));
+  });
+
   it('allows a soft delete, never a hard one', async () => {
     await setDoc(ref(), validExpense());
     await assertSucceeds(updateDoc(ref(), { deletedAt: NOW }));

@@ -65,6 +65,7 @@ started.
 | `npm test` | shared 324 pass · mobile 62 pass · functions 0 |
 | `npm run test:functions` | 32 pass |
 | `npm run test:rules` | 58 pass (Firestore + Storage) |
+| *after DP0–DP6 (2026-10-10)* | shared 357 (+358 NY, +9 Kolkata) · mobile 165 · functions 35 · rules 60 |
 | `npm run check:invariants` | exit 0 |
 | `npm run check:testids` | exit 0 |
 | `npm run check:a11y -- --max 0` | exit 0 (0 findings) |
