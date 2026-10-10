@@ -19,6 +19,7 @@ import {
   periodStats,
   periodTotal,
   previousPeriod,
+  savedCustomPeriod,
   stepPeriod,
   totalsByCategory,
   totalsByDay,
@@ -97,6 +98,48 @@ describe('periods', () => {
     });
     assert.throws(() => customPeriod('2025-01-01', '2026-09-01', '2026-09-05'), /366/);
     assert.throws(() => customPeriod('2026-09-01', '2026-09-07', '2026-09-05'), /future/);
+  });
+
+  it('returns saved custom period when both dates are set and valid', () => {
+    const settings = { insightsCustomStartDate: '2026-08-01', insightsCustomEndDate: '2026-08-31' };
+    assert.deepEqual(savedCustomPeriod(settings, '2026-09-05'), {
+      startDate: '2026-08-01', endDate: '2026-08-31',
+    });
+  });
+
+  it('falls back to default when one date is missing', () => {
+    const withoutStart = { insightsCustomStartDate: null, insightsCustomEndDate: '2026-08-31' };
+    const withoutEnd = { insightsCustomStartDate: '2026-08-01', insightsCustomEndDate: null };
+    assert.deepEqual(savedCustomPeriod(withoutStart, '2026-09-05'), periodOf('custom', '2026-09-05'));
+    assert.deepEqual(savedCustomPeriod(withoutEnd, '2026-09-05'), periodOf('custom', '2026-09-05'));
+  });
+
+  it('falls back to default when range is invalid (>366 days)', () => {
+    const settings = { insightsCustomStartDate: '2025-01-01', insightsCustomEndDate: '2026-09-01' };
+    assert.deepEqual(savedCustomPeriod(settings, '2026-09-05'), periodOf('custom', '2026-09-05'));
+  });
+
+  it('falls back to default when range includes future dates', () => {
+    const settings = { insightsCustomStartDate: '2026-09-01', insightsCustomEndDate: '2026-09-07' };
+    assert.deepEqual(savedCustomPeriod(settings, '2026-09-05'), periodOf('custom', '2026-09-05'));
+  });
+
+  it('steps custom period backward by its own length', () => {
+    const current = { startDate: '2026-08-15', endDate: '2026-09-05' };
+    const stepped = stepPeriod(current, 'custom', -1, '2026-09-05');
+    assert.deepEqual(stepped, { startDate: '2026-07-25', endDate: '2026-08-15' });
+  });
+
+  it('steps custom period forward when next window does not pass today', () => {
+    const current = { startDate: '2026-08-01', endDate: '2026-08-22' };
+    const stepped = stepPeriod(current, 'custom', 1, '2026-09-30');
+    assert.deepEqual(stepped, { startDate: '2026-08-22', endDate: '2026-09-12' });
+  });
+
+  it('returns custom period unchanged when forward step would pass today', () => {
+    const current = { startDate: '2026-08-20', endDate: '2026-09-05' };
+    const stepped = stepPeriod(current, 'custom', 1, '2026-09-05');
+    assert.deepEqual(stepped, current);
   });
 });
 

@@ -125,6 +125,24 @@ export function customPeriod(startDate: string, endDate: string, today: string):
   return { startDate, endDate };
 }
 
+/**
+ * Returns the saved custom period when both dates are set and valid, otherwise
+ * falls back to periodOf('custom', today). Stored end date is EXCLUSIVE (Period is half-open).
+ */
+export function savedCustomPeriod(
+  settings: { insightsCustomStartDate: string | null; insightsCustomEndDate: string | null },
+  today: string,
+): Period {
+  if (!settings.insightsCustomStartDate || !settings.insightsCustomEndDate) {
+    return periodOf('custom', today);
+  }
+  try {
+    return customPeriod(settings.insightsCustomStartDate, settings.insightsCustomEndDate, today);
+  } catch {
+    return periodOf('custom', today);
+  }
+}
+
 /** Moves a displayed window without ever manufacturing a future date. */
 export function stepPeriod(period: Period, kind: PeriodKind, direction: -1 | 1, today: string): Period {
   if (direction === 1 && period.endDate >= addDays(today, 1)) return period;
@@ -136,6 +154,11 @@ export function stepPeriod(period: Period, kind: PeriodKind, direction: -1 | 1, 
       endDate: addDays(period.endDate, direction * length),
     };
     const currentEnd = addDays(today, 1);
+    // For custom kind, never jump to the default last-30-days window.
+    // If forward would pass today, return the period unchanged.
+    if (kind === 'custom' && direction === 1 && next.endDate > currentEnd) {
+      return period;
+    }
     return next.endDate > currentEnd ? periodOf(kind, today) : next;
   }
 

@@ -12,6 +12,7 @@ import {
   collapseLongTail,
   colors,
   compareToPrevious,
+  customPeriod,
   displayPercentages,
   formatMoney,
   intensityStep,
@@ -20,6 +21,7 @@ import {
   mergePeriodSources,
   periodOf,
   previousPeriod,
+  savedCustomPeriod,
   space,
   todayISO,
   totalsByCategory,
@@ -32,6 +34,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card, MonoTag } from '@/components/ui/surface';
+import { DatePickerSheet } from '@/components/ui/date-picker-sheet';
 import { useSession } from '@/core/providers/bootstrap-provider';
 import { useSettings } from '@/core/providers/settings-provider';
 import { useCategories } from '@/features/categories';
@@ -73,7 +76,12 @@ export function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useSession();
   const { settings, update } = useSettings();
-  const [period, setPeriod] = useState(() => periodOf(settings.insightsPeriod, todayISO()));
+  const [period, setPeriod] = useState(() => 
+    settings.insightsPeriod === 'custom'
+      ? savedCustomPeriod(settings, todayISO())
+      : periodOf(settings.insightsPeriod, todayISO())
+  );
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
   // Past days read rollups; this month reads the offline cache (docs/05-insights.md#data-sources).
   const cacheFrom = monthStart(todayISO());
   const previous = previousPeriod(period);
@@ -107,9 +115,13 @@ export function InsightsScreen() {
   const atPresent = isCurrentPeriod(period, todayISO());
 
   const changeKind = (kind: PeriodKind) => {
-    haptic('selection');
-    update({ insightsPeriod: kind });
-    setPeriod(periodOf(kind, todayISO()));
+    if (kind === 'custom') {
+      setShowCustomPicker(true);
+    } else {
+      haptic('selection');
+      update({ insightsPeriod: kind });
+      setPeriod(periodOf(kind, todayISO()));
+    }
   };
   const step = (direction: -1 | 1) => {
     if (direction === 1 && atPresent) return;
@@ -142,6 +154,20 @@ export function InsightsScreen() {
   }, [sourcesReady, expenses, rollups]);
   const delta = previousTotal ? compareToPrevious(model.stats.total, previousTotal) : null;
 
+  const customLabel = useMemo(() => {
+    if (settings.insightsPeriod !== 'custom' || !settings.insightsCustomStartDate || !settings.insightsCustomEndDate) {
+      return 'CUSTOM';
+    }
+    const start = settings.insightsCustomStartDate;
+    const endInclusive = addDays(settings.insightsCustomEndDate, -1);
+    const formatDay = (date: string) => {
+      const [, m, d] = date.split('-');
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]}`;
+    };
+    return `${formatDay(start)} – ${formatDay(endInclusive)}`;
+  }, [settings.insightsPeriod, settings.insightsCustomStartDate, settings.insightsCustomEndDate]);
+
   return (
     <ScrollView
       testID="screen-insights"
@@ -162,14 +188,18 @@ export function InsightsScreen() {
             accessibilityState={{ selected: settings.insightsPeriod === kind }}
             onPress={() => changeKind(kind)}
             style={[styles.periodChip, settings.insightsPeriod === kind && styles.periodChipActive]}>
-            <Text style={[styles.periodLabel, settings.insightsPeriod === kind && styles.periodLabelActive]}>{PERIOD_LABEL[kind]}</Text>
+            <Text 
+              testID={kind === 'custom' ? 'insights-custom-label' : undefined}
+              style={[styles.periodLabel, settings.insightsPeriod === kind && styles.periodLabelActive]}>
+              {kind === 'custom' ? customLabel : PERIOD_LABEL[kind]}
+            </Text>
           </Pressable>
         ))}
       </View>
 
       <View style={styles.navigator}>
         <Pressable testID="insights-previous" accessibilityRole="button" accessibilityLabel="Previous period" onPress={() => step(-1)} hitSlop={10}><Text style={styles.nav}>‹</Text></Pressable>
-        <View style={styles.rangeBlock}><Text testID="insights-period-current" style={styles.range}>{PERIOD_LABEL[settings.insightsPeriod]}</Text><Text style={styles.range}>{period.startDate} — {addDays(period.endDate, -1)}</Text></View>
+        <View style={styles.rangeBlock}><Text testID="insights-period-current" style={styles.range}>{settings.insightsPeriod === 'custom' ? customLabel : PERIOD_LABEL[settings.insightsPeriod]}</Text><Text style={styles.range}>{period.startDate} — {addDays(period.endDate, -1)}</Text></View>
         <Pressable testID="insights-next" accessibilityRole="button" accessibilityLabel="Next period" onPress={() => step(1)} disabled={atPresent} hitSlop={10}><Text style={[styles.nav, atPresent && styles.disabled]}>›</Text></Pressable>
       </View>
 
@@ -221,6 +251,32 @@ export function InsightsScreen() {
           <Card style={styles.weekdays}>{model.weekdays.map((amount, index) => <View key={`${WEEKDAYS[index]}-${index}`} style={styles.weekday}><View style={[styles.weekdayBar, { height: Math.max(3, Math.round((amount.minor / model.maximumWeekday) * 48)) }]} /><Text style={styles.weekdayLabel}>{WEEKDAYS[index]}</Text></View>)}</Card>
         </>
       )}
+
+      {showCustomPicker ? (
+        <DatePickerSheet
+          mode="range"
+          value={{
+            start: settings.insightsCustomStartDate ?? addDays(todayISO(), -29),
+            end: addDays(settings.insightsCustomEndDate ?? todayISO(), -1),
+          }}
+          onChange={(value) => {
+            const range = value as { start: string; end: string };
+            const endExclusive = addDays(range.end, 1);
+            const newPeriod = customPeriod(range.start, endExclusive, todayISO());
+            setPeriod(newPeriod);
+            update({
+              insightsPeriod: 'custom',
+              insightsCustomStartDate: range.start,
+              insightsCustomEndDate: endExclusive,
+            });
+            haptic('selection');
+            setShowCustomPicker(false);
+          }}
+          onCancel={() => setShowCustomPicker(false)}
+          allowFuture={false}
+          maxRangeDays={366}
+        />
+      ) : null}
     </ScrollView>
   );
 }

@@ -24,6 +24,7 @@ export interface DatePickerSheetProps {
   mode: 'single' | 'range';
   value: string | { start: string; end: string };
   onChange: (value: string | { start: string; end: string }) => void;
+  onCancel?: () => void;
   allowFuture?: boolean;
   minDate?: string;
   maxRangeDays?: number;
@@ -40,6 +41,7 @@ export function DatePickerSheet({
   mode,
   value,
   onChange,
+  onCancel,
   allowFuture = false,
   minDate = '2000-01-01',
   maxRangeDays = 366,
@@ -115,6 +117,10 @@ export function DatePickerSheet({
     }
   }, [mode, rangeState, onChange]);
 
+  const handleCancel = useCallback(() => {
+    if (onCancel) onCancel();
+  }, [onCancel]);
+
   const handleJumpToMonth = useCallback((year: number, month: number) => {
     setViewYear(year);
     setViewMonth(month);
@@ -158,7 +164,7 @@ export function DatePickerSheet({
       visible
       animationType="slide"
       transparent
-      onRequestClose={handleDone}
+      onRequestClose={handleCancel}
       testID="date-picker-sheet">
       <Pressable style={styles.backdrop} onPress={handleDone} accessibilityRole="button" accessibilityLabel="Close date picker" testID="date-picker-backdrop">
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()} accessibilityRole="none" testID="date-picker-sheet-content">
@@ -254,7 +260,7 @@ export function DatePickerSheet({
 
               <View style={styles.actions}>
                 <Pressable
-                  onPress={handleDone}
+                  onPress={handleCancel}
                   style={styles.actionButton}
                   testID="date-picker-cancel"
                   accessibilityLabel="Cancel">

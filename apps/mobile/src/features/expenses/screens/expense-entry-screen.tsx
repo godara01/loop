@@ -546,6 +546,7 @@ export function ExpenseEntryScreen({
             update({ localDate: value as string });
             setShowDatePicker(false);
           }}
+          onCancel={() => setShowDatePicker(false)}
           allowFuture={false}
         />
       ) : null}
