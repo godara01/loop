@@ -890,7 +890,7 @@ changes no behaviour and may start now.
 | DOC1 | Docs 16–27 and post-v1 updates to docs 00–14 | — | done |
 | **P1 — v1.1 Complete v1** | | | |
 | DP0 | Fix the import-rule drift (`use-rollups`, `profile.tsx`, `day/[date].tsx`) | — | done |
-| DP1 | Force-update gate (`min_supported_build`) | — | todo |
+| DP1 | Force-update gate (`min_supported_build`) | — | done |
 | DP2 | `createdLocalDate` + backdating fix | — | done |
 | DP3 | `DatePickerSheet` model + component | — | done |
 | DP4 | Entry draft `localDate` + `composeOccurredAt` | DP3 | done |
@@ -1045,7 +1045,7 @@ one first.
   - Both route files are under 40 lines (`wc -l`).
 
 ### DP1 · Force-update gate
-- **Needs:** — · **Owns:** `apps/mobile/src/lib/remote-config.ts` (new key), `apps/mobile/src/core/update-gate/{model.ts,model.test.ts,update-gate.tsx}`, `app/_layout.tsx` (one wrapper), `remoteconfig.template.json`, `apps/mobile/package.json` (expo-application)
+- **Needs:** — · **Owns:** `apps/mobile/src/lib/remote-config.ts` (new key + activation listener), `apps/mobile/src/core/update-gate/{model.ts,model.test.ts,update-gate.tsx}`, `app/_layout.tsx` (one wrapper), `remoteconfig.template.json`, `apps/mobile/package.json` (`expo-application`, for `nativeBuildVersion`), `apps/mobile/package.json` (expo-application)
 - **Spec:** `docs/27` § Force-update gate.
 - **Build:**
   - Pure `isBuildSupported(current, minSupported | null)`.

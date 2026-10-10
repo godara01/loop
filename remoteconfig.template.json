@@ -4,6 +4,11 @@
       "defaultValue": { "value": "true" },
       "valueType": "BOOLEAN",
       "description": "Kill switch for SMS auto-capture (docs/12). false stops the listener on every device at once."
+    },
+    "min_supported_build": {
+      "defaultValue": { "value": "0" },
+      "valueType": "NUMBER",
+      "description": "Force-update gate (docs/27). Blocks builds older than this value with a Play Store link."
     }
   }
 }

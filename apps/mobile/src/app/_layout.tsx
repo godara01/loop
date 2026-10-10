@@ -24,6 +24,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/core/providers/auth-provider';
 import { BootstrapProvider, useSession } from '@/core/providers/bootstrap-provider';
 import { SettingsProvider, useSettings } from '@/core/providers/settings-provider';
+import { UpdateGate } from '@/core/update-gate/update-gate';
 import { ONBOARDING_ROUTES, determineResumeStep } from '@/features/onboarding';
 import { initAppCheck } from '@/lib/app-check';
 import { initCrashlytics } from '@/lib/crashlytics';
@@ -88,32 +89,34 @@ export default function RootLayout() {
         <AuthProvider>
           <BootstrapProvider onSettled={hideSplash}>
             <SettingsProvider>
-              <OnboardingGate>
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: colors.background },
-                  }}>
-                  <Stack.Screen name="(tabs)" />
-                  <Stack.Screen name="onboarding/index" />
-                  <Stack.Screen name="onboarding/profile" />
-                  <Stack.Screen name="onboarding/feel" />
-                  <Stack.Screen name="onboarding/categories" />
-                  <Stack.Screen name="onboarding/first-expense" />
-                  <Stack.Screen name="expense/new" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="expense/[id]" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="category/catalogue" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="category/new" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="category/[id]" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="category/index" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="coins" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="inbox" />
-                  <Stack.Screen name="settings/reset" />
-                  <Stack.Screen name="settings/auto-capture" />
-                  <Stack.Screen name="expense/approve/[pendingId]" options={{ presentation: 'modal' }} />
-                </Stack>
-              </OnboardingGate>
+              <UpdateGate>
+                <OnboardingGate>
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: colors.background },
+                    }}>
+                    <Stack.Screen name="(tabs)" />
+                    <Stack.Screen name="onboarding/index" />
+                    <Stack.Screen name="onboarding/profile" />
+                    <Stack.Screen name="onboarding/feel" />
+                    <Stack.Screen name="onboarding/categories" />
+                    <Stack.Screen name="onboarding/first-expense" />
+                    <Stack.Screen name="expense/new" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="expense/[id]" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="category/catalogue" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="category/new" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="category/[id]" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="category/index" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="coins" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="inbox" />
+                    <Stack.Screen name="settings/reset" />
+                    <Stack.Screen name="settings/auto-capture" />
+                    <Stack.Screen name="expense/approve/[pendingId]" options={{ presentation: 'modal' }} />
+                  </Stack>
+                </OnboardingGate>
+              </UpdateGate>
             </SettingsProvider>
           </BootstrapProvider>
         </AuthProvider>

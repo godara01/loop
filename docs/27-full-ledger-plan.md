@@ -104,7 +104,12 @@ Ships in **P1**, before any document of a new shape can exist.
   screen appears: *"This version of Loop is out of date. Update to keep your data
   in sync."* with a Play Store button.
 - **Offline**, the last fetched value is used. If none was ever fetched, the gate
-  doesn't block, because offline-first wins.
+  doesn't block, because offline-first wins. "Fetched" means the value's source
+  is `remote`; a default value never blocks.
+- The gate starts Remote Config itself at launch (`initRemoteConfig`, which is
+  safe to call repeatedly), so it works on devices that never turn on SMS
+  capture. The current build number comes from `expo-application`
+  (`nativeBuildVersion`).
 - Why: once linking makes multiple devices normal, a v1.0 phone signed into the
   same account would misread `kind: income` as spend, and would throw on new
   fields. Raising `min_supported_build` before deploying a new schema makes that
@@ -363,7 +368,7 @@ device.
 
 | When | Adds | Notes |
 |---|---|---|
-| P1 start | `@react-native-google-signin/google-signin` | Plus Firebase Phone provider config. No new native module for phone |
+| P1 start | `@react-native-google-signin/google-signin`, `expo-application` | Plus Firebase Phone provider config. No new native module for phone |
 | P4 start | `expo-notifications` | Two Android channels |
 | P5 start | App Links intent filter | `app.json` `android.intentFilters` |
 | P6 start | `expo-document-picker`, `expo-quick-actions`, `react-native-android-widget` | Widget provider XML via the config plugin |
