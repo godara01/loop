@@ -9,6 +9,7 @@
  */
 
 import {
+  type QueryDocumentSnapshot,
   collection,
   doc,
   getDocs,
@@ -17,11 +18,14 @@ import {
   orderBy,
   query,
   setDoc,
+  startAfter,
   where,
 } from '@react-native-firebase/firestore';
 import { DocumentShapeError, type Expense, expenseToDoc, firestorePaths, parseExpense } from '@loop/shared';
 
 import { firebase } from '@/core/firebase/client';
+
+import { type Page } from '../model/filter-scan';
 
 export interface ExpensesSnapshot {
   readonly expenses: readonly Expense[];
@@ -98,6 +102,36 @@ export function observeRecentExpenses(
     (snapshot) => onChange(toSnapshot(uid, snapshot.docs, snapshot.metadata.fromCache)),
     (error) => onError(toError(error)),
   );
+}
+
+/** The resume point of a paged read: the last document of the page before. */
+export type ExpenseCursor = QueryDocumentSnapshot;
+
+/**
+ * One page of live expenses, newest first — the paged filter scan's source
+ * (docs/03-expenses.md § "Ledger filters" → Query strategy). A one-shot read,
+ * not a listener: a scan walks back through hundreds of rows, and keeping a
+ * listener per page would hold them all open. Malformed docs are skipped.
+ */
+export async function fetchExpensesPage(
+  uid: string,
+  pageSize: number,
+  after: ExpenseCursor | null,
+): Promise<Page<ExpenseCursor>> {
+  const { db } = firebase();
+  const q = query(
+    collection(db, firestorePaths.expenses(uid)),
+    where('deletedAt', '==', null),
+    orderBy('occurredAt', 'desc'),
+    ...(after === null ? [] : [startAfter(after)]),
+    limit(pageSize),
+  );
+  const snapshot = await getDocs(q);
+  const items = toSnapshot(uid, snapshot.docs, snapshot.metadata.fromCache).expenses;
+  const last = snapshot.docs.at(-1);
+  // Short of a full page means the collection ended, so there is nothing to resume from.
+  const next = last === undefined || snapshot.docs.length < pageSize ? null : last;
+  return { items, next };
 }
 
 /** Every live expense on or after a local date — today's total, recent category usage. */

@@ -72,7 +72,7 @@ appId: com.getter.loop
 - assertVisible:
     text: "₹80.00"
 - tapOn:
-    text: "Clear"
+    id: "ledger-clear-filter"
 
 # The current day opens a day detail whose total is independent of yesterday.
 - tapOn:

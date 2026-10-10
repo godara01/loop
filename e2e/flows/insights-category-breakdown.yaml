@@ -72,7 +72,7 @@ appId: com.getter.loop
 - assertVisible:
     text: "₹100.00"
 - tapOn:
-    text: "Clear"
+    id: "ledger-clear-filter"
 # Drill down into TRANSPORT category
 - tapOn:
     id: "tab-insights"
@@ -83,7 +83,7 @@ appId: com.getter.loop
 - assertVisible:
     text: "₹50.00"
 - tapOn:
-    text: "Clear"
+    id: "ledger-clear-filter"
 - tapOn:
     id: "tab-insights"
 - tapOn:

@@ -109,6 +109,7 @@ export default function RootLayout() {
                     <Stack.Screen name="category/[id]" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="category/index" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="ledger/filter" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="coins" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="inbox" />
                     <Stack.Screen name="settings/reset" />

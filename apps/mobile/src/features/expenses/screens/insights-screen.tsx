@@ -43,6 +43,8 @@ import { haptic } from '@/lib/haptics';
 
 import { type ExpensesState, useExpensesForPeriod } from '../hooks/use-expenses';
 import { useDailyRollups } from '../hooks/use-rollups';
+import { fromDrillDown } from '../model/ledger-filter';
+import { useLedgerFilterStore } from '../state/ledger-filter-store';
 
 const monthStart = (date: string) => `${date.slice(0, 7)}-01`;
 
@@ -291,7 +293,7 @@ export function InsightsScreen() {
 
 function CategoryRow({ row, category, percent, period }: { row: ReturnType<typeof totalsByCategory>[number]; category: Category | undefined; percent: number; period: { startDate: string; endDate: string } }) {
   const tint = category ? categoryColors[category.colorToken].tint : colors.textMuted;
-  return <Pressable testID={`insights-category-${row.categoryId}`} accessibilityRole="button" accessibilityLabel={`${category?.name ?? 'Unknown'}, ${formatMoney(row.total)}, ${percent}%`} onPress={() => { haptic('tap'); router.push({ pathname: '/(tabs)/activity', params: { categoryId: row.categoryId, startDate: period.startDate, endDate: period.endDate } }); }} style={styles.categoryRow}><View style={styles.categoryTop}><MonoTag tint={tint}>{category?.name ?? 'Unknown'}</MonoTag><View style={styles.amountGroup}><Text style={styles.amount}>{formatMoney(row.total)}</Text><Text style={styles.amount}>{`· ${percent}%`}</Text></View></View><View style={styles.track}><View style={[styles.bar, { backgroundColor: tint, width: `${Math.max(row.share * 100, 2)}%` }]} /></View></Pressable>;
+  return <Pressable testID={`insights-category-${row.categoryId}`} accessibilityRole="button" accessibilityLabel={`${category?.name ?? 'Unknown'}, ${formatMoney(row.total)}, ${percent}%`} onPress={() => { haptic('tap'); useLedgerFilterStore.getState().setFilter(fromDrillDown({ categoryId: row.categoryId, startDate: period.startDate, endDate: period.endDate })); router.push('/(tabs)/activity'); }} style={styles.categoryRow}><View style={styles.categoryTop}><MonoTag tint={tint}>{category?.name ?? 'Unknown'}</MonoTag><View style={styles.amountGroup}><Text style={styles.amount}>{formatMoney(row.total)}</Text><Text style={styles.amount}>{`· ${percent}%`}</Text></View></View><View style={styles.track}><View style={[styles.bar, { backgroundColor: tint, width: `${Math.max(row.share * 100, 2)}%` }]} /></View></Pressable>;
 }
 
 function LongTail({ rows, categoriesById, percentages, period }: { rows: readonly ReturnType<typeof totalsByCategory>[number][]; categoriesById: ReadonlyMap<string, Category>; percentages: ReadonlyMap<string, number>; period: { startDate: string; endDate: string } }) {

@@ -897,7 +897,7 @@ changes no behaviour and may start now.
 | DP4 | Entry draft `localDate` + `composeOccurredAt` | DP3 | done |
 | DP5 | Insights custom-period UI | DP3 | done |
 | DP6 | Ledger filter model + store (pure) | — | done |
-| DP7 | Ledger filter sheet, chips, query strategy | DP3, DP6, DP0 | todo |
+| DP7 | Ledger filter sheet, chips, query strategy | DP3, DP6, DP0 | done |
 | L1 | `core/auth` pure modules (errors, mask, phone) | — | todo |
 | L2 | Google sign-in dep + link service | L1 | todo |
 | L3 | `/settings/account` screen, OTP sheet, switch sheet | L2 | todo |
