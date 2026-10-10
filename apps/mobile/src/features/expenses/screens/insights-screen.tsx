@@ -163,7 +163,7 @@ export function InsightsScreen() {
     const formatDay = (date: string) => {
       const [, m, d] = date.split('-');
       const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-      return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]}`;
+      return `${d} ${months[parseInt(m, 10) - 1]}`;
     };
     return `${formatDay(start)} – ${formatDay(endInclusive)}`;
   }, [settings.insightsPeriod, settings.insightsCustomStartDate, settings.insightsCustomEndDate]);
@@ -262,7 +262,15 @@ export function InsightsScreen() {
           onChange={(value) => {
             const range = value as { start: string; end: string };
             const endExclusive = addDays(range.end, 1);
-            const newPeriod = customPeriod(range.start, endExclusive, todayISO());
+            let newPeriod;
+            try {
+              newPeriod = customPeriod(range.start, endExclusive, todayISO());
+            } catch {
+              // The sheet caps ranges at 366 days and the past, so this only
+              // trips if today changed while it was open. Keep it open.
+              haptic('warning');
+              return;
+            }
             setPeriod(newPeriod);
             update({
               insightsPeriod: 'custom',
