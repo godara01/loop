@@ -9,9 +9,11 @@
  * never passed in — so the two cannot disagree.
  */
 
+import type { Category } from './categories';
+import { SYSTEM_CATEGORY_IDS } from './categories';
 import type { Money } from './money';
 import { localDateOf } from './streak';
-import type { Expense, ExpenseSource } from './types';
+import type { Expense, ExpenseSource, TransactionKind } from './types';
 
 export class ExpenseError extends Error {}
 
@@ -26,6 +28,61 @@ export interface PersonalExpenseInput {
   readonly now: string;
   readonly source?: ExpenseSource;
   readonly pendingId?: string | null;
+  readonly accountId?: string | null;
+  readonly kind?: TransactionKind;
+}
+
+export interface IncomeInput {
+  readonly id: string;
+  readonly uid: string;
+  readonly total: Money;
+  readonly categoryId: string;
+  readonly description: string;
+  readonly note: string | null;
+  readonly occurredAt: string;
+  readonly now: string;
+  readonly source?: ExpenseSource;
+  readonly pendingId?: string | null;
+  readonly accountId?: string | null;
+  readonly merchant?: string | null;
+  readonly merchantKey?: string | null;
+}
+
+export interface TransferInput {
+  readonly id: string;
+  readonly uid: string;
+  readonly total: Money;
+  readonly description: string;
+  readonly note: string | null;
+  readonly occurredAt: string;
+  readonly now: string;
+  readonly accountId: string;
+  readonly toAccountId: string;
+  readonly source?: ExpenseSource;
+  readonly pendingId?: string | null;
+}
+
+export interface RefundInput {
+  readonly id: string;
+  readonly uid: string;
+  readonly total: Money;
+  readonly categoryId: string;
+  readonly description: string;
+  readonly note: string | null;
+  readonly occurredAt: string;
+  readonly now: string;
+  readonly refundOf: string;
+  readonly accountId?: string | null;
+  readonly source?: ExpenseSource;
+  readonly pendingId?: string | null;
+}
+
+export interface TransactionValidationInput {
+  readonly kind?: TransactionKind;
+  readonly categoryId: string;
+  readonly accountId?: string | null;
+  readonly toAccountId?: string | null;
+  readonly refundOf?: string | null;
 }
 
 export const MAX_DESCRIPTION_LENGTH = 80;
@@ -44,6 +101,34 @@ function checkNotFuture(occurredAt: string, now: string): void {
   }
 }
 
+export function validateTransaction(
+  input: TransactionValidationInput,
+  category?: Partial<Category> & { type?: 'expense' | 'income' },
+): void {
+  const kind = input.kind ?? 'expense';
+  if (kind === 'transfer') {
+    if (!input.accountId || !input.toAccountId) {
+      throw new ExpenseError('Transfer requires both accountId and toAccountId');
+    }
+    if (input.accountId === input.toAccountId) {
+      throw new ExpenseError('Transfer accounts must differ');
+    }
+  } else if (kind === 'income') {
+    if (
+      input.categoryId === SYSTEM_CATEGORY_IDS.transfer ||
+      input.categoryId === SYSTEM_CATEGORY_IDS.settlement ||
+      input.categoryId === SYSTEM_CATEGORY_IDS.loan ||
+      (category && category.type === 'expense')
+    ) {
+      throw new ExpenseError('Income requires an income category');
+    }
+  } else if (kind === 'refund') {
+    if (!input.refundOf) {
+      throw new ExpenseError('Refund requires refundOf');
+    }
+  }
+}
+
 /** Empty strings are stored as null so "no note" has exactly one representation. */
 function cleanNote(note: string | null): string | null {
   const trimmed = note?.trim() ?? '';
@@ -53,8 +138,11 @@ function cleanNote(note: string | null): string | null {
 export function newPersonalExpense(input: PersonalExpenseInput): Expense {
   checkAmount(input.total);
   checkNotFuture(input.occurredAt, input.now);
+  const kind = input.kind ?? 'expense';
+  validateTransaction({ kind, categoryId: input.categoryId, accountId: input.accountId });
   return {
     id: input.id,
+    ...(kind !== 'expense' ? { kind } : {}),
     categoryId: input.categoryId,
     total: input.total,
     description: input.description.trim().slice(0, MAX_DESCRIPTION_LENGTH),
@@ -72,6 +160,108 @@ export function newPersonalExpense(input: PersonalExpenseInput): Expense {
     createdAt: input.now,
     updatedAt: input.now,
     deletedAt: null,
+    ...(input.accountId ? { accountId: input.accountId } : {}),
+  };
+}
+
+export function newIncome(input: IncomeInput, category?: Partial<Category> & { type?: 'expense' | 'income' }): Expense {
+  checkAmount(input.total);
+  checkNotFuture(input.occurredAt, input.now);
+  validateTransaction(
+    { kind: 'income', categoryId: input.categoryId, accountId: input.accountId },
+    category,
+  );
+  return {
+    id: input.id,
+    kind: 'income',
+    categoryId: input.categoryId,
+    total: input.total,
+    description: input.description.trim().slice(0, MAX_DESCRIPTION_LENGTH),
+    note: cleanNote(input.note),
+    occurredAt: input.occurredAt,
+    localDate: localDateOf(input.occurredAt),
+    createdLocalDate: localDateOf(new Date(input.now)),
+    source: input.source ?? 'manual',
+    receiptPath: null,
+    pendingId: input.pendingId ?? null,
+    groupId: null,
+    paidBy: input.uid,
+    splitMode: 'even',
+    allocations: [{ memberId: input.uid, amount: input.total }],
+    createdAt: input.now,
+    updatedAt: input.now,
+    deletedAt: null,
+    ...(input.accountId ? { accountId: input.accountId } : {}),
+    ...(input.merchant ? { merchant: input.merchant } : {}),
+    ...(input.merchantKey ? { merchantKey: input.merchantKey } : {}),
+  };
+}
+
+export function newTransfer(input: TransferInput): Expense {
+  checkAmount(input.total);
+  checkNotFuture(input.occurredAt, input.now);
+  validateTransaction({
+    kind: 'transfer',
+    categoryId: SYSTEM_CATEGORY_IDS.transfer,
+    accountId: input.accountId,
+    toAccountId: input.toAccountId,
+  });
+  return {
+    id: input.id,
+    kind: 'transfer',
+    categoryId: SYSTEM_CATEGORY_IDS.transfer,
+    total: input.total,
+    description: input.description.trim().slice(0, MAX_DESCRIPTION_LENGTH),
+    note: cleanNote(input.note),
+    occurredAt: input.occurredAt,
+    localDate: localDateOf(input.occurredAt),
+    createdLocalDate: localDateOf(new Date(input.now)),
+    source: input.source ?? 'manual',
+    receiptPath: null,
+    pendingId: input.pendingId ?? null,
+    groupId: null,
+    paidBy: input.uid,
+    splitMode: 'even',
+    allocations: [{ memberId: input.uid, amount: input.total }],
+    createdAt: input.now,
+    updatedAt: input.now,
+    deletedAt: null,
+    accountId: input.accountId,
+    toAccountId: input.toAccountId,
+  };
+}
+
+export function newRefund(input: RefundInput): Expense {
+  checkAmount(input.total);
+  checkNotFuture(input.occurredAt, input.now);
+  validateTransaction({
+    kind: 'refund',
+    categoryId: input.categoryId,
+    refundOf: input.refundOf,
+    accountId: input.accountId,
+  });
+  return {
+    id: input.id,
+    kind: 'refund',
+    categoryId: input.categoryId,
+    total: input.total,
+    description: input.description.trim().slice(0, MAX_DESCRIPTION_LENGTH),
+    note: cleanNote(input.note),
+    occurredAt: input.occurredAt,
+    localDate: localDateOf(input.occurredAt),
+    createdLocalDate: localDateOf(new Date(input.now)),
+    source: input.source ?? 'manual',
+    receiptPath: null,
+    pendingId: input.pendingId ?? null,
+    groupId: null,
+    paidBy: input.uid,
+    splitMode: 'even',
+    allocations: [{ memberId: input.uid, amount: input.total }],
+    createdAt: input.now,
+    updatedAt: input.now,
+    deletedAt: null,
+    refundOf: input.refundOf,
+    ...(input.accountId ? { accountId: input.accountId } : {}),
   };
 }
 

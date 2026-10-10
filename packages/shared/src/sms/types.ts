@@ -4,6 +4,7 @@
  */
 
 import type { CurrencyCode } from '../money';
+import type { TransactionKind } from '../types';
 
 export type TransactionDirection = 'debit' | 'credit';
 
@@ -42,6 +43,12 @@ export interface PendingExpense {
   readonly expenseId: string | null;
   /** Masked for user recognition: "HDFC ••1234 · SWIGGY". Never the raw body. */
   readonly displayHint: string;
+  // ——— v1.2 optional fields (docs/12-sms-ingest.md, docs/17-money-in-and-out.md) ———
+  readonly kind?: TransactionKind;
+  readonly merchantKey?: string | null;
+  readonly suggestedAccountId?: string | null;
+  readonly suggestedRefundOf?: string | null;
+  readonly pairedPendingId?: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

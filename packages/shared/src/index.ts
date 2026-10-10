@@ -41,6 +41,7 @@ export type {
   CompiledRegistry,
   CompiledTemplate,
   ParsedTransaction,
+  PendingExpense,
   PendingExpenseStatus,
   PendingExpenseSource,
   TemplateFields,

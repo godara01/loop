@@ -58,8 +58,11 @@ export type SmsCaptureState = 'unseen' | 'shown' | 'dismissed' | 'denied' | 'gra
 /** Where an expense came from. SMS-derived ones are approved, never automatic. */
 export type ExpenseSource = 'manual' | 'sms' | 'shared' | 'group';
 
+export type TransactionKind = 'expense' | 'income' | 'refund' | 'transfer' | 'settlement' | 'loan';
+
 export interface Expense {
   readonly id: string;
+  readonly kind?: TransactionKind;
   readonly categoryId: string;
   readonly total: Money;
   readonly description: string;
@@ -94,35 +97,26 @@ export interface Expense {
   readonly splitMode: SplitMode;
   readonly allocations: readonly Allocation[];
 
+  // ——— v1.2 (docs/17-money-in-and-out.md, docs/08-data-model.md) ———
+  readonly accountId?: string | null;
+  readonly toAccountId?: string | null;
+  readonly refundOf?: string | null;
+  readonly merchant?: string | null;
+  readonly merchantKey?: string | null;
+  readonly tagIds?: readonly string[];
+  readonly lines?: readonly { readonly categoryId: string; readonly amountMinor: number }[] | null;
+  readonly categoryIds?: readonly string[];
+  readonly recurringId?: string | null;
+  readonly importId?: string | null;
+  readonly groupRefId?: string | null;
+  readonly paidMinor?: number | null;
+  readonly direction?: 'in' | 'out' | null;
+  readonly excludeFromSpend?: boolean;
+  readonly schemaVersion?: 1 | 2;
+
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly deletedAt: string | null;
-}
-
-/**
- * An SMS-derived proposal. NOT an expense: excluded from every total, chart,
- * streak and coin award until a human approves it. See docs/12-sms-ingest.md.
- */
-export interface PendingExpense {
-  readonly id: string;
-  readonly status: 'pending' | 'approved' | 'rejected' | 'expired';
-  readonly total: Money;
-  readonly merchant: string | null;
-  readonly accountLast4: string | null;
-  readonly occurredAt: string;
-  readonly localDate: string;
-  readonly receivedAt: string;
-  readonly source: 'sms' | 'shared' | 'pasted';
-  readonly templateId: string;
-  readonly confidence: number;
-  /** Auto-categorisation writes these. Null in the MVP. */
-  readonly suggestedCategoryId: string | null;
-  readonly suggestionConfidence: number | null;
-  readonly suggestionModelVersion: string | null;
-  /** Set on approval. */
-  readonly expenseId: string | null;
-  /** Masked for recognition: "HDFC ••1234 · SWIGGY". Never the raw message. */
-  readonly displayHint: string;
 }
 
 export interface Wallet {

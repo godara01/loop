@@ -11,6 +11,8 @@ import {
   ESSENTIAL_CATEGORIES,
   FALLBACK_CATEGORY_SLUG,
   MAX_LOGO_BYTES,
+  SYSTEM_CATEGORIES,
+  SYSTEM_CATEGORY_IDS,
   type Category,
   archiveCategory,
   canArchive,
@@ -21,6 +23,7 @@ import {
   newCustomCategory,
   orderForEntry,
   reorderCategories,
+  resolveCategory,
   seedEssentialCategories,
   slugifyCategoryName,
   unarchiveCategory,
@@ -279,5 +282,39 @@ describe('uploaded logo limits', () => {
   it('rejects a type that is not an image the app renders', () => {
     assert.equal(validateLogoFile({ size: 1000, mimeType: 'application/pdf' }), 'wrong_type');
     assert.equal(validateLogoFile({ size: 1000, mimeType: 'image/gif' }), 'wrong_type');
+  });
+});
+
+describe('system categories and resolveCategory', () => {
+  it('defines system category ids for transfer, settlement, loan', () => {
+    assert.equal(SYSTEM_CATEGORY_IDS.transfer, 'sys-transfer');
+    assert.equal(SYSTEM_CATEGORY_IDS.settlement, 'sys-settlement');
+    assert.equal(SYSTEM_CATEGORY_IDS.loan, 'sys-loan');
+  });
+
+  it('resolves system categories by id without needing user category array', () => {
+    const transferCat = resolveCategory(SYSTEM_CATEGORY_IDS.transfer);
+    assert.ok(transferCat);
+    assert.equal(transferCat.id, 'sys-transfer');
+    assert.equal(transferCat.slug, 'MOVE');
+    assert.equal(transferCat.name, 'Transfer');
+
+    const settleCat = resolveCategory(SYSTEM_CATEGORY_IDS.settlement);
+    assert.ok(settleCat);
+    assert.equal(settleCat.id, 'sys-settlement');
+
+    const loanCat = resolveCategory(SYSTEM_CATEGORY_IDS.loan);
+    assert.ok(loanCat);
+    assert.equal(loanCat.id, 'sys-loan');
+  });
+
+  it('resolves custom categories from provided list when not a system category', () => {
+    const userCats = seedEssentialCategories(NOW);
+    const resolved = resolveCategory(userCats[0]!.id, userCats);
+    assert.equal(resolved?.id, userCats[0]!.id);
+  });
+
+  it('returns undefined for non-existent category id', () => {
+    assert.equal(resolveCategory('non-existent'), undefined);
   });
 });

@@ -10,9 +10,13 @@ import {
   ExpenseError,
   duplicateExpense,
   editPersonalExpense,
+  newIncome,
   newPersonalExpense,
+  newRefund,
+  newTransfer,
   restoreExpense,
   softDeleteExpense,
+  validateTransaction,
 } from '../expenses';
 import { DocumentShapeError, expenseToDoc, parseExpense } from '../firestore/documents';
 import { money } from '../money';
@@ -202,5 +206,149 @@ describe('expense documents', () => {
   it('rejects malformed createdLocalDate', () => {
     const doc = { ...expenseToDoc(coffee()), createdLocalDate: 'not-a-date' };
     assert.throws(() => parseExpense(UID, 'e-1', doc), /createdLocalDate/);
+  });
+});
+
+describe('validateTransaction and K1 transaction constructors', () => {
+  it('newPersonalExpense creates an expense with kind defaulting to expense', () => {
+    const exp = coffee();
+    assert.equal(exp.kind ?? 'expense', 'expense');
+  });
+
+  it('newIncome creates valid income transaction with optional fields', () => {
+    const inc = newIncome({
+      id: 'inc-1',
+      uid: UID,
+      total: money(500000, INR),
+      categoryId: 'cat-salary',
+      description: 'Monthly Salary',
+      note: null,
+      occurredAt: '2026-09-15T10:00:00.000Z',
+      now: NOW,
+      accountId: 'acc-bank',
+      merchant: 'Acme Corp',
+      merchantKey: 'acme_corp',
+    });
+    assert.equal(inc.kind, 'income');
+    assert.equal(inc.categoryId, 'cat-salary');
+    assert.equal(inc.accountId, 'acc-bank');
+    assert.equal(inc.merchant, 'Acme Corp');
+    assert.equal(inc.merchantKey, 'acme_corp');
+  });
+
+  it('newIncome validates category type if category provided', () => {
+    assert.throws(
+      () =>
+        newIncome(
+          {
+            id: 'inc-2',
+            uid: UID,
+            total: money(1000, INR),
+            categoryId: 'cat-food',
+            description: 'Invalid Income',
+            note: null,
+            occurredAt: NOW,
+            now: NOW,
+          },
+          { type: 'expense' },
+        ),
+      /Income requires an income category/,
+    );
+  });
+
+  it('newTransfer creates valid transfer with sys-transfer category and diff accounts', () => {
+    const trf = newTransfer({
+      id: 'trf-1',
+      uid: UID,
+      total: money(20000, INR),
+      description: 'Self Transfer',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+      accountId: 'acc-1',
+      toAccountId: 'acc-2',
+    });
+    assert.equal(trf.kind, 'transfer');
+    assert.equal(trf.categoryId, 'sys-transfer');
+    assert.equal(trf.accountId, 'acc-1');
+    assert.equal(trf.toAccountId, 'acc-2');
+  });
+
+  it('newTransfer fails if accountId and toAccountId are identical', () => {
+    assert.throws(
+      () =>
+        newTransfer({
+          id: 'trf-2',
+          uid: UID,
+          total: money(20000, INR),
+          description: 'Self Transfer',
+          note: null,
+          occurredAt: NOW,
+          now: NOW,
+          accountId: 'acc-1',
+          toAccountId: 'acc-1',
+        }),
+      /Transfer accounts must differ/,
+    );
+  });
+
+  it('newRefund creates valid refund with refundOf reference', () => {
+    const ref = newRefund({
+      id: 'ref-1',
+      uid: UID,
+      total: money(12000, INR),
+      categoryId: 'cat-food',
+      description: 'Coffee refund',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+      refundOf: 'e-1',
+    });
+    assert.equal(ref.kind, 'refund');
+    assert.equal(ref.refundOf, 'e-1');
+  });
+
+  it('newRefund fails if refundOf is missing', () => {
+    assert.throws(
+      () =>
+        newRefund({
+          id: 'ref-2',
+          uid: UID,
+          total: money(12000, INR),
+          categoryId: 'cat-food',
+          description: 'Coffee refund',
+          note: null,
+          occurredAt: NOW,
+          now: NOW,
+          refundOf: '',
+        }),
+      /Refund requires refundOf/,
+    );
+  });
+
+  it('validateTransaction enforces rules for each kind correctly', () => {
+    // Valid cases
+    assert.doesNotThrow(() => validateTransaction({ kind: 'expense', categoryId: 'cat-1' }));
+    assert.doesNotThrow(() => validateTransaction({ kind: 'transfer', categoryId: 'sys-transfer', accountId: 'a', toAccountId: 'b' }));
+    assert.doesNotThrow(() => validateTransaction({ kind: 'refund', categoryId: 'cat-1', refundOf: 'ref-id' }));
+    assert.doesNotThrow(() => validateTransaction({ kind: 'income', categoryId: 'cat-salary' }));
+
+    // Invalid cases
+    assert.throws(
+      () => validateTransaction({ kind: 'transfer', categoryId: 'sys-transfer', accountId: 'a', toAccountId: 'a' }),
+      /Transfer accounts must differ/,
+    );
+    assert.throws(
+      () => validateTransaction({ kind: 'transfer', categoryId: 'sys-transfer', accountId: 'a' }),
+      /Transfer requires both accountId and toAccountId/,
+    );
+    assert.throws(
+      () => validateTransaction({ kind: 'refund', categoryId: 'cat-1', refundOf: '' }),
+      /Refund requires refundOf/,
+    );
+    assert.throws(
+      () => validateTransaction({ kind: 'income', categoryId: 'sys-transfer' }),
+      /Income requires an income category/,
+    );
   });
 });

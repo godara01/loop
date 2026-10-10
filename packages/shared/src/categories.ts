@@ -429,3 +429,60 @@ export function catalogueFor(
   }
   return sections;
 }
+
+export const SYSTEM_CATEGORY_IDS = {
+  transfer: 'sys-transfer',
+  settlement: 'sys-settlement',
+  loan: 'sys-loan',
+} as const;
+
+export type SystemCategoryId = typeof SYSTEM_CATEGORY_IDS[keyof typeof SYSTEM_CATEGORY_IDS];
+
+export const SYSTEM_CATEGORIES: Readonly<Record<SystemCategoryId, Category>> = {
+  [SYSTEM_CATEGORY_IDS.transfer]: {
+    id: SYSTEM_CATEGORY_IDS.transfer,
+    slug: 'MOVE',
+    name: 'Transfer',
+    icon: { kind: 'glyph', name: 'arrow-left-right' },
+    colorToken: 'steel',
+    kind: 'essential',
+    catalogueSlug: null,
+    sortOrder: -1,
+    createdAt: '1970-01-01T00:00:00.000Z',
+    archivedAt: null,
+  },
+  [SYSTEM_CATEGORY_IDS.settlement]: {
+    id: SYSTEM_CATEGORY_IDS.settlement,
+    slug: 'SETTLE',
+    name: 'Settlement',
+    icon: { kind: 'glyph', name: 'handshake' },
+    colorToken: 'steel',
+    kind: 'essential',
+    catalogueSlug: null,
+    sortOrder: -1,
+    createdAt: '1970-01-01T00:00:00.000Z',
+    archivedAt: null,
+  },
+  [SYSTEM_CATEGORY_IDS.loan]: {
+    id: SYSTEM_CATEGORY_IDS.loan,
+    slug: 'LOAN',
+    name: 'Loan',
+    icon: { kind: 'glyph', name: 'landmark' },
+    colorToken: 'steel',
+    kind: 'essential',
+    catalogueSlug: null,
+    sortOrder: -1,
+    createdAt: '1970-01-01T00:00:00.000Z',
+    archivedAt: null,
+  },
+};
+
+export function resolveCategory(
+  categoryId: string,
+  categories: readonly Category[] = [],
+): Category | undefined {
+  if (Object.prototype.hasOwnProperty.call(SYSTEM_CATEGORIES, categoryId)) {
+    return SYSTEM_CATEGORIES[categoryId as SystemCategoryId];
+  }
+  return categories.find((c) => c.id === categoryId);
+}
