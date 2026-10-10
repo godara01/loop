@@ -1,9 +1,14 @@
-# TASKS — the single list of remaining MVP work
+# TASKS — the single list of remaining work
 
 This file is the **only** task tracker in the repo. Specs live in `docs/`
 (what to build and why); this file says what's left, in what order, and how to
 prove each piece is done. If a task below disagrees with the repo, trust the
 repo and fix the task in the same commit.
+
+**Two parts.** Part 1 (below, through section D) is the v1 MVP. **Part 2**, at the
+end of this file, covers releases v1.1–v1.6 from
+[`docs/27-full-ledger-plan.md`](docs/27-full-ledger-plan.md). The rules in *How
+to work this file* apply to both parts.
 
 Snapshot: 2026-09-23. M0–M3 are done and verified. M4–M6 are code-complete, and
 their automated tests pass. None of them has run on a device yet; those checks
@@ -852,3 +857,888 @@ These need the `Loop_API35` emulator, an EAS dev build, or both. Code agents
 - Submit the Play Store SMS permission declaration (it has the longest lead
   time, so submit it early)
 - `git tag v1.0.0-mvp` after D9
+
+
+---
+---
+
+# Part 2 — Full ledger (v1.1–v1.6)
+
+Specs: docs 16–27, plus the post-v1 sections of docs 00–14. **Read
+[`docs/27-full-ledger-plan.md`](docs/27-full-ledger-plan.md) first.** It explains
+the order, the phase gates and the deploy runbook. Each task names the doc section
+it implements. If they disagree, fix the doc in the same commit.
+
+**Part 2 starts after D9** (MVP complete). The exception is `DP0`, a refactor that
+changes no behaviour and may start now.
+
+**Extra rules for Part 2:**
+- **Every new field is optional on read.** Never make a v1 document fail to
+  parse. Add the v1-shape fixture to the test when you touch a converter.
+- **Every new Firestore query lands with its index** in `firestore.indexes.json`,
+  in the same commit.
+- **Every new rule lands with an allow test and an attack test.**
+- **Every new user-settable field extends the CSV round-trip test** in the same
+  task (`docs/08` Export).
+- **A phase's tasks don't start until the previous phase's D item is done**,
+  unless the lane graph says otherwise.
+
+## Part 2 status
+
+| ID | Task | Needs | Status |
+|---|---|---|---|
+| DOC1 | Docs 16–27 and post-v1 updates to docs 00–14 | — | done |
+| **P1 — v1.1 Complete v1** | | | |
+| DP0 | Fix the import-rule drift (`use-rollups`, `profile.tsx`, `day/[date].tsx`) | — | todo |
+| DP1 | Force-update gate (`min_supported_build`) | — | todo |
+| DP2 | `createdLocalDate` + backdating fix | — | todo |
+| DP3 | `DatePickerSheet` model + component | — | todo |
+| DP4 | Entry draft `localDate` + `composeOccurredAt` | DP3 | todo |
+| DP5 | Insights custom-period UI | DP3 | todo |
+| DP6 | Ledger filter model + store (pure) | — | todo |
+| DP7 | Ledger filter sheet, chips, query strategy | DP3, DP6, DP0 | todo |
+| L1 | `core/auth` pure modules (errors, mask, phone) | — | todo |
+| L2 | Google sign-in dep + link service | L1 | todo |
+| L3 | `/settings/account` screen, OTP sheet, switch sheet | L2 | todo |
+| L4 | Welcome "I already use Loop" + onboarding note | L2 | todo |
+| L5 | P1 Maestro flows | DP1, DP4, DP5, DP7, L3, L4 | todo |
+| **P2 — v1.2 Money in & out** | | | |
+| K1 | Kind types, validators, `sys-*` ids, merge `PendingExpense` | D10 | todo |
+| K2 | `documents.ts` v2 converters + v1 fixture suite | K1 | todo |
+| K3 | Rules v2 (transactions, pending) + tests | K2 | todo |
+| K4 | Rollups v2 + marker v2 maths (pure) | K1 | todo |
+| K5 | `onExpenseWrite` v2 + trigger matrix + `rebuildUserLedger` | K2, K4, DP2 | todo |
+| K6 | Migration script + `meta/schema` + client "updating" state | K5 | todo |
+| K7 | Income categories + versioned seed | K1 | todo |
+| K8 | Insights kinds (pure) + Spend/Income/Net UI | K4, K7 | todo |
+| K9 | Entry kind switch + income | K2, K7 | todo |
+| K10 | Refunds | K9 | todo |
+| K11 | CSV v2 export | K2 | todo |
+| K12 | `merchantKey` normaliser | — | todo |
+| AC1 | `accounts.ts` (pure) | K4 | todo |
+| AC2 | Accounts repository + rules | AC1, K3 | todo |
+| AC3 | Accounts screens + Orbit card | AC2 | todo |
+| AC4 | Entry account chip | AC2, K9 | todo |
+| AC5 | Transfers | AC4 | todo |
+| SM1 | Credit / reversal / cashback / card-bill parsing + fixtures | K1 | todo |
+| SM2 | `matchRefund` + `pairTransfers` (pure) | SM1, K12 | todo |
+| SM3 | Ingest v2 + inbox cards per kind | SM2, AC2, K3, K10 | todo |
+| DP8 | Ledger filter facets: kind, account | DP7, AC2 | todo |
+| K13 | P2 Maestro flows | K6, K8, K10, K11, AC3, AC5, SM3, DP8 | todo |
+| **P3 — v1.3 Organise** | | | |
+| O1 | Sub-categories (shared) | K7, D11 | todo |
+| O2 | Sub-categories UI | O1, K8 | todo |
+| O3 | Tags (shared, rules, repository) | K3, D11 | todo |
+| O4 | Tags UI + ledger facet + tag insights | O3, DP8 | todo |
+| O5 | Merchant memory + merchant field | K12, K3, D11 | todo |
+| O6 | Split lines (shared) + per-line rollups | K5, D11 | todo |
+| O7 | Split lines UI | O6 | todo |
+| O8 | `suggestCategories` callable | O5 | todo |
+| O9 | Smart suggestions setting + client flow | O8 | todo |
+| O10 | P3 Maestro flows | O2, O4, O5, O7, O9 | todo |
+| **P4 — v1.4 Plan ahead** | | | |
+| B1 | `budgets.ts` (pure) | O1, K8, D12 | todo |
+| B2 | Budgets repository + rules + archive cascade | B1 | todo |
+| B3 | Budgets screens + Orbit gauge | B2 | todo |
+| RC1 | `recurring.ts` (pure) | K1, D12 | todo |
+| RC2 | Recurring repository + rules + index | RC1, K3 | todo |
+| RC3 | Inbox Due group + recurring screens | RC2, DP3 | todo |
+| IN1 | Trend, projection, year, savings (pure) | K8, RC1 | todo |
+| IN2 | Insights v2 UI | IN1, B2, DP5 | todo |
+| NT1 | Reminder planner (pure) | RC1 | todo |
+| NT2 | `expo-notifications` wrapper + settings + invariant | NT1 | todo |
+| B4 | P4 Maestro flows | B3, RC3, IN2, NT2 | todo |
+| **P5 — v1.5 Squads** | | | |
+| G1 | `groups.ts` + `settle.ts` settlements (pure) | K1, D13 | todo |
+| G2 | Group converters + rules + attack tests | G1, K3 | todo |
+| G3 | Entry/settlement triggers: balances, summary, activity, invalid | G2 | todo |
+| G4 | Mirrors + parser branch + `onGroupPrefWrite` | G3, K5 | todo |
+| G5 | Invites, leave, remove, reset seat, `deleteUserData` v2 | G4 | todo |
+| G6 | Hosting App Links + intent filter | D13 | todo |
+| G7 | Dock change + You avatar | D13 | todo |
+| G8 | Squads screens: list, new, detail, members, settings | G2, G7 | todo |
+| G9 | Squad entry — Drag & Split + loans | G8 | todo |
+| G10 | Settle up + Pay via UPI + settlement suggestions | G8, SM2 | todo |
+| G11 | Join flow + linking prompt | G5, G6, G8, L3 | todo |
+| NT3 | Squad push: tokens, sender, mute | NT2, G3 | todo |
+| G12 | P5 Maestro flows | G9, G10, G11, NT3 | todo |
+| **P6 — v1.6 Reach** | | | |
+| IM1 | `import.ts`: generic CSV, mapping, plan, dedupe (pure) | K11, D14 | todo |
+| IM2 | `imports` rules + `finalizeImport` | IM1, K5 | todo |
+| IM3 | Import UI, writer, recovery, undo | IM2 | todo |
+| W1 | `widget.ts` snapshot (pure) | B1, D14 | todo |
+| W2 | Quick actions | D14 | todo |
+| W3 | Android widget | W1 | todo |
+| IM4 | P6 Maestro flows + full-ledger journey YAML | IM3, W2, W3 | todo |
+
+## Part 2 lanes
+
+```
+P1  Lane DP  DP0 ─▶ DP7      DP3 ─┬─▶ DP4          DP6 ─▶ DP7      DP1, DP2 (no deps)
+                                  ├─▶ DP5
+                                  └─▶ DP7
+    Lane L   L1 ─▶ L2 ─┬─▶ L3
+                       └─▶ L4                      all P1 ─▶ L5 ─▶ D10
+P2  Lane K   K1 ─┬─▶ K2 ─┬─▶ K3                    K12 (no deps)
+                 │       ├─▶ K11
+                 │       └─▶ K9 ─▶ K10
+                 ├─▶ K4 ─┬─▶ K5 ─▶ K6
+                 │       ├─▶ K8
+                 │       └─▶ AC1 ─▶ AC2 ─┬─▶ AC3
+                 │                       └─▶ AC4 ─▶ AC5
+                 ├─▶ K7 ─▶ K8, K9
+                 └─▶ SM1 ─▶ SM2 ─▶ SM3             DP7+AC2 ─▶ DP8      all P2 ─▶ K13 ─▶ D11
+P3  Lane O   O1 ─▶ O2    O3 ─▶ O4    O5 ─▶ O8 ─▶ O9    O6 ─▶ O7        all P3 ─▶ O10 ─▶ D12
+P4  Lane B   B1 ─▶ B2 ─▶ B3
+    Lane RC  RC1 ─┬─▶ RC2 ─▶ RC3
+                  ├─▶ IN1 ─▶ IN2
+                  └─▶ NT1 ─▶ NT2                   all P4 ─▶ B4 ─▶ D13
+P5  Lane G   G1 ─▶ G2 ─┬─▶ G3 ─▶ G4 ─▶ G5 ─┐
+                       └─▶ G8 ─┬─▶ G9      ├─▶ G11
+             G7 ─▶ G8          └─▶ G10     │
+             G6 ───────────────────────────┘       NT2+G3 ─▶ NT3      all P5 ─▶ G12 ─▶ D14
+P6  Lane IM  IM1 ─▶ IM2 ─▶ IM3     Lane W  W1 ─▶ W3   W2              all P6 ─▶ IM4 ─▶ D15 ─▶ D16
+```
+
+**Start now:** DP0. **After D9:** DP1, DP2, DP3, DP6, L1.
+
+**File-collision warnings for Part 2.** Don't run these at the same time; land
+one first.
+
+- `packages/shared/src/firestore/documents.ts`: K2, AC2, O3, O5, O6, RC2, B2,
+  G2, G4, IM2. K2 first, then the rest one at a time.
+- `firestore.rules` and `firestore.indexes.json`: K3, AC2, O3, O5, O6, RC2, B2,
+  G2, IM2, DP7, DP8, O4. Each adds a match block or index entry, so rebases are
+  usually trivial, but rules tests share ports. Run them one session at a time.
+- `functions/src/handlers.ts` and `functions/src/rollups.ts`: DP2, K5, O6, G4,
+  IM2.
+- `functions/src/index.ts`: K5, O8, G3, G4, G5, IM2. Each adds exports.
+- `packages/shared/src/csv.ts`: K11, then every task that adds a user field (AC4,
+  O4, O5, O7, RC3).
+- `apps/mobile/src/features/expenses/screens/expense-entry-screen.tsx`: DP4, K9,
+  K10, AC4, AC5, O4, O5, O7.
+- `apps/mobile/src/app/(tabs)/_layout.tsx` and `components/ui/tab-dock.tsx`: G7
+  only.
+- `apps/mobile/src/features/inbox/*`: SM3, O5, O9, RC3, G10.
+- `apps/mobile/src/lib/remote-config.ts`: DP1, O8 (server-side keys only; no
+  client change expected).
+- `scripts/check-invariants.mjs`: NT2, W3.
+
+---
+
+## P1 — v1.1 Complete v1
+
+### DP0 · Fix the import-rule drift
+- **Needs:** — · **Owns:** `features/expenses/hooks/use-rollups.ts` → `features/expenses/api/rollup-repository.ts`, `app/(tabs)/profile.tsx` → `features/profile/screens/profile-screen.tsx`, `app/day/[date].tsx` → `features/expenses/screens/day-screen.tsx`
+- **Why:** `docs/10` import rules 3–5 and its drift note.
+- **Build:**
+  - Move the Firestore reads in `use-rollups.ts` into a repository function. The
+    hook keeps its signature.
+  - Each route file becomes under 40 lines and renders one screen component.
+  - Cross-feature imports go through `index.ts`.
+  - No behaviour change. testIDs are unchanged.
+- **Done when:**
+  - `typecheck` exits 0.
+  - `npm test` counts are unchanged.
+  - `check:testids` exits 0.
+  - `grep -rn "firestore()" apps/mobile/src/features/*/hooks` finds nothing.
+  - Both route files are under 40 lines (`wc -l`).
+
+### DP1 · Force-update gate
+- **Needs:** — · **Owns:** `apps/mobile/src/lib/remote-config.ts` (new key), `apps/mobile/src/core/update-gate/{model.ts,model.test.ts,update-gate.tsx}`, `app/_layout.tsx` (one wrapper), `remoteconfig.template.json`
+- **Spec:** `docs/27` § Force-update gate.
+- **Build:**
+  - Pure `isBuildSupported(current, minSupported | null)`.
+    - `null` (never fetched) means supported.
+  - A blocking screen with a Play Store link.
+  - Re-checked on foreground, at most every 15 minutes.
+- **Done when:**
+  - Unit tests cover equal, lower, higher and null.
+  - `typecheck` exits 0.
+  - The template has `min_supported_build` with default `0`.
+
+### DP2 · `createdLocalDate` + backdating fix
+- **Needs:** — · **Owns:** `packages/shared/src/expenses.ts`, `firestore/documents.ts` (optional field), `functions/src/handlers.ts` (backdating line), `tests/functions/functions.test.ts`
+- **Spec:** `docs/06` § Backdating, last paragraph.
+- **Build:**
+  - Every client create path writes `createdLocalDate = todayISO()`: manual,
+    approve, and duplicate.
+  - `handleExpenseWrite` compares `localDate < (createdLocalDate ?? localDateOf(createdAt))`.
+  - The converter reads a missing value as `null`.
+- **Done when:** `test:functions` passes, with new tests for:
+  - an evening log in a UTC−5 fixture is **not** backdated;
+  - a v1 doc without the field behaves as before.
+
+### DP3 · `DatePickerSheet`
+- **Needs:** — · **Owns:** `apps/mobile/src/components/ui/date-picker-model.ts` (+ test), `components/ui/date-picker-sheet.tsx`
+- **Spec:** `docs/03` § Date → `DatePickerSheet`.
+- **Build:**
+  - The pure model: `monthGrid(year, month)` (Monday first), `isSelectable(day,
+    today, {allowFuture, minDate})`, `applyRangeTap(state, day, maxRangeDays)`.
+  - The component, using theme tokens only.
+  - Haptics per the doc.
+- **Done when:** unit tests pass for:
+  - a leap February;
+  - a month starting on Sunday;
+  - future days disabled;
+  - `allowFuture`;
+  - a range tapped in reverse order;
+  - a range over the limit is refused.
+
+  Also `typecheck` exits 0 and `check:a11y -- --max 0` exits 0.
+
+### DP4 · Entry draft `localDate` + `composeOccurredAt`
+- **Needs:** DP3 · **Owns:** `packages/shared/src/dates.ts` (new, + test), `core/state/draft-store.ts`, `features/expenses/screens/expense-entry-screen.tsx` (date row)
+- **Spec:** `docs/03` § Date → What a picked date writes.
+- **Build:**
+  - `composeOccurredAt(localDate, timeOfDay, now)`, built from local
+    components.
+  - DST gap → move forward. Repeated hour → first occurrence.
+  - The draft swaps `daysAgo` for `localDate`.
+  - Chips plus the sheet.
+  - Edit keeps the original time of day.
+  - Remove `occurredAtFor` and `daysAgoOf`.
+- **Done when:**
+  - Unit tests run under `TZ=America/New_York` and `TZ=Asia/Kolkata` (set in the
+    test script), covering a spring-forward gap and a fall-back repeat.
+  - A property test: `localDateOf(composeOccurredAt(d, t)) === d` for 1,000
+    random dates.
+  - `typecheck` exits 0.
+
+### DP5 · Insights custom-period UI
+- **Needs:** DP3 · **Owns:** `features/expenses/screens/insights-screen.tsx` (period chip), `core/providers/settings-provider.tsx` (if needed)
+- **Spec:** `docs/05` § Custom period.
+- **Build:**
+  - Custom opens the range sheet.
+  - `customPeriod()` validates.
+  - The range persists to `insightsCustomStartDate/EndDate`.
+  - The chip label.
+  - Stepping uses `stepPeriod`.
+- **Done when:**
+  - `typecheck` exits 0.
+  - A pure test shows a saved custom period restores from settings unchanged.
+
+### DP6 · Ledger filter model + store
+- **Needs:** — · **Owns:** `features/expenses/model/ledger-filter.ts` (+ test), `core/state/ledger-filter-store.ts`
+- **Spec:** `docs/03` § Ledger filters → Model, Query strategy.
+- **Build:** `LedgerFilter`, `matches()`, `serverQueryFor()`, `isEmpty()`, and the
+  store with `set/clear/fromDrillDown`.
+  - P1 facets: text, date range, category, amount, source.
+  - Fields for the later facets exist but are ignored when empty.
+- **Done when:** unit tests cover:
+  - each facet alone;
+  - facets combined with AND;
+  - `serverQueryFor` choosing the date range over category;
+  - `amountMin > amountMax` reported invalid.
+
+### DP7 · Ledger filter sheet, chips, query strategy
+- **Needs:** DP3, DP6, DP0 · **Owns:** `app/ledger/filter.tsx`, `features/expenses/screens/ledger-filter-screen.tsx`, `features/expenses/screens/ledger-screen.tsx`, `features/expenses/api/expense-repository.ts` (scan helper), `features/expenses/screens/insights-screen.tsx` (drill-downs set the store)
+- **Spec:** `docs/03` § Ledger filters.
+- **Build:**
+  - The sheet and the chips row.
+  - The summary line, with spend and income kept separate.
+  - Date-ranged loads are exact.
+  - Without a date range, a paged scan capped at 10 pages, with a "scanned back
+    to" line and `≥` totals.
+  - Drill-downs stop using route params.
+- **Done when:**
+  - `typecheck` exits 0 and `check:testids` exits 0.
+  - A pure test of the scan loop with a fake pager: it stops at 50 matches or 10
+    pages, whichever comes first.
+
+### L1 · `core/auth` pure modules
+- **Needs:** — · **Owns:** `apps/mobile/src/core/auth/{link-errors,mask,phone}.ts` (+ tests)
+- **Spec:** `docs/16` § Link errors, Validation.
+- **Build:**
+  - `linkErrorState(code)` gives a user-facing state for every row of the error
+    table.
+  - `maskEmail`, `maskPhone`.
+  - `normalizePhone(input, defaultCountry='IN')` returns E.164 or `null`.
+- **Done when:** unit tests cover every error-table row, the mask formats from the
+  doc, and valid and invalid phone numbers.
+
+### L2 · Google sign-in dependency + link service
+- **Needs:** L1 · **Owns:** `apps/mobile/package.json`, `app.json` (plugin), `core/auth/{providers.ts,link-service.ts}`
+- **Spec:** `docs/16` § Providers and every Flow section.
+- **Build:**
+  - `linkWithProvider`, `signInWithProvider` (deleting the throwaway anonymous
+    uid first), `switchAccount` (re-runnable steps), `signOutSafely`
+    (`waitForPendingWrites` with a 5s timeout).
+  - `unlinkProvider` (only when 2 or more providers are linked).
+  - Only this folder imports the Google SDK and the auth linking APIs.
+- **Done when:**
+  - `typecheck` exits 0.
+  - A grep shows the Google SDK is imported only in `core/auth/`.
+  - The commit body says `NATIVE REBUILD NEEDED: @react-native-google-signin/google-signin`.
+
+### L3 · `/settings/account` + OTP sheet + switch sheet
+- **Needs:** L2 · **Owns:** `app/settings/account.tsx`, `features/account/**`, the You-tab row
+- **Spec:** `docs/16` § Where linking is offered, Flow sections, Haptics.
+- **Build:** the screen with status and masked identity; Google and Phone buttons,
+  disabled offline; the OTP sheet with resend countdown; the switch sheet with
+  export and `SWITCH`; sign out; unlink.
+- **Done when:** `typecheck`, `check:testids` and `check:a11y -- --max 0` exit 0.
+
+### L4 · Welcome "I already use Loop" + onboarding note
+- **Needs:** L2 · **Owns:** `features/onboarding/screens/welcome-*.tsx`, the first-expense success state
+- **Spec:** `docs/02` Step 1 and Step 5, `docs/16` § "I already use Loop".
+- **Done when:** `typecheck` exits 0. `check:invariants` still passes
+  (`onboarding-no-permission-request`).
+
+### L5 · P1 Maestro flows
+- **Needs:** DP1, DP4, DP5, DP7, L3, L4 · **Owns:** `e2e/flows/{date-picker-backdate,ledger-filter,insights-custom-period,link-google,link-phone,sign-in-existing,switch-account,sign-out-pending-writes,force-update-gate}.yaml`
+- **Spec:** `docs/27` § P1 Tests → L4.
+- **Done when:** `check:testids` exits 0. The flows are only *run* in D10.
+
+---
+
+## P2 — v1.2 Money in & out
+
+### K1 · Kind types, validators, `sys-*` ids, one `PendingExpense`
+- **Needs:** D10 · **Owns:** `packages/shared/src/{types.ts,expenses.ts,categories.ts,sms/types.ts,index.ts}` (+ tests)
+- **Spec:** `docs/17` § The transaction kinds, `docs/08` § Transactions, `docs/12` § The pending expense.
+- **Build:**
+  - `TransactionKind`.
+  - `validateTransaction(input)` per kind:
+    - transfer accounts must differ;
+    - income needs an income category;
+    - a refund needs `refundOf`.
+  - `newIncome`, `newTransfer`, `newRefund` alongside `newPersonalExpense`.
+  - `SYSTEM_CATEGORY_IDS` and `resolveCategory`.
+  - Delete the duplicate `PendingExpense` in `types.ts`. The `sms/types.ts`
+    shape wins. Add the optional v1.2 fields.
+- **Done when:** `npm test` passes with tests for each kind's valid and invalid
+  inputs. `typecheck` exits 0 across all workspaces.
+
+### K2 · `documents.ts` v2 + v1 fixture suite
+- **Needs:** K1 · **Owns:** `packages/shared/src/firestore/documents.ts`, `firestore/paths.ts` (add rollups, accounts, meta), `__tests__/firestore*.test.ts`, `__tests__/fixtures/v1-docs.json`
+- **Spec:** `docs/08` § Transactions, Mirrors.
+- **Build:**
+  - Every new field is optional with a default.
+  - `kind` defaults to `expense`.
+  - Strict types when a field is present.
+  - A mirror branch stub that rejects for now. G4 enables it.
+  - Rollup paths join `firestorePaths`.
+- **Done when:**
+  - Every v1 doc in the fixture parses to the same `Expense` as before.
+  - Each new field round-trips.
+  - Malformed new fields throw.
+
+### K3 · Rules v2 (transactions, pending)
+- **Needs:** K2 · **Owns:** `firestore.rules`, `tests/firestore-rules/rules.test.ts`, `tests/firestore-rules/pending-expenses.test.ts`
+- **Spec:** `docs/17` § Data, `docs/11` § Trust boundary.
+- **Build:**
+  - Clients may write `kind` only in `expense | income | refund | transfer`.
+  - A transfer needs `toAccountId` that differs from `accountId`.
+  - `categoryId is string`.
+  - Optional new fields are type-checked when present.
+  - The pending key set is widened with optional keys.
+  - `rollupApplied` and `meta/schema` are owner-readable and client-unwritable.
+- **Done when:** `test:rules` passes with one allow test and one attack test per new
+  condition, and every existing test still passes.
+
+### K4 · Rollups v2 + marker v2 (pure)
+- **Needs:** K1 · **Owns:** `packages/shared/src/rollups.ts` (+ tests)
+- **Spec:** `docs/11` § Rollups v2.
+- **Build:**
+  - `contributionsOf(tx)` returns bucket rows (per line, keyed by leaf) and
+    account flows.
+  - `applyContributionDelta(rollups, flows, old, new)`.
+  - Per-bucket counts.
+  - `isEmptyRollup` requires all three counts to be 0.
+  - Excluded mirrors and transfers contribute nothing to the buckets.
+- **Done when:** unit tests show:
+  - an income-only day survives;
+  - an edit that moves a category or an account is exact;
+  - a sequence of operations equals `buildRollups` of what is left;
+  - a split doc contributes per line (lines are accepted even though the UI comes
+    in O7).
+
+### K5 · `onExpenseWrite` v2 + trigger matrix + `rebuildUserLedger`
+- **Needs:** K2, K4, DP2 · **Owns:** `functions/src/{handlers.ts,rollups.ts,index.ts}`, `tests/functions/{functions,rollups}.test.ts`
+- **Spec:** `docs/06` § What counts, `docs/11` § Rollups v2 and Cloud Functions, `docs/24` § Why online-only.
+- **Build:**
+  - One transaction updates the rollups, `accountBalances` and the marker v2.
+  - The kind × source matrix decides check-ins and coins.
+  - `source: 'import'` creates skip rollups, flows and coins.
+  - The zero-spend query counts only spend-counting expense shares.
+  - `categorised` looks up the category's slug.
+  - `rebuildUserLedger(uid, span?)` is exported for `rebuildRollups`.
+- **Done when:** `test:functions` passes with one test per matrix row, plus:
+  - out-of-order delivery;
+  - an account move;
+  - parity: after 50 random operations, the result equals `rebuildUserLedger`.
+
+### K6 · Migration script + `meta/schema` + client "updating" state
+- **Needs:** K5 · **Owns:** `scripts/migrate-v2.ts`, `tests/functions/migrate.test.ts`, `features/expenses/hooks/use-rollups.ts` (schema check), `apps/mobile/src/lib/empty-states.ts`
+- **Spec:** `docs/27` § Migration script.
+- **Build:**
+  - The script requires `--project` and `--yes`, and supports `--from-uid`.
+  - It runs 20 users at a time.
+  - It seeds income categories (calling K7's seeder).
+  - It writes `meta/schema`.
+  - Past periods show *"Updating your history…"* while `ledger < 2`.
+- **Done when:** a Functions-harness test runs the script twice on a seeded
+  emulator and gets identical results, with rollups equal to a rebuild.
+
+### K7 · Income categories + versioned seed
+- **Needs:** K1 · **Owns:** `packages/shared/src/categories.ts`, `core/firebase/session-repository.ts`, category screens (type segment)
+- **Spec:** `docs/04` § Income categories.
+- **Build:**
+  - Category `type` (default `expense`).
+  - The `INCOME_ESSENTIALS` seed.
+  - `categoriesSeedVersion`.
+  - Slug-collision handling (`_IN` suffix, else skip).
+  - The strip, manage screen and preselect filter by type.
+- **Done when:** unit tests cover the seed with no collision, with one collision,
+  and with a double collision, plus a test that a re-run is idempotent.
+
+### K8 · Insights kinds (pure) + Spend/Income/Net UI
+- **Needs:** K4, K7 · **Owns:** `packages/shared/src/insights.ts` (+ tests), `features/expenses/screens/insights-screen.tsx`
+- **Spec:** `docs/05` § Spend, Income, Net, `docs/17` § Refunds across periods.
+- **Build:**
+  - `periodSpend`, `periodIncome`, `periodNet`, `totalsByCategoryForKind`.
+  - `clampRefunds`.
+  - Negative categories sit outside `displayPercentages`.
+  - The delta colour per view.
+  - Excluded mirrors are filtered out.
+- **Done when:** unit tests run over the `docs/05` acceptance fixture (expenses,
+  refunds in the same and later periods, income, transfers, mirrors) and match
+  hand-computed values. Percentages sum to 100 with a negative category present.
+
+### K9 · Entry kind switch + income
+- **Needs:** K2, K7 · **Owns:** `features/expenses/screens/expense-entry-screen.tsx`, `features/expenses/components/kind-switch.tsx`, `features/expenses/components/expense-row.tsx`
+- **Spec:** `docs/17` § Entry: the kind switch, Income.
+- **Build:**
+  - The switch defaults to Spend.
+  - Switching keeps the amount and description and resets the category.
+  - The income strip.
+  - The ledger row styles each kind.
+  - `?kind=income` route param.
+- **Done when:** `typecheck` exits 0 and `check:testids` exits 0. A pure test of the
+  switch's state transitions passes.
+
+### K10 · Refunds
+- **Needs:** K9 · **Owns:** `packages/shared/src/expenses.ts` (`refundableRemainder`, `apportionRefund`), `app/expense/refund/[id].tsx`, the entry screen (refund mode), the detail sheet Refunds section
+- **Spec:** `docs/17` § Refunds.
+- **Done when:** unit tests cover the remainder after multiple refunds, an
+  apportioned split refund whose parts sum exactly, refunds of mirrors, transfers
+  or other refunds being refused, and the deleted-original case. `typecheck` exits 0.
+
+### K11 · CSV v2 export
+- **Needs:** K2 · **Owns:** `packages/shared/src/csv.ts`, `__tests__/csv.test.ts`
+- **Spec:** `docs/08` § Export (columns v2).
+- **Build:** v2 columns. The parser accepts the v1 and v2 headers.
+- **Done when:** the round trip is exact for every kind, account names, `refundOf`,
+  and a v1 file.
+
+### K12 · `merchantKey` normaliser
+- **Needs:** — · **Owns:** `packages/shared/src/merchants.ts` (+ tests), `packages/shared/src/merchants-aliases.ts`
+- **Spec:** `docs/22` § Merchant keys.
+- **Done when:** unit tests cover suffixes, refs, aliases, merchant and person
+  VPAs (person VPAs produce `P2P:` and `isPerson`), empty input and Unicode.
+
+### AC1 · `accounts.ts` (pure)
+- **Needs:** K4 · **Owns:** `packages/shared/src/accounts.ts` (+ tests)
+- **Spec:** `docs/18` § The balance, SMS account matching.
+- **Build:**
+  - `Account` type and validator.
+  - `effectOf(tx)`.
+  - `accountBalance(opening, flow, pendingDocs, markers)`.
+  - `matchAccount(last4, accounts)`.
+- **Done when:** unit tests cover the `docs/18` acceptance sequence (`−1,300`),
+  the edit and move delta against a marker, and every row of the matching table.
+
+### AC2 · Accounts repository + rules
+- **Needs:** AC1, K3 · **Owns:** `features/accounts/api/**`, `features/accounts/hooks/**`, `firestore.rules` (accounts, accountBalances), `tests/firestore-rules/accounts.test.ts`
+- **Done when:** `test:rules` passes, covering:
+  - owner CRUD on `accounts`;
+  - a bad `last4` or `type` is denied;
+  - every client write to `accountBalances` is denied;
+  - the owner can read `rollupApplied`.
+
+### AC3 · Accounts screens + Orbit card
+- **Needs:** AC2 · **Owns:** `app/accounts/**`, `features/accounts/screens/**`, `features/expenses/screens/orbit-screen.tsx` (card slot)
+- **Spec:** `docs/18` § Screens.
+- **Done when:** `typecheck`, `check:testids` and `check:a11y -- --max 0` exit 0.
+
+### AC4 · Entry account chip
+- **Needs:** AC2, K9 · **Owns:** the entry screen (account row), `features/accounts/components/account-chip.tsx`, `settings` (`lastAccountByKind`), `csv.ts` (account column already in K11, so only the test)
+- **Spec:** `docs/18` § Entry sheet integration.
+- **Done when:** `typecheck` exits 0. A pure test of the default-account choice
+  covers archived and missing accounts.
+
+### AC5 · Transfers
+- **Needs:** AC4 · **Owns:** the entry screen (transfer mode)
+- **Spec:** `docs/17` § Transfers.
+- **Done when:** `typecheck` exits 0. The validation test (same account rejected)
+  passes.
+
+### SM1 · Credit, reversal, cashback and card-bill parsing
+- **Needs:** K1 · **Owns:** `packages/shared/src/sms/{filters.ts,parser.ts,templates.ts}`, `__tests__/sms-*.test.ts`, `__tests__/fixtures/sms/*`
+- **Spec:** `docs/12` § Filtering (from v1.2), `docs/17` § Credit SMS.
+- **Build:**
+  - `reversal` moves from an exclusion to a classification.
+  - Credits get `direction: 'credit'`.
+  - New templates for the credit shapes.
+  - At least 20 new fixtures.
+  - The privacy test still passes.
+- **Done when:** `npm test` passes. Every fixture is classified as expected. OTP,
+  promo and declined messages are still excluded.
+
+### SM2 · `matchRefund` + `pairTransfers`
+- **Needs:** SM1, K12 · **Owns:** `packages/shared/src/sms/{refund-match.ts,transfer-pair.ts}` (+ tests)
+- **Spec:** `docs/17` § Refund matching, Transfer pairing.
+- **Done when:** unit tests cover each match rule, the ranking order, the
+  amount-only case with a unique candidate and with several candidates, and the
+  pairing window at 9 and 11 minutes.
+
+### SM3 · Ingest v2 + inbox cards per kind
+- **Needs:** SM2, AC2, K3, K10 · **Owns:** `features/inbox/**`
+- **Spec:** `docs/12` § The inbox (from v1.2), `docs/17` § Credit SMS.
+- **Build:**
+  - Ingest sets `kind`, `merchantKey`, `suggestedAccountId`, `suggestedRefundOf` and
+    `pairedPendingId`.
+  - Cards per kind.
+  - Transfer merge in one batch.
+  - The `It's income` / `Different purchase` actions.
+- **Done when:** `npm test` passes (mobile model tests for the card view-model per
+  kind and the merge batch plan), and `typecheck` exits 0.
+
+### DP8 · Ledger filter facets: kind, account
+- **Needs:** DP7, AC2 · **Owns:** `ledger-filter.ts` (+ test), the filter sheet, `firestore.indexes.json`
+- **Done when:** unit tests cover both facets. The two indexes from `docs/11` are
+  added.
+
+### K13 · P2 Maestro flows
+- **Needs:** K6, K8, K10, K11, AC3, AC5, SM3, DP8 · **Owns:** `e2e/flows/{income-add,transfer-add,refund-record,accounts-balances-offline,sms-refund-match,sms-transfer-pair}.yaml`
+- **Done when:** `check:testids` exits 0.
+
+---
+
+## P3 — v1.3 Organise
+
+### O1 · Sub-categories (shared)
+- **Needs:** K7, D11 · **Owns:** `packages/shared/src/categories.ts`, `insights.ts` (`rollUpToParents`) (+ tests)
+- **Spec:** `docs/04` § Sub-categories.
+- **Done when:** unit tests cover every rule-table row, the parent and child
+  `displayPercentages` each summing to 100, and that re-parenting changes the
+  combined totals with no input change.
+
+### O2 · Sub-categories UI
+- **Needs:** O1, K8 · **Owns:** `features/categories/**`, `insights-screen.tsx` (expand children), `category-strip.tsx` (long-press)
+- **Done when:** `typecheck` and `check:testids` exit 0. A pure test shows the
+  archive cascade batch plan lists the children.
+
+### O3 · Tags (shared, rules, repository)
+- **Needs:** K3, D11 · **Owns:** `packages/shared/src/tags.ts` (+ tests), `features/tags/api/**`, `firestore.rules` (tags, `tagIds` size), `tests/firestore-rules/tags.test.ts`
+- **Spec:** `docs/21`.
+- **Done when:** unit tests cover the `normalizeTagSlug` table. `test:rules`
+  passes, with 11 tags denied and a bad slug denied.
+
+### O4 · Tags UI + ledger facet + tag insights
+- **Needs:** O3, DP8 · **Owns:** the entry screen (More → Tags), `app/tags/**`, `features/tags/**`, `ledger-filter.ts`, `insights-screen.tsx` (tag scope), `csv.ts` (tags column test), `firestore.indexes.json`
+- **Done when:** `typecheck` exits 0. Unit tests pass for the tag facet and the
+  pinned-tag expiry. The CSV round trip covers tags.
+
+### O5 · Merchant memory + merchant field
+- **Needs:** K12, K3, D11 · **Owns:** `packages/shared/src/merchants.ts` (`suggestFromMemory`), `features/expenses/api` (merchant memory writes in the save batch), the entry screen (merchant field), `features/inbox` (`REMEMBERED`), `firestore.rules` (merchants), `csv.ts` (merchant test)
+- **Spec:** `docs/22` § Merchant memory.
+- **Done when:**
+  - Unit tests cover the suggestion threshold table and re-categorisation moving
+    one count.
+  - `test:rules` denies a `P2P:` document id.
+  - The CSV round trip covers merchant.
+
+### O6 · Split lines (shared) + per-line rollups
+- **Needs:** K5, D11 · **Owns:** `packages/shared/src/expenses.ts` (`validateLines`, `deriveCategoryFields`, `rescaleLines`), `rollups.ts` tests, `firestore.rules` (`lines` size), `functions` tests
+- **Spec:** `docs/03` § Split across categories.
+- **Done when:** unit tests cover the tie-break, rescale summing exactly, and
+  rejection when lines don't sum. `test:functions` passes (a split doc's rollups
+  are correct per line). `test:rules` passes (11 lines denied).
+
+### O7 · Split lines UI
+- **Needs:** O6 · **Owns:** the entry screen (More → Split), `features/expenses/components/split-lines.tsx`, `csv.ts` (lines test), `firestore.indexes.json` (`categoryIds`)
+- **Done when:** `typecheck` exits 0 and the CSV round trip covers lines.
+
+### O8 · `suggestCategories` callable
+- **Needs:** O5 · **Owns:** `functions/src/suggest.ts`, `functions/src/index.ts`, `firestore.rules` (`aiUsage`), `tests/functions/suggest.test.ts`
+- **Spec:** `docs/22` § Smart suggestions.
+- **Build:**
+  - Vertex AI client behind an interface, so tests stub it.
+  - App Check enforcement + consume.
+  - Daily cap.
+  - Remote Config kill switch, model and prompt version (server-side).
+  - Output validation.
+- **Done when:** `test:functions` covers:
+  - no App Check is rejected;
+  - the cap is enforced;
+  - unknown ids become `null`;
+  - the payload snapshot contains only merchant names and category names.
+
+### O9 · Smart suggestions setting + client flow
+- **Needs:** O8 · **Owns:** `app/settings/suggestions.tsx`, `features/settings/**`, `features/inbox` (post-ingest suggestion pass)
+- **Done when:** `typecheck` exits 0. A pure test shows the pass with the setting
+  off makes no call plan, and person keys are never included.
+
+### O10 · P3 Maestro flows
+- **Needs:** O2, O4, O5, O7, O9 · **Owns:** `e2e/flows/{subcategory-create-and-insights,tags-add-filter-rename,merchant-memory-suggests,split-lines,smart-suggestions-optin}.yaml`
+- **Done when:** `check:testids` exits 0.
+
+---
+
+## P4 — v1.4 Plan ahead
+
+### B1 · `budgets.ts` (pure)
+- **Needs:** O1, K8, D12 · **Owns:** `packages/shared/src/budgets.ts` (+ tests)
+- **Spec:** `docs/19` § The budget, What counts, States.
+- **Done when:** unit tests cover every `docs/19` acceptance item that is pure:
+  `budgetFor`, nesting, refunds, mirrors, the state thresholds in integer maths,
+  and clamping at 0.
+
+### B2 · Budgets repository + rules + archive cascade
+- **Needs:** B1 · **Owns:** `features/budgets/api/**`, `firestore.rules` (budgets), `tests/firestore-rules/budgets.test.ts`, the category archive batch (adds the budget archive)
+- **Done when:** `test:rules` passes (the `amounts` map validated, delete denied).
+  A unit test shows the archive batch includes the budget.
+
+### B3 · Budgets screens + Orbit gauge
+- **Needs:** B2 · **Owns:** `app/budgets/**`, `features/budgets/**`, the Orbit gauge slot
+- **Done when:** `typecheck`, `check:testids` and `check:a11y -- --max 0` exit 0.
+  A grep shows no `haptic(` call in the budget threshold code.
+
+### RC1 · `recurring.ts` (pure)
+- **Needs:** K1, D12 · **Owns:** `packages/shared/src/recurring.ts` (+ tests)
+- **Spec:** `docs/20` § Occurrences, Schedule maths, Subscriptions screen.
+- **Done when:** unit tests cover every case listed in `docs/20` § Schedule maths,
+  plus `dueOccurrences` with skip, pause/resume, handled ids, the window edges, and
+  `monthlyEquivalent` summing exactly.
+
+### RC2 · Recurring repository + rules + index
+- **Needs:** RC1, K3 · **Owns:** `features/recurring/api/**`, `firestore.rules` (recurring, `rec_` id rule), `tests/firestore-rules/recurring.test.ts`, `firestore.indexes.json`
+- **Done when:** `test:rules` passes, with a `rec_` id mismatch denied and a bad
+  `interval` denied.
+
+### RC3 · Inbox Due group + recurring screens
+- **Needs:** RC2, DP3 · **Owns:** `features/inbox/**` (Due group), `app/recurring/**`, `features/recurring/**`, the detail sheet "Make recurring…"
+- **Spec:** `docs/20` § The inbox, Screens.
+- **Done when:** `typecheck` exits 0. Mobile model tests cover the Due group
+  view-model, collapsing at 30, and a "missed N" count.
+
+### IN1 · Trend, projection, year, savings (pure)
+- **Needs:** K8, RC1 · **Owns:** `packages/shared/src/insights.ts` (+ tests)
+- **Spec:** `docs/05` § Trend, Month-end projection, Year view, Savings rate.
+- **Done when:** unit tests cover:
+  - no bars before the first transaction;
+  - every projection guard case;
+  - the formula sheet's parts summing to the result;
+  - recurring excluded from the rate;
+  - savings rate hidden without income and negative when spend exceeds income.
+
+### IN2 · Insights v2 UI
+- **Needs:** IN1, B2, DP5 · **Owns:** `insights-screen.tsx` and new section components, `PeriodKind` `year` wiring
+- **Done when:** `typecheck` and `check:a11y -- --max 0` exit 0. Every number is in
+  JetBrains Mono (grep for the `fonts.mono` style on each new text node).
+
+### NT1 · Reminder planner (pure)
+- **Needs:** RC1 · **Owns:** `apps/mobile/src/core/notifications/reminder-plan.ts` (+ test)
+- **Spec:** `docs/25` § Scheduling, Recurring due.
+- **Done when:** unit tests cover every `planReminders` case in the `docs/25`
+  acceptance list, plus recurring-due entries.
+
+### NT2 · `expo-notifications` wrapper + settings + invariant
+- **Needs:** NT1 · **Owns:** `core/notifications/{notifications.ts,tokens.ts}`, `app/settings/notifications.tsx`, `apps/mobile/package.json`, `app.json`, `scripts/check-invariants.mjs` (+ test)
+- **Build:**
+  - Permission requested on toggle only.
+  - Two channels.
+  - Re-plan on foreground, on banking a day, and on settings change.
+  - Narrow `mobile-no-push-registration` to `core/notifications/`.
+- **Done when:**
+  - `check:invariants` passes.
+  - The positive-control test fails a file outside the folder.
+  - `typecheck` exits 0.
+  - The commit body says `NATIVE REBUILD NEEDED: expo-notifications`.
+
+### B4 · P4 Maestro flows
+- **Needs:** B3, RC3, IN2, NT2 · **Owns:** `e2e/flows/{budget-set-and-gauge,recurring-approve-skip,recurring-two-device-approve,insights-trend-projection,reminder-permission-on-toggle}.yaml`
+- **Done when:** `check:testids` exits 0.
+
+---
+
+## P5 — v1.5 Squads
+
+### G1 · `groups.ts` + `settle.ts` settlements (pure)
+- **Needs:** K1, D13 · **Owns:** `packages/shared/src/{groups.ts,settle.ts}` (+ tests)
+- **Spec:** `docs/23` § Data model, Mirrors, `packages/shared` changes.
+- **Build:**
+  - `allocationsFromSplit` (basis points).
+  - `memberDeltas`.
+  - `mirrorFor`.
+  - `validateEntry`.
+  - `computeBalances` with settlements and map allocations.
+  - `generateInviteCode` (alphabet only, injectable RNG).
+- **Done when:** unit tests show balances sum to 0 across random scenarios
+  (property test), cover each split mode, the loan non-spend mirror and the
+  currency-mismatch case (no mirror), and that `₹100 / 3` gives 34/33/33 by member
+  order.
+
+### G2 · Group converters + rules + attack tests
+- **Needs:** G1, K3 · **Owns:** `firestore/documents.ts` (group docs), `firestore.rules` (groups/**, mirror user-owned fields, groupIndex, payees), `tests/firestore-rules/squads.test.ts`
+- **Spec:** `docs/23` § Data, rules, indexes.
+- **Done when:** `test:rules` has an allow test and an attack test for every row.
+  The attack tests must include:
+  - a foreign uid on a seat;
+  - `memberUids` tampering;
+  - setting `invalid`;
+  - creating a `g_` mirror;
+  - editing a server-owned mirror field;
+  - a non-member write;
+  - writing to an archived group.
+
+### G3 · Entry and settlement triggers
+- **Needs:** G2 · **Owns:** `functions/src/squads.ts`, `functions/src/index.ts`, `tests/functions/squads.test.ts`
+- **Spec:** `docs/23` § The mirror Function (steps 1, 3, 4).
+- **Done when:** `test:functions` covers:
+  - balances equal `computeBalances`;
+  - out-of-order convergence;
+  - the invalid round trip;
+  - the summary transfers.
+
+### G4 · Mirrors + parser branch + `onGroupPrefWrite`
+- **Needs:** G3, K5 · **Owns:** `functions/src/squads.ts` (step 2), `functions/src/handlers.ts` (mirror rows, coin skip), `firestore/documents.ts` (mirror branch), `tests/functions/mirrors.test.ts`
+- **Done when:** `test:functions` covers:
+  - mirrors per row of the `docs/23` mirror table;
+  - user-owned fields survive an entry edit;
+  - a left member is never re-mirrored;
+  - an excluded re-flag;
+  - no coins or check-ins from mirrors.
+
+### G5 · Invites, leave, remove, reset seat, `deleteUserData` v2
+- **Needs:** G4 · **Owns:** `functions/src/invites.ts`, `functions/src/cleanup.ts` (`deleteUserData`), `tests/functions/{invites,delete-user}.test.ts`
+- **Spec:** `docs/23` § Invites and joining, Leaving…, Account deletion.
+- **Done when:** `test:functions` covers every redeem failure code, the backfill
+  creating the right mirrors, the leave guard on the server balance, ownership
+  handover, and seat conversion leaving other members' balances unchanged.
+
+### G6 · Hosting App Links + intent filter
+- **Needs:** D13 · **Owns:** `hosting/public/**`, `firebase.json` (hosting block), `app.json` (`android.intentFilters`)
+- **Spec:** `docs/11` § Hosting, `docs/14` § v1.5.
+- **Done when:** `firebase.json` is valid JSON with a hosting rewrite and headers.
+  `assetlinks.json` has a placeholder fingerprint list, commented in the commit
+  body. The commit body says `NATIVE REBUILD NEEDED: App Links intent filter`.
+
+### G7 · Dock change + You avatar
+- **Needs:** D13 · **Owns:** `app/(tabs)/_layout.tsx`, `components/ui/tab-dock.tsx`, `app/you.tsx`, `app/(tabs)/squads.tsx` (placeholder screen), the Orbit header
+- **Spec:** `docs/01` § Tab structure.
+- **Done when:** `typecheck` and `check:testids` exit 0 (existing flows that tap the
+  You tab are updated in the same commit).
+
+### G8 · Squads screens: list, new, detail, members, settings
+- **Needs:** G2, G7 · **Owns:** `app/squads/**` (except expense, settle, join), `features/squads/**`
+- **Done when:** `typecheck`, `check:testids` and `check:a11y -- --max 0` exit 0.
+  Mobile model tests cover the list view-model (per-group net, overall total,
+  other-currency groups separate).
+
+### G9 · Squad entry — Drag & Split + loans
+- **Needs:** G8 · **Owns:** `app/squads/[id]/expense/**`, `features/squads/components/split-*.tsx`
+- **Spec:** `docs/23` § Add / edit an entry.
+- **Done when:** `typecheck` exits 0. A pure test of the split screen model (each
+  mode, the remaining counters) passes. The check-in is written in the create
+  batch (grep in the commit body).
+
+### G10 · Settle up + Pay via UPI + settlement suggestions
+- **Needs:** G8, SM2 · **Owns:** `app/squads/[id]/settle.tsx`, `features/squads/**` (settle), `features/inbox/**` (settlement suggestion card), `payees` repository
+- **Done when:** `typecheck` exits 0. A pure test shows the UPI URL builder escapes
+  every parameter, and nothing is recorded without a confirm (model test).
+
+### G11 · Join flow + linking prompt
+- **Needs:** G5, G6, G8, L3 · **Owns:** `app/i/[code].tsx`, `app/squads/join.tsx`, `features/squads/**` (join)
+- **Done when:** `typecheck` exits 0. A model test maps every redeem error code to
+  its copy.
+
+### NT3 · Squad push: tokens, sender, mute
+- **Needs:** NT2, G3 · **Owns:** `core/notifications/tokens.ts`, `functions/src/push.ts`, `functions/src/squads.ts` (call site), `tests/functions/push.test.ts`
+- **Done when:** `test:functions` covers the recipient selection (the actor
+  excluded, the muted excluded, not involved excluded) and pruning on a stubbed
+  send failure.
+
+### G12 · P5 Maestro flows
+- **Needs:** G9, G10, G11, NT3 · **Owns:** `e2e/flows/{squad-create-offline,squad-split-modes,squad-settle-up,pair-lend-repay,squad-invite-claim,squad-leave-guard}.yaml`
+- **Done when:** `check:testids` exits 0.
+
+---
+
+## P6 — v1.6 Reach
+
+### IM1 · `import.ts` (pure)
+- **Needs:** K11, D14 · **Owns:** `packages/shared/src/import.ts` (+ tests), `__tests__/fixtures/import/*` (5 bank formats)
+- **Spec:** `docs/24` Steps 2–5.
+- **Done when:** unit tests cover:
+  - every fixture parses;
+  - ambiguous dates require a choice;
+  - thousands separators;
+  - debit/credit columns;
+  - the duplicate multiplicity case;
+  - error rows (future date, zero amount, wrong currency, too many decimals);
+  - Loop CSV mirror rows skipped.
+
+### IM2 · `imports` rules + `finalizeImport`
+- **Needs:** IM1, K5 · **Owns:** `functions/src/import.ts`, `functions/src/index.ts`, `firestore.rules` (imports, `imp_` id), `tests/functions/import.test.ts`, `tests/firestore-rules/imports.test.ts`, `firestore.indexes.json`
+- **Done when:**
+  - `test:functions`: 5,000 rows plus finalize equals a full rebuild, with zero
+    coins and zero check-ins. Undo restores the result. Finalize is idempotent.
+  - `test:rules`: an `imp_` id mismatch is denied, and a client cannot write
+    `status: 'done'`.
+
+### IM3 · Import UI, writer, recovery, undo
+- **Needs:** IM2 · **Owns:** `app/import/**`, `features/import/**`, `apps/mobile/package.json`
+- **Done when:** `typecheck` exits 0. A pure test shows the writer plan (chunks of
+  400, deterministic ids, resume from a row). The commit body says
+  `NATIVE REBUILD NEEDED: expo-document-picker`.
+
+### W1 · `widget.ts` snapshot (pure)
+- **Needs:** B1, D14 · **Owns:** `packages/shared/src/widget.ts` (+ tests)
+- **Done when:** unit tests cover every item in the `docs/26` acceptance list that
+  is pure.
+
+### W2 · Quick actions
+- **Needs:** D14 · **Owns:** `apps/mobile/package.json`, `app.json`, `core/quick-actions.ts`, `app/_layout.tsx` (held deep link)
+- **Done when:** `typecheck` exits 0 and the commit body says
+  `NATIVE REBUILD NEEDED: expo-quick-actions`.
+
+### W3 · Android widget
+- **Needs:** W1 · **Owns:** `apps/mobile/src/widget/**`, `apps/mobile/package.json`, `app.json`, `app/settings/widget.tsx`, `scripts/check-invariants.mjs` (no Firestore in the widget)
+- **Done when:** `check:invariants` passes, with a positive control for the new
+  rule. `typecheck` exits 0. The commit body says
+  `NATIVE REBUILD NEEDED: react-native-android-widget`.
+
+### IM4 · P6 Maestro flows + the full-ledger journey
+- **Needs:** IM3, W2, W3 · **Owns:** `e2e/flows/{import-loop-csv-roundtrip,import-generic-bank,import-resume-after-kill,quick-action-log-expense,widget-hidden-amounts}.yaml`, `e2e/journeys/full-ledger-day-in-the-life.yaml`
+- **Spec:** `docs/27` § Final gate.
+- **Done when:** `check:testids` exits 0.
+
+---
+
+## Part 2 device queue (the owner runs these with Claude on the Android emulator)
+
+| ID | What | Unlocks after | Ticks |
+|---|---|---|---|
+| D10 | **Native rebuild #1** (google-signin). P1 flows from L5, each twice. Real Google account link and reinstall restore. Phone OTP with the test number. A DST check of a backdated edit (set the emulator time zone to `America/New_York`). The force-update gate, by raising `min_supported_build` in the emulator Remote Config. | L5 + owner setup `docs/14` v1.1 | `docs/03`, `05`, `16` (P1 items) |
+| D11 | P2 flows from K13, each twice. Migration rehearsal on an emulator export of a 5,000-expense seed: run twice, then check parity. An offline account balance with an `AS OF` tag. | K13 | `docs/17`, `18`, `08` (v1.2) |
+| D12 | P3 flows from O10, each twice. Smart suggestions against the **real** Vertex AI on the dev project with a 5-merchant batch. Inspect the request log for the payload. | O10 + owner Vertex setup | `docs/04` (v1.3), `21`, `22` |
+| D13 | **Native rebuild #2** (expo-notifications). P4 flows from B4, each twice. The reminder fires when the day isn't banked and is cancelled once it is. Recurring approved on two installs (reinstall and **I already use Loop**). | B4 | `docs/05` (v1.4), `19`, `20`, `25` (reminders) |
+| D14 | **Native rebuild #3** (App Links). P5 flows from G12, each twice, with two emulator users. `adb shell pm get-app-links` shows `verified`. The fallback page opens when the app is uninstalled. A push arrives on the second user. | G12 + owner Hosting deploy | `docs/23`, `25` (push), `11` (v1.5) |
+| D15 | **Native rebuild #4** (document-picker, quick-actions, android-widget). P6 flows, each twice. Widget screenshots in each size with amounts hidden and shown. A quick action from a cold start. A 5,000-row import plus a kill and resume. | IM4 | `docs/24`, `26` |
+| D16 | The full-ledger journey, twice in a row. Reconcile every Part 2 doc checkbox. | D15 | v1.6 complete |
+
+**Owner only (Part 2):**
+- `docs/14` § Post-v1 setup, per release:
+  - providers, SHA fingerprints, SMS region policy (v1.1);
+  - Functions region decision and the migration run on prod (v1.2);
+  - Vertex AI API, billing alerts and the Remote Config server keys (v1.3);
+  - Hosting deploy and the Play App Signing fingerprint (v1.5).
+- Update the Play data-safety form for v1.3 (merchant names sent to Gemini when
+  opted in) and v1.5 (squad data shared with other members).
+- Before each production release, raise `min_supported_build` per the deploy
+  runbook (`docs/27`).
+- iOS track: Apple enrolment, Apple provider, APNs key, AASA.
+- Tag `v1.1.0` … `v1.6.0` after each phase's D item.
