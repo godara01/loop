@@ -16,6 +16,7 @@ import {
   MAX_NOTE_LENGTH,
   addDays,
   colors,
+  composeOccurredAt,
   duplicateExpense,
   editPersonalExpense,
   formatMoney,
@@ -23,10 +24,12 @@ import {
   localDateOf,
   newPersonalExpense,
   orderForEntry,
+  palette,
   radius,
   restoreExpense,
   softDeleteExpense,
   space,
+  timeOfDayOf,
   todayISO,
   type,
 } from '@loop/shared';
@@ -46,6 +49,7 @@ import {
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DatePickerSheet } from '@/components/ui/date-picker-sheet';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { useSession } from '@/core/providers/bootstrap-provider';
 import { type ExpenseDraft, useDraftStore } from '@/core/state/draft-store';
@@ -56,26 +60,15 @@ import { haptic } from '@/lib/haptics';
 import { newExpenseId, saveExpense } from '../api/expense-repository';
 import { AmountPad } from '../components/amount-pad';
 import { CategoryStrip } from '../components/category-strip';
+import { DeleteExpenseSheet } from '../components/delete-expense-sheet';
 import { useExpense, useExpensesForLastDays } from '../hooks/use-expenses';
 import { amountOf, canSave, displayAmount, inputFromMoney } from '../model/amount-input';
-import { dayLabel, usageCounts } from '../model/ledger';
+import { usageCounts } from '../model/ledger';
 
 const REPEAT_WINDOW_MS = 10 * 60_000;
 const USAGE_WINDOW_DAYS = 30;
 
 const logWriteFailure = (error: unknown) => console.warn('[expenses] write rejected', error);
-
-/** The instant an expense happened: now, shifted back by whole days. */
-function occurredAtFor(daysAgo: number, now: Date): string {
-  return new Date(now.getTime() - daysAgo * 86_400_000).toISOString();
-}
-
-function daysAgoOf(localDate: string): number {
-  const today = todayISO();
-  let days = 0;
-  while (addDays(today, -days) > localDate && days < 3650) days += 1;
-  return days;
-}
 
 export interface ApprovalFields {
   readonly total: Money;
@@ -125,6 +118,8 @@ export function ExpenseEntryScreen({
   const [started, setStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMore, setShowMore] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const leaving = useRef(false);
   const initialDraft = useRef<ExpenseDraft | null>(null);
 
@@ -149,7 +144,7 @@ export function ExpenseEntryScreen({
         categoryId: approval.initial.categoryId,
         description: approval.initial.description,
         note: '',
-        daysAgo: daysAgoOf(localDateOf(approval.initial.occurredAt)),
+        localDate: localDateOf(approval.initial.occurredAt),
       };
       startFrom(fromPending);
       initialDraft.current = fromPending;
@@ -161,7 +156,7 @@ export function ExpenseEntryScreen({
         categoryId: e.categoryId,
         description: e.description,
         note: e.note ?? '',
-        daysAgo: daysAgoOf(e.localDate),
+        localDate: e.localDate,
       };
       startFrom(fromExpense);
       initialDraft.current = fromExpense;
@@ -241,15 +236,16 @@ export function ExpenseEntryScreen({
     try {
       if (mode === 'approve') {
         if (!approval) return;
-        const dateChanged = draft.daysAgo !== daysAgoOf(localDateOf(approval.initial.occurredAt));
+        const dateChanged = draft.localDate !== localDateOf(approval.initial.occurredAt);
         approval
           .submit({
             total,
             categoryId: draft.categoryId,
             description: draft.description,
             note: draft.note,
-            // Keep the bank's timestamp unless the day itself was changed.
-            occurredAt: dateChanged ? occurredAtFor(draft.daysAgo, now) : approval.initial.occurredAt,
+            occurredAt: dateChanged
+              ? composeOccurredAt(draft.localDate, timeOfDayOf(approval.initial.occurredAt), now)
+              : approval.initial.occurredAt,
           })
           .catch(logWriteFailure);
         haptic('expenseSaved');
@@ -266,13 +262,13 @@ export function ExpenseEntryScreen({
           categoryId: draft.categoryId,
           description: draft.description,
           note: draft.note,
-          occurredAt: occurredAtFor(draft.daysAgo, now),
+          occurredAt: composeOccurredAt(draft.localDate, timeOfDayOf(nowIso), now),
           now: nowIso,
         });
       } else {
         if (existing.status !== 'ready') return;
         const original = existing.expense;
-        const dateChanged = draft.daysAgo !== daysAgoOf(original.localDate);
+        const dateChanged = draft.localDate !== original.localDate;
         expense = editPersonalExpense(
           original,
           {
@@ -280,8 +276,9 @@ export function ExpenseEntryScreen({
             categoryId: draft.categoryId,
             description: draft.description,
             note: draft.note,
-            // Keep the original time of day unless the day itself was changed.
-            occurredAt: dateChanged ? occurredAtFor(draft.daysAgo, now) : original.occurredAt,
+            occurredAt: dateChanged
+              ? composeOccurredAt(draft.localDate, timeOfDayOf(original.occurredAt), now)
+              : original.occurredAt,
           },
           nowIso,
         );
@@ -300,24 +297,21 @@ export function ExpenseEntryScreen({
 
   const onDelete = () => {
     if (existing.status !== 'ready') return;
-    const expense = existing.expense;
     haptic('warning');
-    Alert.alert('Delete this expense?', `${formatMoney(expense.total)} · ${expense.description || 'no description'}`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          haptic('destructive');
-          saveExpense(uid, softDeleteExpense(expense, new Date().toISOString())).catch(logWriteFailure);
-          offerUndo('Expense deleted', () => {
-            saveExpense(uid, restoreExpense(expense, new Date().toISOString())).catch(logWriteFailure);
-          });
-          clear();
-          leave();
-        },
-      },
-    ]);
+    setConfirmingDelete(true);
+  };
+
+  const confirmDelete = () => {
+    if (existing.status !== 'ready') return;
+    const expense = existing.expense;
+    haptic('error');
+    setConfirmingDelete(false);
+    saveExpense(uid, softDeleteExpense(expense, new Date().toISOString())).catch(logWriteFailure);
+    offerUndo('Expense deleted', () => {
+      saveExpense(uid, restoreExpense(expense, new Date().toISOString())).catch(logWriteFailure);
+    });
+    clear();
+    leave();
   };
 
   const onDuplicate = () => {
@@ -346,8 +340,6 @@ export function ExpenseEntryScreen({
     );
   }
 
-  const today = todayISO();
-  const date = addDays(today, -draft.daysAgo);
   const selectedCategory = activeCategories.find((c) => c.id === draft.categoryId);
 
   return (
@@ -452,29 +444,50 @@ export function ExpenseEntryScreen({
 
         <View style={styles.dateRow}>
           <Pressable
-            testID="entry-date-earlier"
-            accessibilityLabel="Earlier day"
-            hitSlop={10}
+            testID="entry-date-today"
+            accessibilityRole="button"
+            accessibilityLabel="Today"
             onPress={() => {
               haptic('selection');
-              update({ daysAgo: draft.daysAgo + 1 });
-            }}>
-            <Ionicons name="chevron-back" size={22} color={colors.text} />
+              update({ localDate: todayISO() });
+            }}
+            style={[styles.dateChip, draft.localDate === todayISO() && styles.dateChipSelected]}>
+            <Text style={[styles.dateChipText, draft.localDate === todayISO() && styles.dateChipTextSelected]}>
+              TODAY
+            </Text>
           </Pressable>
-          <Text testID="entry-date" style={styles.dateLabel}>
-            {dayLabel(date, today).toUpperCase()}
-          </Text>
           <Pressable
-            testID="entry-date-later"
-            accessibilityLabel="Later day"
-            hitSlop={10}
-            disabled={draft.daysAgo === 0}
+            testID="entry-date-yesterday"
+            accessibilityRole="button"
+            accessibilityLabel="Yesterday"
             onPress={() => {
-              if (draft.daysAgo === 0) return haptic('warning');
               haptic('selection');
-              update({ daysAgo: draft.daysAgo - 1 });
-            }}>
-            <Ionicons name="chevron-forward" size={22} color={draft.daysAgo === 0 ? colors.border : colors.text} />
+              update({ localDate: addDays(todayISO(), -1) });
+            }}
+            style={[styles.dateChip, draft.localDate === addDays(todayISO(), -1) && styles.dateChipSelected]}>
+            <Text style={[styles.dateChipText, draft.localDate === addDays(todayISO(), -1) && styles.dateChipTextSelected]}>
+              YESTERDAY
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="entry-date-pick"
+            accessibilityRole="button"
+            accessibilityLabel={`Pick date: ${draft.localDate}`}
+            onPress={() => {
+              haptic('selection');
+              setShowDatePicker(true);
+            }}
+            style={[
+              styles.dateChip,
+              draft.localDate !== todayISO() && draft.localDate !== addDays(todayISO(), -1) && styles.dateChipSelected,
+            ]}>
+            <Text
+              style={[
+                styles.dateChipText,
+                draft.localDate !== todayISO() && draft.localDate !== addDays(todayISO(), -1) && styles.dateChipTextSelected,
+              ]}>
+              📅 {draft.localDate}
+            </Text>
           </Pressable>
           <Pressable testID="entry-more" accessibilityRole="button" accessibilityLabel={showMore ? 'Hide note' : 'Add a note'} onPress={() => setShowMore((v) => !v)} style={styles.moreToggle}>
             <Text style={styles.moreText}>{showMore ? 'LESS' : 'NOTE'}</Text>
@@ -512,6 +525,30 @@ export function ExpenseEntryScreen({
           onPress={onSave}
         />
       </View>
+
+      <DeleteExpenseSheet
+        expense={confirmingDelete && existing.status === 'ready' ? existing.expense : null}
+        category={
+          existing.status === 'ready' && categoriesState.status === 'ready'
+            ? categoriesState.snapshot.categories.find((c) => c.id === existing.expense.categoryId)
+            : undefined
+        }
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={confirmDelete}
+      />
+
+      {showDatePicker ? (
+        <DatePickerSheet
+          mode="single"
+          value={draft.localDate}
+          onChange={(value) => {
+            haptic('selection');
+            update({ localDate: value as string });
+            setShowDatePicker(false);
+          }}
+          allowFuture={false}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -555,8 +592,20 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
   },
   note: { minHeight: 72, textAlignVertical: 'top' },
-  dateRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  dateLabel: { ...type.monoMd, color: colors.text, minWidth: 110, textAlign: 'center' },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs, flexWrap: 'wrap' },
+  dateChip: {
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs + 2,
+  },
+  dateChipSelected: {
+    backgroundColor: palette.lime[400],
+    borderColor: palette.lime[400],
+  },
+  dateChipText: { ...type.monoSm, color: colors.text },
+  dateChipTextSelected: { color: palette.void },
   moreToggle: { marginLeft: 'auto' },
   moreText: { ...type.monoSm, color: colors.textMuted },
 });

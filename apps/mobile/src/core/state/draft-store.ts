@@ -4,6 +4,7 @@
  * restored. See docs/03-expenses.md#quick-add-behaviours.
  */
 
+import { todayISO } from '@loop/shared';
 import { create } from 'zustand';
 
 import { type AmountInput, EMPTY_AMOUNT } from '@/features/expenses/model/amount-input';
@@ -16,11 +17,10 @@ export interface ExpenseDraft {
   readonly categoryId: string | null;
   readonly description: string;
   readonly note: string;
-  /** Whole days before today. 0 is today; the date control never goes below 0. */
-  readonly daysAgo: number;
+  readonly localDate: string;
 }
 
-const EMPTY_DRAFT: ExpenseDraft = { amount: EMPTY_AMOUNT, categoryId: null, description: '', note: '', daysAgo: 0 };
+const EMPTY_DRAFT: ExpenseDraft = { amount: EMPTY_AMOUNT, categoryId: null, description: '', note: '', localDate: todayISO() };
 
 interface DraftState {
   readonly draft: ExpenseDraft;

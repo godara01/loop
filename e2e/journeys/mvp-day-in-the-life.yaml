@@ -136,7 +136,7 @@ appId: com.getter.loop
 - tapOn:
     id: "category-chip-TRANSPORT"
 - tapOn:
-    id: "entry-date-earlier"
+    id: "entry-date-yesterday"
 - tapOn:
     id: "entry-save"
 - tapOn:
@@ -187,14 +187,16 @@ appId: com.getter.loop
 - tapOn: "Mistake"
 - tapOn:
     id: "entry-delete"
-- tapOn: "Delete"
+- tapOn:
+    id: "delete-confirm"
 - tapOn:
     id: "snackbar-undo"
 - assertVisible: "Mistake"
 - tapOn: "Mistake"
 - tapOn:
     id: "entry-delete"
-- tapOn: "Delete"
+- tapOn:
+    id: "delete-confirm"
 - assertNotVisible: "Mistake"
 
 # ── 3. Custom category from inside the entry sheet; the amount survives

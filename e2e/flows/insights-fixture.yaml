@@ -41,7 +41,7 @@ appId: com.getter.loop
 - tapOn:
     id: "category-chip-FOOD"
 - tapOn:
-    id: "entry-date-earlier"
+    id: "entry-date-yesterday"
 - tapOn:
     id: "entry-save"
 - extendedWaitUntil:

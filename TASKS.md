@@ -893,7 +893,7 @@ changes no behaviour and may start now.
 | DP1 | Force-update gate (`min_supported_build`) | — | todo |
 | DP2 | `createdLocalDate` + backdating fix | — | done |
 | DP3 | `DatePickerSheet` model + component | — | done |
-| DP4 | Entry draft `localDate` + `composeOccurredAt` | DP3 | todo |
+| DP4 | Entry draft `localDate` + `composeOccurredAt` | DP3 | done |
 | DP5 | Insights custom-period UI | DP3 | todo |
 | DP6 | Ledger filter model + store (pure) | — | todo |
 | DP7 | Ledger filter sheet, chips, query strategy | DP3, DP6, DP0 | todo |
