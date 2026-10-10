@@ -3,6 +3,9 @@
 > **Status and remaining work live in [`TASKS.md`](../TASKS.md).** This doc is
 > the plan and rationale; don't track progress here.
 
+> **After v1:** releases v1.1–v1.6 are planned in
+> [27-full-ledger-plan.md](27-full-ledger-plan.md). This doc covers v1 only.
+
 The order to build v1 in, sized so that **every milestone ends in an installable
 build you can use**. No milestone leaves the app broken, and no milestone is
 "plumbing you can't see" — each one either adds something you can tap or removes

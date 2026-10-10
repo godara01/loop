@@ -30,8 +30,13 @@ later — the same arithmetic, compiled once. A Firebase import in
 
 ```
 packages/shared/src/
-  money.ts split.ts settle.ts streak.ts coins.ts insights.ts
-  categories.ts        Catalogue definitions + seed set
+  money.ts split.ts settle.ts streak.ts coins.ts insights.ts rollups.ts csv.ts
+  categories.ts        Catalogue definitions + seed set (+ income seed, v1.2)
+  expenses.ts          Validators per transaction kind
+  accounts.ts budgets.ts recurring.ts tags.ts merchants.ts   (v1.2–v1.4)
+  groups.ts            Squad entries, mirrors, deltas (v1.5)
+  import.ts widget.ts  (v1.6)
+  sms/                 Parser, templates, filters, refund-match, transfer-pair
   types.ts theme.ts
   firestore/           Converters + collection path builders (types only, no SDK)
 
@@ -41,28 +46,48 @@ apps/mobile/src/
 
   features/
     onboarding/
-    expenses/
+    expenses/          Entry, ledger, ledger filters, insights, refunds, split lines
       api/             expense-repository.ts        Firestore reads/writes
-      hooks/           use-expenses.ts, use-save-expense.ts
+      hooks/           use-expenses.ts, use-rollups.ts, use-export-csv.ts
       components/      amount-pad.tsx, category-strip.tsx, expense-row.tsx
-      screens/         expense-entry-screen.tsx, ledger-screen.tsx
-      model/           Feature-local view types (not domain types)
+      screens/         expense-entry-screen.tsx, ledger-screen.tsx, insights-screen.tsx
+      model/           Feature-local view types and pure view-models
       index.ts         The feature's PUBLIC surface
-    categories/
-    insights/
-    streaks/           Check-in, streak, coins wallet
-    inbox/             SMS-derived unapproved expenses (docs/12)
-    groups/            Reserved for v1.1. Empty in v1.
-    profile/
+    categories/        (+ sub-categories, income type, v1.2–v1.3)
+    gamification/      Check-in, streak, coins wallet
+    inbox/             Proposals: SMS, recurring due, refund/transfer matches
+    account/           Linking, sign-in, sign-out screens (v1.1)
+    accounts/          Accounts and balances (v1.2)
+    tags/              (v1.3)
+    budgets/           (v1.4)
+    recurring/         (v1.4)
+    squads/            Squads, pairs, settle up, invites (v1.5)
+    import/            (v1.6)
+    settings/          Notifications, suggestions, widget screens
 
   core/
-    firebase/          app.ts auth.ts db.ts functions.ts storage.ts
-    db/                converters.ts paths.ts query-helpers.ts
-    state/             session-store.ts ui-store.ts draft-store.ts
-    ui/                Design-system primitives (today's components/ui)
-    lib/               haptics.ts dates.ts format.ts result.ts
-    providers/         auth-provider.tsx bootstrap-provider.tsx
+    firebase/          client.ts config.ts session-repository.ts settings-repository.ts
+    auth/              providers.ts link-service.ts link-errors.ts mask.ts phone.ts (v1.1)
+    notifications/     notifications.ts reminder-plan.ts tokens.ts — the ONLY place
+                       that imports expo-notifications (v1.4)
+    state/             draft-store.ts undo-store.ts ledger-filter-store.ts (v1.1)
+    providers/         auth-provider.tsx bootstrap-provider.tsx settings-provider.tsx
+  components/ui/       Design-system primitives (+ date-picker-sheet.tsx, v1.1)
+  lib/                 haptics.ts haptic-schedule.ts crashlytics.ts remote-config.ts
+                       app-check.ts empty-states.ts
 ```
+
+**Drift recorded on 2026-10-10.** This tree used to list `core/lib/dates.ts`,
+`format.ts`, `result.ts` and `core/db/`. None of those exist. Date helpers live in
+`packages/shared` (`todayISO`, `localDateOf`, `addDays` and the rest), paths and
+converters live in `packages/shared/src/firestore`, and `lib/` sits at
+`src/lib`, not under `core/`. Three existing files break the import rules below.
+P1 fixes them (TASKS `DP0`):
+- `features/expenses/hooks/use-rollups.ts` calls the Firestore SDK from a hook
+  (rule 5). It moves to `api/`.
+- `app/(tabs)/profile.tsx` holds logic and deep-imports another feature's hooks
+  (rules 3 and 4). It moves to a screen component.
+- `app/day/[date].tsx` holds a whole screen inline (rule 4).
 
 ### Import rules
 
@@ -157,6 +182,18 @@ airplane mode or not**. Rules:
   Function and therefore is **not** available offline instantly. The UI shows
   the coin award as pending and reconciles when it lands. See
   [11-firebase.md](11-firebase.md#trust-boundary).
+- **Server-derived numbers** (rollups, account balances, squad balances) are shown
+  as **server value + local delta**. The delta covers documents with
+  `hasPendingWrites`, and is computed against the server's applied marker for edits
+  and deletes. Pure functions in shared do the merging
+  (`mergePeriodSources`, `accountBalance`, `squadBalanceWithPending`). While offline,
+  they show `AS OF <time of last server snapshot>`. Never a spinner.
+- **The one place the app awaits writes** is CSV import ([24](24-import.md)): it
+  is online-only, batched, with visible progress. Everything else stays
+  fire-and-forget.
+- **Network-only actions** (linking, invite redeem, leaving a squad, smart
+  suggestions, import) check connectivity first and disable their button with
+  *"Needs a connection."* instead of failing after a timeout.
 
 ## Feature bootstrap sequence
 
@@ -165,9 +202,12 @@ airplane mode or not**. Rules:
 1. Load fonts (already gating the splash in [`_layout.tsx`](../apps/mobile/src/app/_layout.tsx))
 2. Init Firebase, enable Firestore persistence, install App Check
 3. Resolve the auth session (anonymous or signed-in)
-4. Read the local preference store from MMKV
-5. Read `profile.onboardedAt` — from cache if offline
-6. Hide the splash, route to onboarding or tabs
+4. Read `profile` and `settings/app` — from cache if offline. There is no MMKV;
+   an earlier draft had it as a separate step
+5. **(v1.1)** Check the force-update gate against the last fetched
+   `min_supported_build` ([27](27-full-ledger-plan.md#force-update-gate))
+6. Hide the splash, route to onboarding or tabs, then apply any **held deep link**
+   (quick action, invite link, notification tap)
 
 Steps 2–5 run in parallel where possible; the whole sequence has a **2 second**
 budget before the splash is considered stuck, after which the app proceeds in

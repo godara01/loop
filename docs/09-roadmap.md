@@ -2,7 +2,7 @@
 
 What is deliberately **not** in v1, why, and what has to be true before it is.
 
-## v1 — Personal ledger (this scope)
+## v1 — Personal ledger
 
 Onboarding, expenses, categories (essentials + catalogue + custom), insights,
 streak/check-in/coins, SMS-derived unapproved expenses (Android), haptics, and
@@ -18,49 +18,55 @@ suite is green.
 of v1 does not depend on the answer, and the app ships without the feature if the
 answer is no.
 
-## v1.1 — Groups (Squads)
+## v1.1 – v1.6 — The full ledger
 
-The product's actual centre, held back one release because splitting is only
-useful on a ledger people already trust.
+Planned in detail in [27-full-ledger-plan.md](27-full-ledger-plan.md). The
+binding scope per release is the table in
+[00-product.md](00-product.md#release-scope-after-v1).
 
-Most of the hard part is already written and tested:
+| Release | Theme | Feature docs |
+|---|---|---|
+| **v1.1** | Complete v1: account linking, date picker, ledger filters, custom period, force-update gate | [16](16-account-linking.md), [03](03-expenses.md), [05](05-insights.md) |
+| **v1.2** | Money in & out: income, refunds, transfers, accounts, credit SMS | [17](17-money-in-and-out.md), [18](18-accounts.md) |
+| **v1.3** | Organise: sub-categories, tags, merchants, split lines, smart suggestions | [04](04-categories.md), [21](21-tags.md), [22](22-merchants-and-suggestions.md) |
+| **v1.4** | Plan ahead: budgets, recurring, Insights v2, reminders | [19](19-budgets.md), [20](20-recurring.md), [05](05-insights.md), [25](25-notifications.md) |
+| **v1.5** | Squads: placeholders, invites, Drag & Split, settle up, pairs and lending | [23](23-squads.md) |
+| **v1.6** | Reach: CSV import, quick actions, Android widget | [24](24-import.md), [26](26-shortcuts-and-widget.md) |
+| iOS track | Apple sign-in, iOS push, iOS widget | — |
 
-| Already in the repo | File |
-|---|---|
-| Even / shares / exact / percentage allocation, largest-remainder, never drifts | [`split.ts`](../packages/shared/src/split.ts) |
-| Balance netting and greedy debt simplification | [`settle.ts`](../packages/shared/src/settle.ts) |
-| Multi-member domain types | [`types.ts`](../packages/shared/src/types.ts) |
-| A Squads screen shell | [`squads.tsx`](../apps/mobile/src/app/%28tabs%29/squads.tsx) |
+### What happened to the old v1.1–v1.3 plan
 
-v1 keeps all of it compiling and keeps the `squad_id`, `paid_by`, `split_mode`
-and `allocations` shapes in the schema, so this is additive:
+- **Groups (old v1.1)** are now **v1.5**. The reasoning hasn't changed (splitting
+  needs a trusted ledger), and squads also need linking (v1.1), transaction kinds
+  and accounts (v1.2) and push (v1.4) first. `split.ts`, `settle.ts` and the
+  group-ready expense fields are still the foundation ([23](23-squads.md)).
+- **Auto-categorisation (old v1.2)** is split. The merchant key ships in **v1.2**
+  for refund matching. Merchant memory, plus a Gemini fallback through a callable
+  Function, ships in **v1.3** ([22](22-merchants-and-suggestions.md)). The
+  "server classifier trained on approvals" became merchant memory, which learns
+  per user on device, plus an opt-in model for unseen merchants. **Never
+  auto-approve** still holds.
+- **MCP server (old v1.3)** moves to **v1.7**, unchanged in intent. The new pure
+  modules (`accounts`, `budgets`, `recurring`, `groups`) give it far more to
+  answer.
 
-- Squad creation, member management, invites
-- The Drag & Split entry flow — this is where `dragStart` / `dragTick` /
-  `dragDrop` / `splitConfirm` finally mean what they were named for
-- Settle Up screen driven by `settleUp()`, with `settleSuccess`
-- Per-squad balances on Orbit
-
-**Not blocked on infrastructure.** Auth, Firestore, Functions, rules and App
-Check all ship in v1; groups are a data model and a set of screens on top of them
-([11-firebase.md](11-firebase.md#firestore-data-model) already defines
-`groups/{groupId}` and the balance Function). What it needs is design time on
-invites and the split UX, not a platform change.
-
-## v1.2 — Auto-categorisation
-
-Sequenced in [12-sms-ingest.md](12-sms-ingest.md#post-mvp-auto-categorisation):
-merchant memory first (local, no model, most of the value), then a Function-side
-classifier trained on approvals and dismissals. **Never auto-approve** — the tap
-is the habit.
-
-## v1.3 — MCP server
+## v1.7 — MCP server
 
 `packages/shared` is framework-free specifically so a Node MCP server can import
 `money`, `split`, `settle`, `streak`, `coins` and `insights` directly and answer
 questions about a user's spending without a second implementation of the
 arithmetic. Cloud Functions already import the same package, so the server-side
 half of this exists from v1.
+
+## Deferred, not rejected
+
+| Idea | Status |
+|---|---|
+| Receipt photo | Specified in [03](03-expenses.md#receipts). Deferred by owner decision (2026-10-10). Fields, rules and cleanup stay |
+| OCR receipt scanning | Deferred with receipts |
+| Multiple payers on one squad entry | Log two entries until there's demand |
+| Recurring transfers | Recurring is expense and income only in v1.4 |
+| App lock (biometric / PIN), hide-amounts privacy mode in-app, bulk ledger actions, PDF statements, changing the ledger currency | Not planned. Listed so they aren't forgotten |
 
 ## Considered and rejected
 
@@ -76,7 +82,7 @@ relitigated every quarter.
 | TanStack Query / Redux over Firestore | Firestore already caches, dedupes, queues offline writes and pushes realtime updates. A second cache is a second source of truth. |
 | Levels, badges, tiers | A second scoreboard over the same number. Coins already carry the signal. |
 | Leaderboards, friend comparison | Spending is private. Comparison is the fastest way to make this app feel bad to open. |
-| Streak-reminder push notifications | Nagging is the mechanic users cite most when they delete a tracker. Any future reminder is opt-in, once daily, user-chosen hour, neutrally phrased. |
+| Streak-reminder push notifications | Nagging is the mechanic users cite most when they delete a tracker. The opt-in daily reminder in [25](25-notifications.md) is the allowed form: once daily, user-chosen hour, neutral copy, never mentions the streak. |
 | Pie / donut charts for category share | Length beats angle for accurate comparison, and a donut can't hold 20 categories. See [05-insights.md](05-insights.md#the-chart). |
 | Arbitrary per-category colour picker | Wrecks a fixed palette in one afternoon. Eight tokens instead. |
 | Bank-account aggregation, email import | Heavy integrations that require trust the app has not earned yet. SMS capture covers most of the value at a fraction of the cost — and unlike aggregation, it never leaves the device. |
@@ -85,6 +91,7 @@ relitigated every quarter.
 
 ## Discipline
 
-A PR implementing anything on this page against v1 should be closed on scope
-alone, however small the diff. The v1 cut line is the only thing protecting the
-10-second entry target.
+A PR implementing a feature from a later release, or anything in the rejected
+table, should be closed on scope alone, however small the diff. The release cut
+lines in [00](00-product.md#release-scope-after-v1) are the only thing protecting
+the 10-second entry target.

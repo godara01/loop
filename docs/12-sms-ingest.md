@@ -84,11 +84,26 @@ policy requirement.
   `AD-HDFCBK`, `VM-ICICIB`, `JD-SBIINB`; the allowlist matches the 6-character
   entity part against a shipped registry.
 - **Hard exclusions:** anything containing OTP/one-time-password markers, balance
-  enquiries, promotional content, failed/declined transactions, and reversals
-  (reversals are dropped in MVP; handling them properly means matching the
-  original debit, which is a v1.1 refinement).
-- **Direction:** MVP ingests **debits only**. Credits are income, and Loop has no
-  income model ([00-product.md](00-product.md#explicit-non-goals-for-v1)).
+  enquiries, promotional content, and failed/declined transactions. In MVP,
+  reversals are also dropped.
+- **Direction:** MVP ingests **debits only**. Credits are income, and the MVP has
+  no income model.
+- **From v1.2**, credits and reversals become proposals instead of being dropped
+  ([17](17-money-in-and-out.md#credit-sms)):
+  - A credit becomes pending **income**. Cashback goes to `CASHBACK`.
+  - A reversal or refund becomes pending **refund**, with a suggested original from
+    `matchRefund`.
+  - A card bill payment becomes pending **transfer**.
+  - Same-amount debit and credit across two of your accounts within 10 minutes are
+    paired as a transfer (`pairTransfers`).
+  - A person-to-person UPI payment matching an open squad balance becomes a
+    settlement suggestion (v1.5, [23](23-squads.md#settlement-suggestions)).
+
+  `classifyExclusion` keeps excluding OTP, balance, promo and declined messages.
+  `reversal` moves from an exclusion to a classification. `isCredit` stops being a
+  drop and becomes a direction, and `ParsedTransaction.direction` (already typed
+  `'debit' | 'credit'`) is finally set to `'credit'`. The fixture corpus grows by at
+  least 20 credit, reversal, cashback and card-bill messages.
 
 ## The parser
 
@@ -161,8 +176,24 @@ interface PendingExpense {
   expenseId: string | null;
   /** Masked for user recognition: "HDFC ••1234 · SWIGGY". Never the raw body. */
   displayHint: string;
+  // ——— v1.2, all optional (the rules key set gains them as optional) ———
+  kind?: 'expense' | 'income' | 'refund' | 'transfer';   // missing → 'expense'
+  merchantKey?: string | null;                            // docs/22
+  suggestedAccountId?: string | null;                     // from accountLast4, docs/18
+  suggestedRefundOf?: string | null;                      // docs/17
+  pairedPendingId?: string | null;                        // transfer pairing, docs/17
 }
 ```
+
+**Two definitions today.** `packages/shared/src/types.ts` and
+`packages/shared/src/sms/types.ts` each define `PendingExpense`, with different
+shapes (`total: Money` vs `amountMinor` + `currency`). The barrel exports the
+first and the converters use the second. P2 (task `K1`) merges them into the
+`sms/types.ts` shape, which is the stored one, before adding fields.
+
+**Recurring proposals are not pending expenses.** They are computed from the
+rules and stored only when approved ([20](20-recurring.md#occurrences-are-computed-not-stored)).
+The inbox shows both.
 
 **Pending expenses are not expenses.** They are excluded from every total, every
 chart, the streak, and coins, until approved. Anything else would mean the app's
@@ -188,6 +219,16 @@ category chip the user must pick (MVP) or confirm (post-MVP).
   becomes a graveyard.
 - The inbox is empty by default and shows *"Transaction messages will show up
   here for you to approve."*
+- **From v1.2** cards render per kind: income cards have a lime `+`, refund cards
+  show the suggested original with **Yes / Different purchase / It's income**,
+  and transfer pairs show one combined card with **Merge / Keep separate**. The
+  account chip is pre-selected from `accountLast4` when exactly one account
+  matches ([18](18-accounts.md#sms-account-matching)).
+- **From v1.3** the category chip is pre-selected from merchant memory
+  (`REMEMBERED`) or an opt-in AI suggestion (`SUGGESTED`)
+  ([22](22-merchants-and-suggestions.md)).
+- **From v1.4** a **Due** group for recurring occurrences sits above the SMS items
+  ([20](20-recurring.md#the-inbox)).
 
 ### Approval, streaks and coins
 
@@ -199,6 +240,9 @@ category chip the user must pick (MVP) or confirm (post-MVP).
   [06-gamification.md](06-gamification.md).
 - Approving several at once awards coins under the same daily cap as manual
   entry. No cap arbitrage.
+- **From v1.2**, approving income or a refund banks the day without logging
+  coins, and a transfer does neither. The full matrix is in
+  [06](06-gamification.md#what-counts).
 - Approving a **backdated** message does not fill in a past streak day
   ([06](06-gamification.md#backdating)).
 
@@ -223,19 +267,32 @@ These are load-bearing product promises, not implementation details:
 3. No message from a non-allowlisted sender is stored, parsed further, or counted.
 4. Turning the feature off deletes every `pending` item and stops the receiver.
 5. The privacy policy and the Play data-safety form say exactly this.
+6. **From v1.3**, only with **Smart suggestions** turned on (off by default),
+   extracted **merchant names** (never bodies, amounts or accounts, and never
+   person payees) are sent to the `suggestCategories` Function and Gemini on
+   Vertex AI ([22](22-merchants-and-suggestions.md#request-and-response)). The
+   data-safety form and the privacy policy are updated in the P3 release.
 
 ## Post-MVP: auto-categorisation
 
-**Not in MVP.** The schema fields exist now so switching it on is a Function and
-a UI state, not a migration.
+**Now specified in [22-merchants-and-suggestions.md](22-merchants-and-suggestions.md).**
+In summary:
 
-Sequenced plan:
-1. **v1.1 — merchant memory.** If this merchant was approved into `DINING` twice,
-   pre-select `DINING`. Purely local, no model, and covers most of the value.
-2. **v1.2 — server classifier.** A Function classifies merchant strings on
-   approval, learning from `rejected` and re-categorised approvals.
-3. Never auto-approve. Even at high confidence, the tap stays. The tap *is* the
-   habit.
+1. **v1.2: merchant key.** `merchantKey()` normalises the parsed merchant. Person
+   UPI handles are hashed and flagged, never stored or sent anywhere in plain text.
+2. **v1.3: merchant memory.** Approvals and re-categorisations count per merchant
+   on device (`users/{uid}/merchants/{key}`). Two approvals with ≥ 60% agreement
+   pre-select the category (`REMEMBERED`).
+3. **v1.3: smart suggestions (opt-in).** For merchants with no memory, the
+   `suggestCategories` callable asks Gemini on Vertex AI, sending only merchant
+   names and category names. The result is cached per merchant, so each merchant
+   is asked once.
+4. **Never auto-approve.** Even at high confidence, the tap stays. The tap *is*
+   the habit.
+
+The original plan of "a server classifier trained on rejections" is replaced by
+per-user memory. Rejections are still recorded (`rejected` is never deleted), and
+remain available if a trained model is ever justified.
 
 ## Acceptance criteria
 

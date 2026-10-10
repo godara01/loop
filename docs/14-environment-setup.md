@@ -47,7 +47,8 @@ Authentication → Sign-in method → enable **Anonymous**.
 
 That is the only provider v1 needs — onboarding signs in anonymously and never
 asks for an account ([11-firebase.md](11-firebase.md#auth-model)). Google and
-Apple get enabled when account linking ships.
+Phone are enabled for v1.1 (see [Post-v1 setup](#post-v1-setup-v11v16) below).
+Apple is enabled on the iOS track.
 
 ### 1c. Register the two apps
 
@@ -408,3 +409,66 @@ npm run emulator             # terminal 3 — the Android emulator
 - **Staging and prod projects** — one project is enough until there is something
   worth protecting. `.firebaserc` has the alias structure ready.
 - **Cloud Functions** — M6. Nothing before coins needs a trusted server.
+
+## Post-v1 setup (v1.1–v1.6)
+
+Owner actions, in the order the releases need them
+([27](27-full-ledger-plan.md#owner-actions)). Each is a console step that agents
+can't do.
+
+### v1.1 — Account linking
+
+1. **Authentication → Sign-in method → Google**: enable it, and set the project
+   support email.
+2. **Project settings → Your apps → Android `com.getter.loop` → Add fingerprint**,
+   SHA-1 **and** SHA-256, for each of:
+   - the EAS development keystore (`eas credentials -p android` → *Keystore*),
+   - the upload key,
+   - the **Play App Signing** key (Play Console → *Setup → App signing*).
+   Then re-download `google-services.json` and update the EAS file secret
+   ([Step 4](#step-4--eas-project-and-file-secrets)). Without these, Google
+   sign-in returns no `idToken` ([16](16-account-linking.md#edge-cases)).
+3. **Authentication → Sign-in method → Phone**: enable it.
+   - **Settings → SMS region policy → Allow only: India.** This limits
+     SMS-pumping fraud ([16](16-account-linking.md#risks)).
+   - **Phone numbers for testing**: add `+91 99999 00001` / `123456` for the
+     emulator and Maestro flows.
+4. **App Check → Play Integrity** is already registered (H2). Phone auth uses it
+   on Android.
+5. **Remote Config**: add `min_supported_build` (number, default `0`)
+   ([27](27-full-ledger-plan.md#force-update-gate)).
+6. The Auth emulator needs nothing extra. Google sign-in against the emulator uses
+   `signInWithCredential` with a fake id token in tests.
+
+### v1.2 — Schema v2
+
+1. Decide the **Functions region** ([11](11-firebase.md#region)) and set it in
+   `functions/src/index.ts` before deploying.
+2. Follow the deploy runbook ([27](27-full-ledger-plan.md#deploy-runbook-every-schema-changing-phase)),
+   including `scripts/migrate-v2.ts --project <id> --yes`.
+
+### v1.3 — Smart suggestions
+
+1. **Google Cloud console → APIs → enable Vertex AI API** for the Firebase
+   project.
+2. **Billing → Budgets & alerts**: a monthly budget with alerts at 50/90/100% for
+   Vertex AI **and** Identity Platform (phone SMS).
+3. **Remote Config** (server template): `ai_suggestions_enabled=false` (flip it on
+   after the D-queue check), `ai_model`, `ai_prompt_version`, `ai_daily_cap=50`.
+
+### v1.5 — Squads
+
+1. `firebase init hosting` → public dir `hosting/public`. Then commit
+   `hosting/public/.well-known/assetlinks.json` with the **three** SHA-256
+   fingerprints above, and `hosting/public/i/index.html`.
+2. `firebase deploy --only hosting`. Check with:
+   `curl -sI https://<project>.web.app/.well-known/assetlinks.json` →
+   `content-type: application/json`, 200, no redirect.
+3. Verify App Links on the device: `adb shell pm get-app-links com.getter.loop` →
+   `verified`.
+
+### v1.4 / v1.5 — Notifications
+
+Android needs nothing beyond `google-services.json`. FCM is on by default for the
+project. **iOS** push needs an APNs key upload (Project settings → Cloud
+Messaging) on the iOS track.

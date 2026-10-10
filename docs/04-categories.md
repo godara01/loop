@@ -133,6 +133,113 @@ preserved.
 Haptics: `selection` on glyph and colour, `press` on Save, `splitConfirm` on
 creation.
 
+## Income categories
+
+**v1.2.** Categories gain a `type`:
+
+```ts
+readonly type: 'expense' | 'income';   // missing = 'expense' (every v1 category)
+```
+
+- **Income essentials**, seeded silently ([02](02-onboarding.md#step-4--categories)),
+  `kind: 'essential'`:
+
+| Slug | Name | Glyph |
+|---|---|---|
+| `SALARY` | Salary | `briefcase` |
+| `FREELANCE` | Freelance | `laptop` |
+| `INTEREST` | Interest | `trending-up` |
+| `CASHBACK` | Cashback & rewards | `gift` |
+| `GIFTS` | Gifts received | `heart` |
+| `OTHER_IN` | Other income | `ellipsis-horizontal` |
+
+- `OTHER_IN` is the income fallback and, like `OTHER`, can't be archived.
+- **Versioned seed:** `profile.categoriesSeedVersion` (missing = 1). The app
+  seeds version 2 (income) once, in a batch. **Slug collision:** if a user already
+  has a category with one of these slugs (e.g. a custom expense category `SALARY`),
+  the income one is seeded as `<SLUG>_IN`, truncated to 12 characters. If that is
+  also taken, that seed row is skipped. The seed never renames a user's category.
+- The entry strip, catalogue and manage screen are filtered by type for the
+  current kind. **Manage categories** gets an **Expense / Income** segment.
+- Custom income categories are created the same way as custom expense ones, with
+  `type: 'income'`.
+- **The type is fixed after creation.** Transactions reference categories by id,
+  so flipping a type would put existing expenses into income.
+- The catalogue stays expense-only.
+
+## Sub-categories
+
+**v1.3.** One level only: `FOOD › COFFEE`, `FOOD › DELIVERY`.
+
+```ts
+readonly parentId: string | null;   // missing = null
+```
+
+### Rules
+
+| Rule | Why |
+|---|---|
+| A parent must be top-level (`parentId == null`). There are no grandchildren | Two levels cover real use. Deeper trees make the strip and charts unreadable |
+| Parent and child have the same `type` | Income can't sit under an expense category |
+| A category with children can't become a child | Would create a second level |
+| `OTHER` and `OTHER_IN` can't have children or be children | They are fallbacks |
+| A parent stays selectable for transactions | "FOOD" with no detail is still a valid answer. 10-second rule |
+| Max **20** children per parent | The detail chart stays readable |
+
+### Where children show
+
+- **Entry strip:** shows **leaf and parent categories in one usage-ordered list**,
+  labelled `COFFEE` for a child (its own slug). A long-press on a parent chip
+  shows its children. The strip ordering rule ([below](#ordering-in-the-entry-strip))
+  is unchanged and counts each category individually.
+- **Manage categories:** children are indented under their parent. **Move under…**
+  re-parents, and **Make top-level** un-parents.
+- **Insights:** the ranked list shows **parents**, with totals combining children.
+  Tapping a parent expands its children inline, each with its share of the
+  parent. Categories without children behave as today.
+- **Budgets** on a parent include children ([19](19-budgets.md#what-counts)).
+
+### Rollups are by leaf; parents are combined when read
+
+Rollups store `byCategory` by the **category the transaction (or line) points
+at**, never by parent. Insights combine parents at read time with
+`rollUpToParents(totals, categoriesById)` (pure, shared). So:
+
+- **Re-parenting never rewrites a transaction or a rollup.** Moving `COFFEE` under
+  `FOOD` immediately changes every period's FOOD total, past included. That is
+  correct, because the user is re-organising, not re-recording. The confirm sheet
+  says so: *"COFFEE's past spending will count under FOOD in Insights."*
+- `displayPercentages` runs on the combined parent totals, so they sum to 100. The
+  children's shares inside a parent are a second `displayPercentages` call over
+  the children, and also sum to 100.
+
+### Archive and delete
+
+- **Archiving a parent** archives its children in the same batch, after a confirm
+  that lists them. Unarchiving the parent asks *"Also restore N sub-categories?"*.
+- **Archiving a child** leaves the parent alone.
+- **Deleting** follows the existing rule (zero transactions only). A parent with
+  children can't be deleted until the children are moved or deleted.
+
+## Reserved system ids
+
+**v1.2.** Transaction kinds with no real category use reserved ids
+([17](17-money-in-and-out.md#the-transaction-kinds)): `sys-transfer`,
+`sys-settlement`, `sys-loan`. They are **never stored** in `categories/`.
+`resolveCategory(id)` maps them to built-in display tags (`MOVE`, `SETTLE`,
+`LOAN`). They never appear in the strip, the manage screen or Insights charts.
+User category ids are random and can't collide with the `sys-` prefix: the
+repository refuses to create one.
+
+## Squads: mapping by slug
+
+**v1.5.** A squad entry is shared between people who each have their own
+categories. It stores the creator's **slug** (`FOOD`), not a category id.
+Each member's mirror maps the slug to **their** active category with the same
+slug and type `expense`, else their `OTHER` ([23](23-squads.md#mirrors)). The
+member can re-categorise their own mirror, because `categoryId` is a user-owned
+field on mirrors.
+
 ## Colour tokens
 
 Categories do **not** get arbitrary colours — a colour picker would wreck the
@@ -173,7 +280,9 @@ show the new tag."*
 - Un-archive is one tap in **You → Categories → Archived**.
 
 **Delete** is offered only for custom or catalogue categories with **zero**
-expenses. Any other attempt offers archiving instead. If a category is somehow
+expenses. From v1.3 a parent must also have no children
+([Sub-categories](#archive-and-delete)), and from v1.4 an archived category's
+budget is archived with it ([19](19-budgets.md)). Any other attempt offers archiving instead. If a category is somehow
 deleted with expenses attached, the repository reassigns those expenses to
 `OTHER` — there is never a dangling reference.
 
@@ -215,3 +324,14 @@ long tail separately ([05-insights.md](05-insights.md#long-tail)).
       are later re-activated.
 - [x] Archiving a category with expenses leaves every Insights total unchanged.
 - [x] Every colour token passes 4.5:1 contrast for its tag text.
+
+### Acceptance criteria added after v1
+
+- [ ] (v1.2) Every v1 category parses as `type: 'expense'`. The income seed runs
+      once, handles slug collisions, and never renames a user category.
+- [ ] (v1.2) An income category never appears in the Spend strip, and vice versa.
+- [ ] (v1.3) Re-parenting COFFEE under FOOD changes FOOD's past totals with zero
+      transaction or rollup writes.
+- [ ] (v1.3) Parent shares and child shares each sum to exactly 100%.
+- [ ] (v1.3) Rules and the repository reject a grandchild, a mixed-type
+      parent/child, and `sys-` ids.

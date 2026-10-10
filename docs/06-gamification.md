@@ -26,8 +26,12 @@ tests.
    hides the coin balance, the streak capsule, and every celebration. The ledger
    keeps accruing, so toggling back loses nothing.
 6. **At most one celebration per app session**, and never mid-entry.
-7. **No push notifications in v1.** Not even a reminder. If reminders ship later
-   they are opt-in, once daily, at a user-chosen hour, neutrally phrased.
+7. **No push notifications in v1, and never about the streak.** From v1.4 the
+   only notifications are **opt-in**: one daily reminder at a user-chosen hour
+   with neutral copy that never mentions the streak, coins or amounts, a
+   recurring-due reminder, and squad activity ([25](25-notifications.md)).
+   Streak-loss warnings, reward pings and re-engagement nags are banned
+   permanently.
 
 ## Daily check-in
 
@@ -81,6 +85,47 @@ time a user backdates: *"Streaks count the day you log, not the day you spent."*
 Editing an expense's date never changes streak or coins
 ([03-expenses.md](03-expenses.md#edit-expense)).
 
+**"The day you log" is the device's local date at creation.** From v1.1 the
+client writes `createdLocalDate` on every new transaction, and `onExpenseWrite`
+compares `localDate < createdLocalDate`. v1 compared against
+`localDateOf(createdAt)` computed **on the Function server, which runs in UTC**.
+A user west of UTC logging in the evening, or east of UTC logging just after
+midnight, was wrongly treated as backdated (no check-in, no coins), or wrongly
+not backdated. Documents without `createdLocalDate` (v1) keep the old comparison.
+
+## What counts
+
+**From v1.2.** With transaction kinds, sources and squad mirrors, *"logging an
+expense banks the day"* needs a precise table. `onExpenseWrite` implements it
+exactly, with a Functions test per cell. The rule of thumb: **the user's own
+deliberate money decision today banks the day. Only a personal expense earns
+logging coins.**
+
+| What was written | Banks the day (check-in) | `expense_logged` + `categorised` coins | `first_expense` |
+|---|---|---|---|
+| Manual `expense`, today | **Yes** | **Yes** (caps apply) | Yes, if first |
+| Manual `income`, today | **Yes** | No | No |
+| Manual `refund`, today | **Yes** | No | No |
+| Manual `transfer` | No, bookkeeping | No | No |
+| SMS approval: expense | **Yes** | **Yes** | Yes, if first |
+| SMS approval: income / refund / transfer | Yes / Yes / No | No | No |
+| Recurring approval (`recurringId` set), any kind | **Yes** | **No**, a daily rule would farm coins ([20](20-recurring.md#coins-and-streak)) | No |
+| Squad entry **I created**, today | **Yes**, written by **my client** as `checkIns/{today}` in the same batch, because the Function can't tell who in the squad acted | No | No |
+| Squad **mirror** (`source: 'group'`) | **No** | **No** | No |
+| Import (`source: 'import'`) | **No** | **No** | No |
+| Any backdated write (`localDate < createdLocalDate`) | No | No | No |
+| Any update or soft delete | No | No | No |
+
+**Zero-spend day** ([below](#rules)) means *no `kind: 'expense'` documents with
+amount > 0 that count toward spend*, own or mirrored, on that local date.
+Income, refunds, transfers, loans, settlements, excluded mirrors and zero-share
+mirrors **don't** break it. A day where a squad-mate logged a dinner you shared is
+**not** zero-spend, which is honest.
+
+**`categorised`** is decided by looking up the category: its slug is not `OTHER`
+or `OTHER_IN`. v1 used a string match on the id containing "other", which a
+custom category like "Mother's Day" would trip.
+
 ## Coins
 
 A small, legible economy. Every award is a row in an **append-only coin ledger**
@@ -119,7 +164,7 @@ interface CoinLedgerEntry {
 |---|---|---|---|
 | `check_in` | First check-in, expense, or approval of a local day | **5** | 1×/day |
 | `zero_spend` | Check-in on a day that ends with no expenses | **3** | 1×/day |
-| `expense_logged` | Each expense saved or approved | **2** | 3×/day (max 6) |
+| `expense_logged` | Each personal expense saved or approved (not recurring, import or mirror, see [What counts](#what-counts)) | **2** | 3×/day (max 6) |
 | `categorised` | Expense saved with a non-`OTHER` category | **1** | 3×/day (max 3) |
 | `week_complete` | 7 consecutive banked days | **25** | 1× per completed run |
 | `first_expense` | The very first expense ever | **10** | Once |

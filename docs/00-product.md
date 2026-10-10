@@ -12,6 +12,12 @@ the split/settlement domain logic already exists and tested in
 [`packages/shared`](../packages/shared/src) ready to switch on. See
 [09-roadmap.md](09-roadmap.md).
 
+After v1, releases **v1.1–v1.6** turn the personal ledger into a full expense
+manager: income, accounts, budgets, recurring payments, squads and the rest. They
+are planned in [27-full-ledger-plan.md](27-full-ledger-plan.md). The
+[release scope table](#release-scope-after-v1) below is the binding cut line for
+each release.
+
 ## The problem
 
 Expense trackers fail for one reason: the logging habit dies. Entry is tedious,
@@ -57,25 +63,50 @@ visible daily streak — rather than adding more analytics to an app nobody open
 | Architecture | Feature modules, repository layer, Zustand + Firestore | [10](10-architecture.md) |
 | Backend | Firebase: Auth, Firestore, Functions, Storage, App Check, Remote Config | [11](11-firebase.md) |
 
-## Explicit non-goals for v1
+## Release scope after v1
 
-These are not "later in v1". They are **out**, and a PR adding them should be
-rejected on scope alone.
+Each release's scope is binding in the same way the v1 table is. A PR that builds
+a later release's feature early is rejected on scope alone.
 
-- Groups, splitting, settlement, anything multi-user — *deferred, see [09](09-roadmap.md)*
-- A required sign-up. Anonymous auth is the default; linking an account is
-  optional and only prompted when durability or groups need it
-- **Auto-categorisation of SMS expenses** — the fields are designed for it, the
-  model is not built ([12](12-sms-ingest.md#post-mvp-auto-categorisation))
-- Bank-account aggregation, email import, OCR receipt parsing
-- Income tracking, credits from SMS (debits only)
-- Budgets and budget alerts
-- Recurring expenses
-- Multi-currency in a single ledger (v1 has **one** ledger currency, chosen at
-  onboarding; the `Money` type is multi-currency-ready but the UI is not)
-- Net worth, investments
-- Widgets, watch app, web app
-- Leaderboards, friends, social anything, push-notification streak nagging
+| Release | Adds | Docs |
+|---|---|---|
+| **v1.1** | Account linking (Google, Phone), arbitrary date picker, ledger filters, Insights custom period, force-update gate | [16](16-account-linking.md), [03](03-expenses.md), [05](05-insights.md) |
+| **v1.2** | Transaction kinds: income, refunds, transfers. Accounts and balances. Credit, refund and transfer SMS proposals. Merchant key | [17](17-money-in-and-out.md), [18](18-accounts.md), [22](22-merchants-and-suggestions.md#merchant-keys) |
+| **v1.3** | Sub-categories, tags, merchant field and memory, split across categories, opt-in smart suggestions | [04](04-categories.md#sub-categories), [21](21-tags.md), [22](22-merchants-and-suggestions.md), [03](03-expenses.md#split-across-categories) |
+| **v1.4** | Budgets, recurring and subscriptions, Insights v2 (Spend/Income/Net, trend, projection, year, savings rate), opt-in daily reminder | [19](19-budgets.md), [20](20-recurring.md), [05](05-insights.md), [25](25-notifications.md) |
+| **v1.5** | Squads with placeholder members, invites, Drag & Split, settle up, pairs and lending, squad push | [23](23-squads.md), [25](25-notifications.md#squad-push) |
+| **v1.6** | CSV import, quick actions, Android widget | [24](24-import.md), [26](26-shortcuts-and-widget.md) |
+| iOS track | Apple sign-in, iOS push, iOS widget | — |
+
+### How the principles constrain the new scope
+
+| Principle | Consequence |
+|---|---|
+| Under 10 seconds | The entry sheet stays amount → category → Save. Kind and account are optional with remembered defaults. Merchant, tags and split lines live under **More**. AI suggestions never run on the entry sheet |
+| Gamification is seasoning | Budget overruns are neutral copy with no haptic. Push is never about the streak. Recurring approvals bank the day but earn no logging coins |
+| Offline-first | Every new write is a plain local write. Server-derived numbers (balances, rollups) show the server value plus a local delta, and an `AS OF` time while offline. Only linking, invites, leaving a squad, smart suggestions, import and push need the network, and the UI says so |
+| Nothing enters the ledger without a human tap | Recurring items, credit and refund SMS, and transfer pairs are inbox proposals. Import has an explicit confirm. **The one documented exception is squad mirrors**: joining a squad is the consent, mirrors carry a squad badge, and a per-squad "Count my share" switch controls whether they count as spend ([23](23-squads.md#mirrors)) |
+| Money is never a float | Amounts stay positive integers, and `kind` carries the direction. Split lines, squad allocations and refunds of split expenses all go through `allocate()` |
+| Honest numbers | The projection is guarded and shows its formula. Savings rate is hidden without income. Net-negative refund months are shown, not clamped. Months before the first record are hidden, not zero |
+
+## Explicit non-goals
+
+These are **out** for every release in this doc, and a PR adding them should be
+rejected on scope alone. v1-only non-goals that the releases above now cover
+(groups, income, budgets, recurring, widgets, auto-categorisation) were moved into
+the [release scope table](#release-scope-after-v1).
+
+- A required sign-up. Anonymous auth is the default, and linking is optional and
+  never a wall ([16](16-account-linking.md))
+- **Auto-approval** of anything: SMS, recurring or AI-suggested
+- Bank-account aggregation, email import
+- Receipt photos and OCR receipt parsing (*deferred*; the `receiptPath` field stays)
+- Multi-currency in a single ledger. One ledger currency, chosen at onboarding.
+  Squads in another currency don't mirror into the ledger ([23](23-squads.md#currency))
+- Spendable coins, a shop, IAP ([09](09-roadmap.md#considered-and-rejected))
+- Net worth, investments, loans with interest
+- Watch app, web app
+- Leaderboards, friends, social feeds, push-notification streak nagging
 
 ## Success signals
 

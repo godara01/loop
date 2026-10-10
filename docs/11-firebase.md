@@ -32,13 +32,19 @@ Consequences, accepted deliberately:
 | **Remote Config** | Kill-switches and rollout flags: SMS ingest, auto-categorisation, the category catalogue version | Lets a bad parser be disabled without a store release |
 | **Crashlytics** | Crash and error reporting | Never log amounts, descriptions or SMS bodies |
 | **Analytics** | Funnel and retention only | Event names only. No expense values, ever |
-| **Cloud Messaging** | Group invites and settlement nudges — **v1.1** | v1 registers no notifications ([06](06-gamification.md#restraint-rules)) |
+| **Cloud Messaging** | Squad activity push — **v1.5**, opt-in | Tokens from `expo-notifications` `getDevicePushTokenAsync()`. No `@react-native-firebase/messaging` ([25](25-notifications.md)) |
+| **Hosting** | **v1.5**: invite App Links (`assetlinks.json`, AASA) and the `/i/{code}` fallback page | See [Hosting](#hosting) |
+| **Vertex AI (Gemini)** | **v1.3**: opt-in category suggestions, called only from the `suggestCategories` callable | Same GCP project. Never called from the client ([22](22-merchants-and-suggestions.md)) |
 | **Emulator Suite** | Local dev and rules tests | The only way most of this is testable without spending money |
 | **App Distribution** | QA builds to testers | |
 
-Deliberately **not** used: Realtime Database (Firestore covers it), Hosting,
-Dynamic Links (sunset — group invites use a custom scheme plus a short-code
-Function), Firestore-backed full-text search (use a client-side filter in v1).
+Deliberately **not** used: Realtime Database (Firestore covers it), Dynamic
+Links (shut down August 2025; invites use Hosting App Links plus a short code),
+Firestore-backed full-text search (use a client-side filter),
+`@react-native-firebase/messaging` (conflicts with `expo-notifications` on
+Android), and the client-side AI Logic SDK (no per-user cap, and the prompt would
+ship in the binary). Hosting **was** on this list for v1. It is used from v1.5,
+for invite links only.
 
 ## Auth model
 
@@ -59,7 +65,11 @@ Anonymous uid  ──link──▶  Google / Apple / Phone credential   (same ui
   end of onboarding, once, and in You. The CSV export
   ([08-data-model.md](08-data-model.md#export)) is the escape hatch.
 - Account deletion (App Store and Play requirement): a Function deletes the whole
-  `users/{uid}` subtree and Storage prefix, then the auth record.
+  `users/{uid}` subtree and Storage prefix, then the auth record. From v1.5 it
+  first turns the user's squad seats into placeholders ([23](23-squads.md#account-deletion)).
+- **v1.1 linking** ships Google and Phone. Apple ships on the iOS track. The
+  flows, error handling and account switching are in [16](16-account-linking.md).
+  Email and phone numbers are never written to Firestore.
 
 ## Firestore data model
 
@@ -100,7 +110,29 @@ groups/{groupId}                        v1.1 — name, currency, memberIds[],
   expenses/{expenseId}                  paidBy, splitMode, allocations[]
   settlements/{settlementId}
   balances/{uid}                        netMinor                 ← Function-written
-groupInvites/{code}                     groupId, expiresAt, createdBy
+groupInvites/{code}                     groupId, memberId, expiresAt, usesLeft, createdBy  ← Function-only
+
+— added after v1 (each doc owns the full shape) —
+users/{uid}
+  meta/schema                           ledger: 2, migratedAt                    ← server-only (v1.2)
+  accounts/{id}                         docs/18                                   (v1.2)
+  accountBalances/{id}                  flowMinor                                ← Function (v1.2)
+  rollupApplied/{expenseId}             marker v2: per-line leaf contributions + account flows
+                                                                                 ← Function; owner-READABLE from v1.2
+  tags/{id}                             docs/21                                   (v1.3)
+  merchants/{merchantKey}               docs/22                                   (v1.3)
+  aiUsage/{YYYY-MM-DD}                  count                                    ← Function (v1.3)
+  budgets/{id}                          docs/19                                   (v1.4)
+  recurring/{id}                        docs/20                                   (v1.4)
+  payees/{p2pKey}                       groupId, memberId                         (v1.5)
+  imports/{id}                          docs/24                                   (v1.6)
+groups/{groupId}                        docs/23 — members map, memberUids[], ownerMemberId (v1.5)
+  expenses/{entryId}                    map allocations, splitInputs, invalid
+  settlements/{id}
+  balances/{memberId}                   netMinor                                 ← Function
+  meta/summary                          simplified transfers                      ← Function
+  applied/{docId}                       per-member delta marker                   ← Function
+  activity/{id}                                                                  ← Function
 ```
 
 ### Why this shape
@@ -143,6 +175,19 @@ Composite indexes are checked into `firestore.indexes.json`:
 | `expenses` | `deletedAt` ASC, `occurredAt` DESC |
 | `pendingExpenses` | `status` ASC, `receivedAt` DESC |
 | `groups/{g}/expenses` | `deletedAt` ASC, `occurredAt` DESC |
+| `expenses` (v1.1) | `deletedAt` ASC, `categoryIds` ARRAY, `localDate` DESC |
+| `expenses` (v1.2) | `deletedAt` ASC, `kind` ASC, `localDate` DESC |
+| `expenses` (v1.2) | `deletedAt` ASC, `accountId` ASC, `localDate` DESC |
+| `expenses` (v1.3) | `deletedAt` ASC, `tagIds` ARRAY, `localDate` DESC |
+| `expenses` (v1.4) | `recurringId` ASC, `localDate` ASC (no `deletedAt`: soft-deleted occurrences count as handled) |
+| `expenses` (v1.6) | `importId` ASC, `localDate` ASC |
+| `groups` (v1.5) | `memberUids` ARRAY, `updatedAt` DESC |
+| `groups/{g}/settlements` (v1.5) | `deletedAt` ASC, `occurredAt` DESC |
+| `groups/{g}/activity` (v1.5) | `at` DESC |
+
+Every index is added to `firestore.indexes.json` **in the task that adds its
+query**. `groups/{g}/expenses` is listed above but **not yet in the file**. The
+P5 task adds it.
 
 ## Trust boundary
 
@@ -153,6 +198,12 @@ gain**:
 | Client-written | Function-written only |
 |---|---|
 | `expenses`, `categories`, `settings`, `pendingExpenses`, `checkIns`, profile | `wallet`, `coinLedger`, `dailyRollups`, `monthlyRollups`, `groups/*/balances` |
+| From v1.2: `accounts`, `budgets`, `recurring`, `tags`, `merchants`, `imports` (create), `groupIndex`, `payees`, `devices`, `groups/{g}` + entries + settlements (rules-validated) | From v1.2: `accountBalances`, `rollupApplied`, `meta/schema`, `aiUsage`, squad mirrors (`source: 'group'`, except user-owned fields), `groups/*/{balances,meta,applied,activity}`, `groupInvites`, `imports.status = 'done'` |
+
+**The squad trust rule:** a seat's `uid` is honoured only when it is also in
+`memberUids`, and clients can never change `memberUids` after creation. A
+malicious client therefore can't point mirrors at someone else's ledger
+([23](23-squads.md#groupsgroupid)).
 
 Coins are a score today and could become spendable tomorrow. Making them
 server-authoritative now costs one Function and closes the entire class of
@@ -171,8 +222,14 @@ All Firestore-triggered unless noted. Every one is idempotent — Functions retr
 | `rebuildRollups` | Callable (admin/debug) | Regenerates rollups from expenses |
 | `onUserDelete` | Auth delete | Recursive delete of the user subtree and Storage prefix |
 | `cleanupSoftDeleted` | Scheduled, daily | Hard-deletes expenses soft-deleted > 90 days ago and their receipts |
-| `redeemInvite` | Callable — **v1.1** | Validates a group invite code and adds the member |
-| `onGroupExpenseWrite` | **v1.1** | Recomputes group balances with `settle.ts` |
+| `onExpenseWrite` **v2** (v1.2) | same | Rollups v2 + account flows in **one transaction with one marker**. The [kind × source matrix](06-gamification.md#what-counts) decides the check-in and coins. **Skips** rollups, flows and coins for `source: 'import'` creates ([24](24-import.md#why-online-only)). Backdating via `createdLocalDate` (v1.1) |
+| `rebuildUserLedger` (v1.2) | Internal; used by `rebuildRollups`, `finalizeImport` and the migration script | Rebuilds rollups v2, account flows and markers from transactions |
+| `suggestCategories` (v1.3) | Callable, App Check + replay protection | Gemini on Vertex AI; per-uid daily cap; Remote Config kill switch ([22](22-merchants-and-suggestions.md)) |
+| `onGroupEntryWrite`, `onSettlementWrite` (v1.5) | `groups/{g}/{expenses,settlements}/{id}` write | Balance deltas via an applied marker, summary via `simplifyDebts`, mirrors, activity, `invalid` flag, push ([23](23-squads.md#the-mirror-function)) |
+| `onGroupPrefWrite` (v1.5) | `users/{uid}/groupIndex/{g}` write | When `countMyShare` changes, re-flags `excludeFromSpend` on that squad's mirrors |
+| `createInvite`, `redeemInvite` (+ backfill), `leaveSquad`, `removeMember`, `resetSeat` (v1.5) | Callables, App Check | [23](23-squads.md#invites-and-joining) |
+| `deleteUserData` **v2** (v1.5) | Callable | Converts squad seats to placeholders before the recursive delete |
+| `finalizeImport` (v1.6) | Callable, App Check | Verifies the count, rebuilds the import span, marks it done; also undo ([24](24-import.md)) |
 
 Functions import the same `packages/shared` package the app does. The streak that
 the server computes and the streak the client predicts are produced by the same
@@ -186,6 +243,57 @@ function — that is the entire reason the package is framework-free.
   overwrites rather than duplicates.
 - Wallet updates run in a transaction that reads the ledger entry first and
   no-ops if it already existed.
+
+### Rollups v2
+
+**From v1.2.** `dailyRollups/{date}` and `monthlyRollups/{month}`:
+
+```ts
+{ count, totalMinor, byCategory,                  // gross expense — v1 meaning, unchanged
+  refundCount, refundMinor, refundByCategory,     // refunds, by the refunded category
+  incomeCount, incomeMinor, incomeByCategory,     // income, by income category
+  byDay /* monthly only */ }
+```
+
+- Keyed by **leaf** category. Parents are combined at read time
+  ([04](04-categories.md#sub-categories)). **Split lines apply per line.**
+- Transfers, settlements, loans and mirrors with `excludeFromSpend` add nothing.
+  Mirrors add **their share** to the expense buckets.
+- A rollup doc is empty, and deleted, **only when all three counts are 0**. v1's
+  `isEmptyRollup` checked `count` alone, which would delete an income-only day.
+- **Marker v2** (`rollupApplied/{expenseId}`) stores the exact vector this document
+  last contributed: `{localDate, kind, contributions: [{bucket, categoryId,
+  amountMinor}], flows: [{accountId, deltaMinor}]}`. The trigger applies
+  `new − old` to the rollups **and** `accountBalances` in **one transaction**, so the
+  two can never disagree. The owner can read markers, which lets the client compute
+  exact local deltas for edits ([18](18-accounts.md#who-computes-it)).
+- Rollup paths join `firestorePaths` (today they are hand-built in
+  `functions/src/rollups.ts` and `use-rollups.ts`).
+
+### Hosting
+
+**From v1.5.** It is used only for invites:
+
+- `public/.well-known/assetlinks.json` lists the SHA-256 of the **Play App Signing**
+  key, the upload key and the EAS dev key. Without the Play App Signing key, links
+  from Play installs fail verification.
+- `public/.well-known/apple-app-site-association` (iOS track) is served with a
+  `headers` rule for `Content-Type: application/json` and **no redirect**.
+- `public/i/index.html` plus a rewrite `"/i/**" → "/i/index.html"`. A static page
+  that reads the code from the path and shows it large, with Copy and a store
+  link. No script talks to Firestore, and no data about the invite is exposed.
+- `firebase.json` gains a `hosting` block. The emulator suite gains a hosting
+  emulator for the fallback page check.
+
+### Region
+
+All Functions currently deploy to the default **us-central1** (no
+`setGlobalOptions`). The user base is India-first and Firestore's region is fixed
+([14](14-environment-setup.md#1a-check-the-firestore-region-before-anything-else)).
+**Decision for P2:** set `setGlobalOptions({region: <Firestore's region>})` before
+the v2 Functions deploy, so triggers run next to the data. Callables are
+region-addressed from the client (`functions().app.functions('<region>')`), so the
+app and Functions must change together. This is the P2 deploy runbook step.
 
 ## Security rules
 
@@ -340,6 +448,22 @@ together would blur that difference. It must be kept in sync with
 `storage.rules` by hand — there is no shared source of truth between the two,
 the same way `firestore/paths.ts` and `firestore.rules` already aren't.
 
+## Decisions made while planning v1.1–v1.6 (2026-10-10)
+
+- **No Dynamic Links.** Hosting App Links and a typed code ([Hosting](#hosting)).
+- **One notification library.** `expo-notifications` for both local and FCM
+  tokens. RNFirebase messaging would register a second
+  `FirebaseMessagingService`.
+- **AI through a callable**, never the client SDK ([22](22-merchants-and-suggestions.md#where-it-runs-a-callable-function)).
+- **Recurring proposals are virtual.** Nothing is stored until approval, which
+  uses deterministic ids ([20](20-recurring.md#why-not-store-proposals-in-pendingexpenses)).
+- **Tags by id**, so renaming and deleting are single writes ([21](21-tags.md#why-ids-not-names)).
+- **Allocations as maps** in squads, so the rules can validate keys with one
+  `get()` ([23](23-squads.md#groupsgexpensesentryid)).
+- **Import skips per-row triggers** and rebuilds once
+  ([24](24-import.md#why-online-only)). That avoids rollup hot-spotting (~1
+  write/sec/doc).
+
 ## Acceptance criteria
 
 - [ ] The app is fully usable in airplane mode: log, edit, delete, browse
@@ -361,3 +485,15 @@ the same way `firestore/paths.ts` and `firestore.rules` already aren't.
       console setting. Owner, before the first tester build.)*
 - [x] Deleting an account removes every document and file for that uid.
       (proof: tests/functions/delete-user.test.ts › "leaves a fully populated user with zero docs and zero files" and "leaves a second user's data untouched")
+
+### Acceptance criteria added after v1
+
+- [ ] (v1.2) A client can't write `accountBalances`, `rollupApplied`, `meta/schema`
+      or `aiUsage`, and the owner can read them (rules tests).
+- [ ] (v1.2) `onExpenseWrite` v2 keeps rollups and account flows equal to
+      `rebuildUserLedger` after any sequence of creates, edits, moves and deletes
+      (Functions test).
+- [ ] (v1.5) Every row of the squad rules table has an allow test and an attack
+      test.
+- [ ] (v1.5) `assetlinks.json` is served with the right content type and contains
+      the Play App Signing fingerprint (`curl` check in the D queue).

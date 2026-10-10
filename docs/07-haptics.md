@@ -64,6 +64,35 @@ category reordering); the rest wait for Squads.
 | You | Reset app confirmed | `error` |
 | Onboarding | Demo plates | `splitConfirm`, `error` |
 
+### Bindings added after v1
+
+**No new events.** Every new surface maps to the existing vocabulary, and the
+squad events (`splitConfirm`, `settleSuccess`, `dragStart`/`dragTick`/`dragDrop`)
+finally mean what they were named for. Each feature doc repeats its rows in its
+own **Haptics** table, and this table is the union.
+
+| Surface | Action | Event | Doc |
+|---|---|---|---|
+| Entry sheet | Kind switch, date chip, account chip choice | `selection` | [17](17-money-in-and-out.md), [03](03-expenses.md#date), [18](18-accounts.md) |
+| Entry sheet | Save income / transfer / refund | `expenseSaved` | [17](17-money-in-and-out.md) |
+| Entry sheet | Transfer to the same account, refund over the remainder, split remainder ≠ 0 | `warning` | [17](17-money-in-and-out.md), [03](03-expenses.md#split-across-categories) |
+| Date picker | Step month, pick day, range over the limit | `selection`, `selection`, `warning` | [03](03-expenses.md#date) |
+| Ledger filters | Toggle facet / Apply | `selection` / `press` | [03](03-expenses.md#ledger-filters) |
+| Account linking | Link success / wrong OTP / switch confirm / failure | `splitConfirm` / `warning` / `destructive` / `error` | [16](16-account-linking.md) |
+| Accounts, budgets, recurring rules, tags | Save | `splitConfirm` | [18](18-accounts.md), [19](19-budgets.md), [20](20-recurring.md), [21](21-tags.md) |
+| Accounts | Reorder | `dragStart` → `dragTick` → `dragDrop` | [18](18-accounts.md) |
+| Budgets | Crossing 80% / 100% | **none, deliberately** | [19](19-budgets.md) |
+| Inbox | Approve recurring / skip recurring | `expenseSaved` / `destructive` | [20](20-recurring.md) |
+| Tags | Add / limit hit / pin | `selection` / `warning` / `toggleOn`–`toggleOff` | [21](21-tags.md) |
+| Merchant memory | Category auto-selected in entry | `selection` | [22](22-merchants-and-suggestions.md) |
+| Squads | Create squad or person, save entry, join | `splitConfirm` | [23](23-squads.md) |
+| Squads | Drag a member plate in or out of the split | `dragStart` → `dragTick` → `dragDrop` | [23](23-squads.md) |
+| Squads | Record settlement / last debt settled | `settleSuccess` | [23](23-squads.md) |
+| Squads | Delete entry / leave / archive | `destructive` | [23](23-squads.md) |
+| Import | Complete / file rejected / undo | `expenseSaved` / `error` / `destructive` | [24](24-import.md) |
+| Notifications, smart suggestions, widget privacy | Switches | `toggleOn` / `toggleOff` | [25](25-notifications.md), [22](22-merchants-and-suggestions.md), [26](26-shortcuts-and-widget.md) |
+| Incoming push, AI suggestion arriving, widget | — | **none**. The user didn't act | [25](25-notifications.md) |
+
 Anything not on this list does **not** vibrate. Restraint is the whole point: if
 everything buzzes, nothing means anything.
 

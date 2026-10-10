@@ -54,6 +54,11 @@ One screen, one sentence, one button.
 - A single `TactileButton` — **Start**. Pressing it is the user's first taste of
   the plate collapsing.
 - Haptic: `press` on the button.
+- **From v1.1:** a secondary text button under Start, **I already use Loop**. It
+  signs in with Google or Phone and, if that account has finished onboarding,
+  skips straight to Orbit with its data. The full flow and edge cases are in
+  [16-account-linking.md](16-account-linking.md#flow-i-already-use-loop-new-device).
+  Offline it is disabled, with *"Needs a connection."*.
 
 ### Step 2 — Profile
 
@@ -107,6 +112,11 @@ The step that explains the product.
 - At least one category must remain active; deselecting the last fires `warning`
   and refuses.
 - Haptic: `selection` per tag, `press` on Continue.
+- **From v1.2:** the 6 **income essentials** (`SALARY`, `FREELANCE`, `INTEREST`,
+  `CASHBACK`, `GIFTS`, `OTHER_IN`) are seeded silently in the same write as the
+  expense essentials ([04](04-categories.md#income-categories)). This step doesn't
+  show them, because income isn't needed to finish onboarding. Existing users get
+  them from the versioned seed (`categoriesSeedVersion`).
 
 ### Step 5 — First expense
 
@@ -121,6 +131,10 @@ the heading *"Log something you spent today."*
   `first_expense` and `check_in` coins follow from the Cloud Function — then set
   `profile.onboardedAt` and hand off to Orbit.
 - On skip: set `onboardedAt`, land on Orbit with the empty state below.
+- **From v1.1**, the success state carries one muted line, which is not a button:
+  *"Your data lives on this phone. You can back it up from You any time."* This
+  is the "stated plainly, once" promise from [11](11-firebase.md#auth-model). See
+  [16](16-account-linking.md#where-linking-is-offered).
 - Haptic: `expenseSaved` on save, then `streakAdvance` when Orbit mounts and the
   streak reads 1.
 
@@ -135,6 +149,14 @@ These matter more than the onboarding screens — most users will see them.
 | Insights | *"Log a few days and this fills in."* | Add expense |
 | Insights, <3 days of data | Show real data, plus a muted note *"Trends need about a week."* — never fake a chart | — |
 | Inbox | *"Transaction messages will show up here for you to approve."* | Turn on auto-capture (Android) |
+| Accounts (v1.2) | *"Add where your money lives — a bank, a card, cash."* | Add account (Cash suggested) |
+| Budgets (v1.4) | *"Set a monthly limit and see how close you are."* + categories with spend this month | Set a budget |
+| Recurring (v1.4) | *"Rent, subscriptions, salary — Loop will remind you when they're due."* | New rule, or **Make recurring** from any transaction |
+| Squads (v1.5) | *"Split dinners, trips and rent with anyone — they don't need the app."* | New squad · Add a person · Join with a code |
+| Tags (v1.3) | *"Tag transactions to group them across categories — trips, work, gifts."* | — |
+
+Empty-state copy lives in `apps/mobile/src/lib/empty-states.ts` (H5). New rows are
+added there, not inline.
 
 ## Re-onboarding and reset
 
@@ -142,6 +164,9 @@ These matter more than the onboarding screens — most users will see them.
   the account-deletion Function, clears the local cache, and returns to step 1.
   It is destructive: typed confirmation ("RESET"), `error` haptic on the confirm,
   no silent path. A linked account is signed out; an anonymous one is deleted.
+  From v1.1, a linked account may need to re-authenticate first
+  (`requires-recent-login`, [16](16-account-linking.md#account-deletion)). From
+  v1.5, squad seats become placeholders before the delete ([23](23-squads.md#account-deletion)).
 - There is no partial "redo onboarding" flow. Categories, name and haptics are
   all editable in **You**.
 
