@@ -57,3 +57,4 @@ metro.pid
 
 # Cloud Functions bundle (npm run build -w @loop/functions)
 functions/lib/
+.gradle/
