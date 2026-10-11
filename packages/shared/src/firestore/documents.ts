@@ -24,7 +24,7 @@ import { CURRENCY_SYMBOL, type CurrencyCode, money } from '../money';
 import type { PendingExpense, PendingExpenseSource, PendingExpenseStatus } from '../sms/types';
 import type { SplitMode } from '../split';
 import { CATEGORY_COLOR_TOKENS } from '../theme';
-import type { Expense, ExpenseSource, OnboardingStep, SmsCaptureState, UserProfile, UserSettings } from '../types';
+import type { Expense, ExpenseSource, OnboardingStep, SmsCaptureState, TransactionKind, UserProfile, UserSettings } from '../types';
 import { firestorePaths } from './paths';
 
 export class DocumentShapeError extends Error {
@@ -100,6 +100,14 @@ function integer(path: string, d: Fields, field: string): number {
 function oneOf<T extends string>(path: string, d: Fields, field: string, allowed: readonly T[]): T {
   const value = d[field];
   if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) {
+    throw new DocumentShapeError(path, field, `must be one of: ${allowed.join(', ')}`);
+  }
+  return value as T;
+}
+
+function integerOneOf<T extends number>(path: string, d: Fields, field: string, allowed: readonly T[]): T {
+  const value = d[field];
+  if (typeof value !== 'number' || !(allowed as readonly number[]).includes(value)) {
     throw new DocumentShapeError(path, field, `must be one of: ${allowed.join(', ')}`);
   }
   return value as T;
@@ -292,6 +300,7 @@ export interface AllocationDoc {
 export interface ExpenseDoc {
   readonly amountMinor: number;
   readonly currency: CurrencyCode;
+  readonly kind?: TransactionKind;
   readonly categoryId: string;
   readonly description: string;
   readonly note: string | null;
@@ -305,12 +314,28 @@ export interface ExpenseDoc {
   readonly paidBy: string;
   readonly splitMode: SplitMode;
   readonly allocations: readonly AllocationDoc[];
+  readonly accountId?: string | null;
+  readonly toAccountId?: string | null;
+  readonly refundOf?: string | null;
+  readonly merchant?: string | null;
+  readonly merchantKey?: string | null;
+  readonly tagIds?: readonly string[];
+  readonly lines?: readonly { readonly categoryId: string; readonly amountMinor: number }[] | null;
+  readonly categoryIds?: readonly string[];
+  readonly recurringId?: string | null;
+  readonly importId?: string | null;
+  readonly groupRefId?: string | null;
+  readonly paidMinor?: number | null;
+  readonly direction?: 'in' | 'out' | null;
+  readonly excludeFromSpend?: boolean;
+  readonly schemaVersion?: 1 | 2;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly deletedAt: string | null;
 }
 
 const EXPENSE_SOURCES: readonly ExpenseSource[] = ['manual', 'sms', 'shared', 'group'];
+const TRANSACTION_KINDS: readonly TransactionKind[] = ['expense', 'income', 'refund', 'transfer', 'settlement', 'loan'];
 const SPLIT_MODES: readonly SplitMode[] = ['even', 'shares', 'exact', 'percentage'];
 const LOCAL_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -329,10 +354,59 @@ function localDate(path: string, d: Fields, field: string): string {
   return value;
 }
 
+function boolean(path: string, d: Fields, field: string): boolean {
+  const value = d[field];
+  if (typeof value !== 'boolean') {
+    throw new DocumentShapeError(path, field, 'must be a boolean');
+  }
+  return value;
+}
+
+function parseTagIds(path: string, value: unknown): readonly string[] {
+  if (!Array.isArray(value)) {
+    throw new DocumentShapeError(path, 'tagIds', 'must be an array');
+  }
+  return value.map((item, i) => {
+    if (typeof item !== 'string' || item.trim() === '') {
+      throw new DocumentShapeError(path, `tagIds[${i}]`, 'must be a non-empty string');
+    }
+    return item;
+  });
+}
+
+function parseCategoryIds(path: string, value: unknown): readonly string[] {
+  if (!Array.isArray(value)) {
+    throw new DocumentShapeError(path, 'categoryIds', 'must be an array');
+  }
+  return value.map((item, i) => {
+    if (typeof item !== 'string' || item.trim() === '') {
+      throw new DocumentShapeError(path, `categoryIds[${i}]`, 'must be a non-empty string');
+    }
+    return item;
+  });
+}
+
+function parseLines(path: string, value: unknown): readonly { readonly categoryId: string; readonly amountMinor: number }[] {
+  if (!Array.isArray(value)) {
+    throw new DocumentShapeError(path, 'lines', 'must be an array');
+  }
+  return value.map((item, i) => {
+    const linePath = `${path}#lines[${i}]`;
+    const dLine = record(path, `lines[${i}]`, item);
+    const categoryId = text(linePath, dLine, 'categoryId');
+    const amountMinor = integer(linePath, dLine, 'amountMinor');
+    if (amountMinor < 0) {
+      throw new DocumentShapeError(linePath, 'amountMinor', 'must be non-negative');
+    }
+    return { categoryId, amountMinor };
+  });
+}
+
 export function expenseToDoc(expense: Expense): ExpenseDoc {
   return {
     amountMinor: expense.total.minor,
     currency: expense.total.currency,
+    kind: expense.kind,
     categoryId: expense.categoryId,
     description: expense.description,
     note: expense.note,
@@ -346,6 +420,21 @@ export function expenseToDoc(expense: Expense): ExpenseDoc {
     paidBy: expense.paidBy,
     splitMode: expense.splitMode,
     allocations: expense.allocations.map((a) => ({ memberId: a.memberId, amountMinor: a.amount.minor })),
+    accountId: expense.accountId,
+    toAccountId: expense.toAccountId,
+    refundOf: expense.refundOf,
+    merchant: expense.merchant,
+    merchantKey: expense.merchantKey,
+    tagIds: expense.tagIds,
+    lines: expense.lines,
+    categoryIds: expense.categoryIds,
+    recurringId: expense.recurringId,
+    importId: expense.importId,
+    groupRefId: expense.groupRefId,
+    paidMinor: expense.paidMinor,
+    direction: expense.direction,
+    excludeFromSpend: expense.excludeFromSpend,
+    schemaVersion: expense.schemaVersion,
     createdAt: expense.createdAt,
     updatedAt: expense.updatedAt,
     deletedAt: expense.deletedAt,
@@ -355,6 +444,11 @@ export function expenseToDoc(expense: Expense): ExpenseDoc {
 export function parseExpense(uid: string, expenseId: string, data: unknown): Expense {
   const path = firestorePaths.expense(uid, expenseId);
   const d = record(path, '(document)', data);
+
+  const source = oneOf(path, d, 'source', EXPENSE_SOURCES);
+  if (source === 'group') {
+    throw new DocumentShapeError(path, 'source', 'group mirrors are not supported yet until G4');
+  }
 
   const currency = oneOf(path, d, 'currency', CURRENCIES);
   const amountMinor = integer(path, d, 'amountMinor');
@@ -379,16 +473,19 @@ export function parseExpense(uid: string, expenseId: string, data: unknown): Exp
     throw new DocumentShapeError(path, 'allocations', `sum to ${allocated}, but amountMinor is ${amountMinor}`);
   }
 
+  const categoryId = text(path, d, 'categoryId');
+
   return {
     id: expenseId,
+    ...(d.kind !== undefined ? { kind: oneOf(path, d, 'kind', TRANSACTION_KINDS) } : {}),
+    categoryId,
     total: money(amountMinor, currency),
-    categoryId: text(path, d, 'categoryId'),
     description: anyString(path, d, 'description'),
     note: d.note === null || d.note === undefined ? null : anyString(path, d, 'note'),
     occurredAt: instant(path, d, 'occurredAt'),
     localDate: localDate(path, d, 'localDate'),
     createdLocalDate: optionalLocalDate(path, d, 'createdLocalDate'),
-    source: oneOf(path, d, 'source', EXPENSE_SOURCES),
+    source,
     receiptPath: optionalText(path, d, 'receiptPath'),
     pendingId: optionalText(path, d, 'pendingId'),
     groupId: optionalText(path, d, 'groupId'),
@@ -398,6 +495,21 @@ export function parseExpense(uid: string, expenseId: string, data: unknown): Exp
     createdAt: instant(path, d, 'createdAt'),
     updatedAt: instant(path, d, 'updatedAt'),
     deletedAt: optionalInstant(path, d, 'deletedAt'),
+    ...(d.accountId !== undefined ? { accountId: optionalText(path, d, 'accountId') } : {}),
+    ...(d.toAccountId !== undefined ? { toAccountId: optionalText(path, d, 'toAccountId') } : {}),
+    ...(d.refundOf !== undefined ? { refundOf: optionalText(path, d, 'refundOf') } : {}),
+    ...(d.merchant !== undefined ? { merchant: optionalText(path, d, 'merchant') } : {}),
+    ...(d.merchantKey !== undefined ? { merchantKey: optionalText(path, d, 'merchantKey') } : {}),
+    ...(d.tagIds !== undefined ? { tagIds: parseTagIds(path, d.tagIds) } : {}),
+    ...(d.lines !== undefined ? { lines: d.lines === null ? null : parseLines(path, d.lines) } : {}),
+    ...(d.categoryIds !== undefined ? { categoryIds: parseCategoryIds(path, d.categoryIds) } : {}),
+    ...(d.recurringId !== undefined ? { recurringId: optionalText(path, d, 'recurringId') } : {}),
+    ...(d.importId !== undefined ? { importId: optionalText(path, d, 'importId') } : {}),
+    ...(d.groupRefId !== undefined ? { groupRefId: optionalText(path, d, 'groupRefId') } : {}),
+    ...(d.paidMinor !== undefined ? { paidMinor: d.paidMinor === null ? null : integer(path, d, 'paidMinor') } : {}),
+    ...(d.direction !== undefined ? { direction: d.direction === null ? null : oneOf(path, d, 'direction', ['in', 'out'] as const) } : {}),
+    ...(d.excludeFromSpend !== undefined ? { excludeFromSpend: boolean(path, d, 'excludeFromSpend') } : {}),
+    ...(d.schemaVersion !== undefined ? { schemaVersion: integerOneOf(path, d, 'schemaVersion', [1, 2] as const) } : {}),
   };
 }
 

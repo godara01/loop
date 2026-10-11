@@ -7,12 +7,17 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { essentialCategoriesToSeed, seedEssentialCategories, type Category } from '../categories';
+import fsModule from 'node:fs';
+import { newPersonalExpense } from '../expenses';
+import { money } from '../money';
 import {
   DEFAULT_SETTINGS,
   DocumentShapeError,
   categoryToDoc,
+  expenseToDoc,
   newProfile,
   parseCategory,
+  parseExpense,
   parsePendingExpense,
   pendingExpenseToDoc,
   parseProfile,
@@ -255,6 +260,167 @@ describe('pending expense documents', () => {
     assert.throws(
       () => parsePendingExpense(UID, 'pending-1', { ...doc, sender: 'AD-HDFCBK' }),
       (e: unknown) => e instanceof DocumentShapeError && e.field === 'sender',
+    );
+  });
+});
+
+describe('firestore v2 paths', () => {
+  it('builds rollup, account, and meta paths from the uid', () => {
+    assert.equal(firestorePaths.dailyRollup(UID, '2026-09-13'), 'users/user-1/dailyRollups/2026-09-13');
+    assert.equal(firestorePaths.monthlyRollup(UID, '2026-09'), 'users/user-1/monthlyRollups/2026-09');
+    assert.equal(firestorePaths.rollupApplied(UID, 'exp-1'), 'users/user-1/rollupApplied/exp-1');
+    assert.equal(firestorePaths.accounts(UID), 'users/user-1/accounts');
+    assert.equal(firestorePaths.account(UID, 'acc-1'), 'users/user-1/accounts/acc-1');
+    assert.equal(firestorePaths.meta(UID, 'schema'), 'users/user-1/meta/schema');
+    assert.equal(firestorePaths.metaSchema(UID), 'users/user-1/meta/schema');
+  });
+
+  it('refuses segments that would change the shape of the new paths', () => {
+    assert.throws(() => firestorePaths.dailyRollup(UID, 'a/b'), /date/);
+    assert.throws(() => firestorePaths.account(UID, 'a/b'), /accountId/);
+    assert.throws(() => firestorePaths.meta(UID, 'a/b'), /docId/);
+  });
+});
+
+describe('v1 fixture suite', () => {
+  it('parses every v1 doc in the fixture with no v2 fields', () => {
+    const raw = fsModule.readFileSync(new URL('./fixtures/v1-docs.json', import.meta.url), 'utf8');
+    const docs = JSON.parse(raw) as unknown[];
+    assert.ok(docs.length > 0, 'v1-docs.json must contain at least one document');
+    for (const [i, doc] of docs.entries()) {
+      const parsed = parseExpense(UID, `exp-${i}`, doc);
+      assert.equal(parsed.id, `exp-${i}`);
+      assert.equal(parsed.kind, undefined);
+      assert.equal(parsed.accountId, undefined);
+      assert.equal(parsed.tagIds, undefined);
+      assert.equal(parsed.schemaVersion, undefined);
+    }
+  });
+});
+
+describe('v2 transaction round-trips', () => {
+  const base = newPersonalExpense({
+    id: 'exp-v2',
+    uid: UID,
+    total: money(10000, 'INR'),
+    categoryId: 'cat-food',
+    description: 'Lunch',
+    note: null,
+    occurredAt: NOW,
+    now: NOW,
+  });
+
+  it('round-trips an income kind with every new field', () => {
+    const expense = {
+      ...base,
+      kind: 'income' as const,
+      accountId: 'acc-1',
+      toAccountId: 'acc-2',
+      refundOf: 'exp-0',
+      merchant: 'Acme',
+      merchantKey: 'acme',
+      tagIds: ['food', 'lunch'],
+      lines: [{ categoryId: 'cat-food', amountMinor: 10000 }],
+      categoryIds: ['cat-food'],
+      recurringId: 'rec-1',
+      importId: 'imp-1',
+      groupRefId: 'grp-1',
+      paidMinor: 10000,
+      direction: 'in' as const,
+      excludeFromSpend: true,
+      schemaVersion: 2 as const,
+    };
+    const doc = expenseToDoc(expense);
+    const parsed = parseExpense(UID, 'exp-v2', doc);
+    assert.deepEqual(parsed, expense);
+  });
+
+  it('round-trips a transfer kind', () => {
+    const expense = {
+      ...base,
+      kind: 'transfer' as const,
+      accountId: 'acc-1',
+      toAccountId: 'acc-2',
+      merchant: null,
+      merchantKey: null,
+      tagIds: [],
+      lines: null,
+      categoryIds: ['cat-food'],
+      recurringId: null,
+      importId: null,
+      groupRefId: null,
+      paidMinor: null,
+      direction: null,
+      excludeFromSpend: false,
+      schemaVersion: 1 as const,
+    };
+    const doc = expenseToDoc(expense);
+    const parsed = parseExpense(UID, 'exp-v2', doc);
+    assert.deepEqual(parsed, expense);
+  });
+
+  it('round-trips a refund kind', () => {
+    const expense = {
+      ...base,
+      kind: 'refund' as const,
+      accountId: 'acc-1',
+      toAccountId: null,
+      refundOf: 'exp-0',
+      merchant: null,
+      merchantKey: null,
+      tagIds: [],
+      lines: null,
+      categoryIds: ['cat-food'],
+      recurringId: null,
+      importId: null,
+      groupRefId: null,
+      paidMinor: null,
+      direction: null,
+      excludeFromSpend: false,
+      schemaVersion: 1 as const,
+    };
+    const doc = expenseToDoc(expense);
+    const parsed = parseExpense(UID, 'exp-v2', doc);
+    assert.deepEqual(parsed, expense);
+  });
+
+  it('rejects an unknown kind', () => {
+    const doc = expenseToDoc({ ...base, kind: 'unknown' as any });
+    assert.throws(
+      () => parseExpense(UID, 'exp-v2', doc),
+      (e: unknown) => e instanceof DocumentShapeError && e.field === 'kind',
+    );
+  });
+
+  it('rejects an unknown schemaVersion', () => {
+    const doc = expenseToDoc({ ...base, schemaVersion: 3 as any });
+    assert.throws(
+      () => parseExpense(UID, 'exp-v2', doc),
+      (e: unknown) => e instanceof DocumentShapeError && e.field === 'schemaVersion',
+    );
+  });
+
+  it('rejects a non-boolean excludeFromSpend', () => {
+    const doc = expenseToDoc({ ...base, excludeFromSpend: 'yes' as any });
+    assert.throws(
+      () => parseExpense(UID, 'exp-v2', doc),
+      (e: unknown) => e instanceof DocumentShapeError && e.field === 'excludeFromSpend',
+    );
+  });
+
+  it('rejects malformed tagIds', () => {
+    const doc = expenseToDoc({ ...base, tagIds: [123] as any });
+    assert.throws(
+      () => parseExpense(UID, 'exp-v2', doc),
+      (e: unknown) => e instanceof DocumentShapeError && (e as DocumentShapeError).field.startsWith('tagIds'),
+    );
+  });
+
+  it('rejects a group source as a mirror branch stub', () => {
+    const doc = expenseToDoc({ ...base, source: 'group' as any });
+    assert.throws(
+      () => parseExpense(UID, 'exp-v2', doc),
+      (e: unknown) => e instanceof DocumentShapeError && e.field === 'source',
     );
   });
 });

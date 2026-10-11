@@ -46,4 +46,16 @@ export const firestorePaths = {
   pendingExpenses: (uid: string) => `${user(uid)}/pendingExpenses`,
   pendingExpense: (uid: string, pendingExpenseId: string) =>
     `${user(uid)}/pendingExpenses/${segment(pendingExpenseId, 'pendingExpenseId')}`,
+
+  dailyRollups: (uid: string) => `${user(uid)}/dailyRollups`,
+  dailyRollup: (uid: string, date: string) => `${user(uid)}/dailyRollups/${segment(date, 'date')}`,
+  monthlyRollups: (uid: string) => `${user(uid)}/monthlyRollups`,
+  monthlyRollup: (uid: string, month: string) => `${user(uid)}/monthlyRollups/${segment(month, 'month')}`,
+  rollupApplied: (uid: string, expenseId: string) => `${user(uid)}/rollupApplied/${segment(expenseId, 'expenseId')}`,
+
+  accounts: (uid: string) => `${user(uid)}/accounts`,
+  account: (uid: string, accountId: string) => `${user(uid)}/accounts/${segment(accountId, 'accountId')}`,
+
+  meta: (uid: string, docId: string) => `${user(uid)}/meta/${segment(docId, 'docId')}`,
+  metaSchema: (uid: string) => `${user(uid)}/meta/schema`,
 } as const;

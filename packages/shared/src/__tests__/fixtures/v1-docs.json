@@ -1,0 +1,27 @@
+[
+  {
+    "amountMinor": 12000,
+    "currency": "INR",
+    "categoryId": "cat-food",
+    "description": "Coffee",
+    "note": null,
+    "occurredAt": "2026-09-13T10:00:00.000Z",
+    "localDate": "2026-09-13",
+    "createdLocalDate": "2026-09-13",
+    "source": "manual",
+    "receiptPath": null,
+    "pendingId": null,
+    "groupId": null,
+    "paidBy": "user-1",
+    "splitMode": "even",
+    "allocations": [
+      {
+        "memberId": "user-1",
+        "amountMinor": 12000
+      }
+    ],
+    "createdAt": "2026-09-13T10:00:00.000Z",
+    "updatedAt": "2026-09-13T10:00:00.000Z",
+    "deletedAt": null
+  }
+]
