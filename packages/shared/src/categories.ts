@@ -27,6 +27,8 @@ export type CategoryIcon =
 
 export type CategoryKind = 'essential' | 'catalogue' | 'custom';
 
+export type CategoryType = 'expense' | 'income';
+
 export interface Category {
   readonly id: string;
   /** Uppercase, unique per user, ≤ 12 chars — what the mono tag prints. */
@@ -35,6 +37,7 @@ export interface Category {
   readonly icon: CategoryIcon;
   readonly colorToken: CategoryColorToken;
   readonly kind: CategoryKind;
+  readonly type?: CategoryType; // missing = 'expense' (v1 categories)
   /** Set when added from the catalogue, so later catalogue changes can be matched. */
   readonly catalogueSlug: string | null;
   readonly sortOrder: number;
@@ -77,7 +80,24 @@ export const CATALOGUE_SECTIONS: readonly CatalogueSection[] = [
 ];
 
 /** The fallback every orphaned expense lands on. Can never be archived. */
+export interface IncomeCategoryTemplate {
+  readonly slug: string;
+  readonly name: string;
+  readonly glyph: string;
+  readonly colorToken: CategoryColorToken;
+}
+
+export const INCOME_ESSENTIALS: readonly IncomeCategoryTemplate[] = [
+  { slug: 'SALARY', name: 'Salary', glyph: 'briefcase', colorToken: 'lime' },
+  { slug: 'FREELANCE', name: 'Freelance', glyph: 'laptop', colorToken: 'limeDeep' },
+  { slug: 'INTEREST', name: 'Interest', glyph: 'trending-up', colorToken: 'amber' },
+  { slug: 'CASHBACK', name: 'Cashback & rewards', glyph: 'gift', colorToken: 'violet' },
+  { slug: 'GIFTS', name: 'Gifts received', glyph: 'heart', colorToken: 'rose' },
+  { slug: 'OTHER_IN', name: 'Other income', glyph: 'ellipsis-horizontal', colorToken: 'steel' },
+];
+
 export const FALLBACK_CATEGORY_SLUG = 'OTHER';
+export const FALLBACK_INCOME_CATEGORY_SLUG = 'OTHER_IN';
 
 export type EssentialCategorySlug =
   | 'FOOD'
@@ -273,15 +293,17 @@ export function orderForEntry(
 
 /** Builds a user-owned category from an essential or catalogue template. */
 export function categoryFromTemplate(
-  template: CategoryTemplate,
+  template: CategoryTemplate | IncomeCategoryTemplate,
   options: {
     readonly id: string;
     readonly kind: CategoryKind;
+    readonly type?: CategoryType;
     readonly sortOrder: number;
     readonly createdAt: string;
     readonly archivedAt?: string | null;
   },
 ): Category {
+  const type = options.type ?? ('section' in template ? 'expense' : 'income');
   return {
     id: options.id,
     slug: template.slug,
@@ -289,7 +311,8 @@ export function categoryFromTemplate(
     icon: { kind: 'glyph', name: template.glyph },
     colorToken: template.colorToken,
     kind: options.kind,
-    catalogueSlug: options.kind === 'catalogue' ? template.slug : null,
+    type,
+    catalogueSlug: options.kind === 'catalogue' && 'section' in template ? template.slug : null,
     sortOrder: options.sortOrder,
     createdAt: options.createdAt,
     archivedAt: options.archivedAt ?? null,
@@ -305,6 +328,7 @@ export function seedEssentialCategories(
     categoryFromTemplate(template, {
       id: idFor(template.slug),
       kind: 'essential',
+      type: 'expense',
       sortOrder: index,
       createdAt,
     }),
@@ -325,7 +349,54 @@ export function essentialCategoriesToSeed(categoriesSeededAt: string | null, now
   return categoriesSeededAt === null ? seedEssentialCategories(now) : [];
 }
 
-/** Building a brand-new custom category, chosen by the user rather than a template. */
+/**
+ * Versioned seed for income categories (v1.2).
+ * If categoriesSeedVersion < 2, seeds the 6 income essentials.
+ * Slug collision rule: if user already has a category with one of these slugs,
+ * the income one is seeded as `<SLUG>_IN`, truncated to 12 chars. If that is
+ * also taken, the row is skipped.
+ */
+export function incomeCategoriesToSeed(
+  categoriesSeedVersion: number | undefined,
+  existingCategories: readonly Category[],
+  now: string,
+  idFor: (slug: string) => string = (slug) => `cat-${slug.toLowerCase()}`,
+): { readonly categories: Category[]; readonly newVersion: number } {
+  const version = categoriesSeedVersion ?? 1;
+  if (version >= 2) {
+    return { categories: [], newVersion: version };
+  }
+
+  const existingSlugs = new Set(existingCategories.map((c) => c.slug.toUpperCase()));
+  const maxSortOrder = existingCategories.reduce((max, c) => Math.max(max, c.sortOrder), -1);
+
+  const categories: Category[] = [];
+  let nextSortOrder = maxSortOrder + 1;
+
+  for (const template of INCOME_ESSENTIALS) {
+    let slug = template.slug.toUpperCase();
+    if (existingSlugs.has(slug)) {
+      const candidate = `${slug}_IN`.slice(0, MAX_CATEGORY_SLUG_LENGTH).toUpperCase();
+      if (existingSlugs.has(candidate)) {
+        continue; // Skip if both collision & fallback collision
+      }
+      slug = candidate;
+    }
+
+    existingSlugs.add(slug);
+    categories.push(
+      categoryFromTemplate(template, {
+        id: idFor(slug),
+        kind: 'essential',
+        type: 'income',
+        sortOrder: nextSortOrder++,
+        createdAt: now,
+      }),
+    );
+  }
+
+  return { categories, newVersion: 2 };
+}
 export interface NewCategoryInput {
   readonly name: string;
   readonly slug: string;

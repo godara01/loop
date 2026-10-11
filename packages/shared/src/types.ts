@@ -23,6 +23,8 @@ export interface UserProfile {
    * since renamed or recoloured.
    */
   readonly categoriesSeededAt: string | null;
+  /** Versioned seed marker for income categories (v1.2). Missing = 1. */
+  readonly categoriesSeedVersion?: number;
   /** True until the anonymous account is linked to a real credential. */
   readonly isAnonymous: boolean;
   readonly createdAt: string;

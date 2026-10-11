@@ -133,7 +133,9 @@ describe('category documents', () => {
 });
 
 describe('seeding', () => {
-  it('seeds all eight essentials exactly once', () => {
+  // Per docs/02 and docs/04, fresh onboarding seeds the 8 expense essentials,
+  // while existing v1 users get income categories via the versioned seed step.
+  it('seeds all eight expense essentials exactly once', () => {
     assert.equal(essentialCategoriesToSeed(null, NOW).length, 8);
     assert.deepEqual(essentialCategoriesToSeed(NOW, NOW), []);
   });

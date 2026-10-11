@@ -18,7 +18,7 @@ import type { CoinRuleId } from '../coins';
  * existing documents unreadable.
  */
 
-import type { Category, CategoryIcon, CategoryKind } from '../categories';
+import type { Category, CategoryIcon, CategoryKind, CategoryType } from '../categories';
 import type { PeriodKind } from '../insights';
 import { CURRENCY_SYMBOL, type CurrencyCode, money } from '../money';
 import type { PendingExpense, PendingExpenseSource, PendingExpenseStatus } from '../sms/types';
@@ -57,6 +57,7 @@ type Fields = Readonly<Record<string, unknown>>;
 
 const CURRENCIES = Object.keys(CURRENCY_SYMBOL) as CurrencyCode[];
 const CATEGORY_KINDS: readonly CategoryKind[] = ['essential', 'catalogue', 'custom'];
+const CATEGORY_TYPES: readonly CategoryType[] = ['expense', 'income'];
 const ICON_KINDS = ['glyph', 'image'] as const;
 const PERIOD_KINDS: readonly PeriodKind[] = ['week', 'month', 'rolling30', 'custom'];
 const SMS_CAPTURE_STATES: readonly SmsCaptureState[] = ['unseen', 'shown', 'dismissed', 'denied', 'granted'];
@@ -142,6 +143,7 @@ export interface ProfileDoc {
   readonly currency: CurrencyCode;
   readonly onboardedAt: string | null;
   readonly categoriesSeededAt: string | null;
+  readonly categoriesSeedVersion?: number;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -176,6 +178,7 @@ export function profileToDoc(profile: UserProfile): ProfileDoc {
     currency: profile.currency,
     onboardedAt: profile.onboardedAt,
     categoriesSeededAt: profile.categoriesSeededAt,
+    ...(profile.categoriesSeedVersion !== undefined ? { categoriesSeedVersion: profile.categoriesSeedVersion } : {}),
     createdAt: profile.createdAt,
     updatedAt: profile.updatedAt,
   };
@@ -191,6 +194,7 @@ export function parseProfile(uid: string, isAnonymous: boolean, data: unknown): 
     currency: oneOf(path, d, 'currency', CURRENCIES),
     onboardedAt: optionalInstant(path, d, 'onboardedAt'),
     categoriesSeededAt: optionalInstant(path, d, 'categoriesSeededAt'),
+    ...(d.categoriesSeedVersion !== undefined ? { categoriesSeedVersion: integer(path, d, 'categoriesSeedVersion') } : {}),
     createdAt: instant(path, d, 'createdAt'),
     updatedAt: instant(path, d, 'updatedAt'),
   };
@@ -204,6 +208,7 @@ export interface CategoryDoc {
   readonly icon: CategoryIcon;
   readonly colorToken: Category['colorToken'];
   readonly kind: CategoryKind;
+  readonly type?: CategoryType;
   readonly catalogueSlug: string | null;
   readonly sortOrder: number;
   readonly createdAt: string;
@@ -220,6 +225,7 @@ export function categoryToDoc(category: Category, updatedAt: string): CategoryDo
     icon: category.icon,
     colorToken: category.colorToken,
     kind: category.kind,
+    ...(category.type !== undefined ? { type: category.type } : {}),
     catalogueSlug: category.catalogueSlug,
     sortOrder: category.sortOrder,
     createdAt: category.createdAt,
@@ -247,6 +253,7 @@ export function parseCategory(uid: string, categoryId: string, data: unknown): C
     icon: parseIcon(path, d.icon),
     colorToken: oneOf(path, d, 'colorToken', CATEGORY_COLOR_TOKENS),
     kind: oneOf(path, d, 'kind', CATEGORY_KINDS),
+    ...(d.type !== undefined ? { type: oneOf(path, d, 'type', CATEGORY_TYPES) } : {}),
     catalogueSlug: optionalText(path, d, 'catalogueSlug'),
     sortOrder: integer(path, d, 'sortOrder'),
     createdAt: instant(path, d, 'createdAt'),

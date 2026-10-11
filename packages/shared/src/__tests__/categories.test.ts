@@ -25,6 +25,8 @@ import {
   reorderCategories,
   resolveCategory,
   seedEssentialCategories,
+  incomeCategoriesToSeed,
+  INCOME_ESSENTIALS,
   slugifyCategoryName,
   unarchiveCategory,
   validateCategoryDraft,
@@ -55,6 +57,56 @@ describe('category seeding', () => {
   it('includes the fallback category, which must always exist', () => {
     const slugs = seedEssentialCategories(NOW).map((c) => c.slug);
     assert.ok(slugs.includes(FALLBACK_CATEGORY_SLUG));
+  });
+
+  it('handles income category versioned seed with no collision, one collision, and double collision idempotently', () => {
+    // 1. No collision (version undefined or 1)
+    const res1 = incomeCategoriesToSeed(undefined, [], NOW);
+    assert.equal(res1.categories.length, 6);
+    assert.equal(res1.newVersion, 2);
+    assert.ok(res1.categories.every(c => c.type === 'income'));
+
+    // 2. One collision: user already has SALARY as a custom category
+    const existingCustomSalary: Category = {
+      id: 'cat-salary',
+      slug: 'SALARY',
+      name: 'Custom Salary',
+      icon: { kind: 'glyph', name: 'briefcase' },
+      colorToken: 'lime',
+      kind: 'custom',
+      type: 'expense',
+      catalogueSlug: null,
+      sortOrder: 0,
+      createdAt: NOW,
+      archivedAt: null,
+    };
+    const res2 = incomeCategoriesToSeed(1, [existingCustomSalary], NOW);
+    const salaryIncome = res2.categories.find(c => c.name === 'Salary');
+    assert.ok(salaryIncome);
+    assert.equal(salaryIncome.slug, 'SALARY_IN');
+
+    // 3. Double collision: user has SALARY and SALARY_IN
+    const existingCustomSalaryIn: Category = {
+      id: 'cat-salary-in',
+      slug: 'SALARY_IN',
+      name: 'Custom Salary In',
+      icon: { kind: 'glyph', name: 'briefcase' },
+      colorToken: 'lime',
+      kind: 'custom',
+      type: 'expense',
+      catalogueSlug: null,
+      sortOrder: 1,
+      createdAt: NOW,
+      archivedAt: null,
+    };
+    const res3 = incomeCategoriesToSeed(1, [existingCustomSalary, existingCustomSalaryIn], NOW);
+    const salaryIncomeSkipped = res3.categories.find(c => c.name === 'Salary');
+    assert.equal(salaryIncomeSkipped, undefined); // skipped because both are taken
+
+    // 4. Idempotency: version 2 returns empty categories and same version
+    const res4 = incomeCategoriesToSeed(2, res1.categories, NOW);
+    assert.equal(res4.categories.length, 0);
+    assert.equal(res4.newVersion, 2);
   });
 });
 
