@@ -10,7 +10,7 @@
  * Pure: the body is read, never stored or logged.
  */
 
-export type ExclusionReason = 'otp' | 'balance' | 'promo' | 'declined' | 'reversal';
+export type ExclusionReason = 'otp' | 'balance' | 'promo' | 'declined';
 
 /** Money left the account. Present in every debit alert, absent from pure enquiries and promos. */
 const DEBIT_VERB = /\b(?:debited|spent|withdrawn|paid|charged|sent|purchase[ds]?|txn of|transaction of)\b/i;
@@ -32,6 +32,10 @@ const DECLINED = [
   /\binsufficient (?:funds|balance)\b/i,
 ];
 
+/**
+ * Money coming back: a reversal, refund or chargeback. From v1.2 these are a
+ * classification, not an exclusion — see `isCredit`.
+ */
 const REVERSAL = [/\brevers(?:ed|al)\b/i, /\brefund(?:ed)?\b/i, /\bcredited back\b/i];
 
 /** A balance enquiry or statement — only when no money moved. */
@@ -53,19 +57,25 @@ const PROMO = [
   /\bT&C\b/i,
 ];
 
-const CREDIT_VERB = /\b(?:credited|received|deposited)\b/i;
+const CREDIT_VERB = /\b(?:credited|received|deposited|added)\b/i;
+
+/** A card-bill payment: money leaves the bank but *arrives* at the card, so it is a credit. */
+const CARD_BILL = /\b(?:paid|payment)\b[^.]*\btowards\b[^.]*\bcredit card\b/i;
+
+/** Cashback that landed, as opposed to a promo advertising a future rate. */
+const CASHBACK_CREDIT = /\bcashback\b[^.]*\b(?:credited|received|earned|added)\b/i;
 
 const any = (patterns: readonly RegExp[], body: string) => patterns.some((p) => p.test(body));
 
 /**
  * Why this message must be dropped, or null if it may go on to the templates.
  * Order matters: an OTP for a payment mentions an amount and a merchant, and a
- * declined or reversed payment still says "debited".
+ * declined or reversed payment still says "debited". Reversals are no longer
+ * dropped — they are classified as credits by `isCredit`.
  */
 export function classifyExclusion(body: string): ExclusionReason | null {
   if (any(OTP, body)) return 'otp';
   if (any(DECLINED, body)) return 'declined';
-  if (any(REVERSAL, body)) return 'reversal';
   const moved = DEBIT_VERB.test(body);
   if (!moved && any(BALANCE, body)) return 'balance';
   if (!moved && any(PROMO, body)) return 'promo';
@@ -73,9 +83,12 @@ export function classifyExclusion(body: string): ExclusionReason | null {
 }
 
 /**
- * Money arrived. MVP ingests debits only. A UPI debit says the payee was
- * "credited", so a credit verb counts only when no debit verb is present.
+ * Money arrived: the message's direction. A reversal or refund is money coming
+ * back, so it counts even though it may still say "debited". Otherwise a credit
+ * verb counts only when no debit verb is present, because a UPI debit says the
+ * payee was "credited".
  */
 export function isCredit(body: string): boolean {
+  if (any(REVERSAL, body) || CARD_BILL.test(body) || CASHBACK_CREDIT.test(body)) return true;
   return CREDIT_VERB.test(body) && !DEBIT_VERB.test(body);
 }

@@ -921,7 +921,7 @@ changes no behaviour and may start now.
 | AC3 | Accounts screens + Orbit card | AC2 | todo |
 | AC4 | Entry account chip | AC2, K9 | todo |
 | AC5 | Transfers | AC4 | todo |
-| SM1 | Credit / reversal / cashback / card-bill parsing + fixtures | K1 | todo |
+| SM1 | Credit / reversal / cashback / card-bill parsing + fixtures | K1 | done |
 | SM2 | `matchRefund` + `pairTransfers` (pure) | SM1, K12 | todo |
 | SM3 | Ingest v2 + inbox cards per kind | SM2, AC2, K3, K10 | todo |
 | DP8 | Ledger filter facets: kind, account | DP7, AC2 | todo |

@@ -143,18 +143,46 @@ export const SMS_CORPUS: readonly CorpusEntry[] = [
   // Declined
   { sender: 'AD-HDFCBK', body: 'Your transaction of Rs 2,500 at FLIPKART on HDFC Bank Card x1234 was declined due to insufficient balance.', expect: null },
   { sender: 'AD-AXISBK', body: 'Txn failed: INR 850 debited to zomato@icici from A/c no. XX4321 was not successful. Amount if debited will be refunded.', expect: null },
-  // Reversal
-  { sender: 'AD-HDFCBK', body: 'Rs.450.00 reversed to your HDFC Bank Card x1234 for the transaction at SWIGGY on 10-09-26.', expect: null },
-  { sender: 'VM-ICICIB', body: 'Refund of Rs 1,299 from CODECADEMY has been credited back to your ICICI Bank Acct XX567.', expect: null },
-  // Credit
-  { sender: 'AD-HDFCBK', body: 'Rs 25,000.00 credited to your A/c XX1234 on 01-09-26 by NEFT from ACME PVT LTD. -HDFC Bank', expect: null },
-  { sender: 'JD-SBIINB', body: 'Dear UPI user A/C X4321 credited by 5,000.00 on date 12Sep26 from ravi@okaxis Refno 625800. -SBI', expect: null },
-  { sender: 'AD-KOTAKB', body: 'Received Rs.750.00 in your Kotak Bank AC X4455 from priya@ybl on 12-09-26.UPI Ref 625877.', expect: null },
+  // Reversal (now classified as credit, not excluded)
+  { sender: 'AD-HDFCBK', body: 'Rs.450.00 reversed to your HDFC Bank Card x1234 for the transaction at SWIGGY on 10-09-26.', expect: { amountMinor: 45000, accountLast4: '1234', merchant: 'SWIGGY', templateId: 'hdfc_reversal_simple', direction: 'credit' } },
+  { sender: 'VM-ICICIB', body: 'Refund of Rs 1,299 from CODECADEMY has been credited back to your ICICI Bank Acct XX567.', expect: { amountMinor: 129900, accountLast4: '567', merchant: 'CODECADEMY', templateId: 'icici_refund_credited', direction: 'credit' } },
+  // Credit (now classified as credit, not excluded)
+  { sender: 'AD-HDFCBK', body: 'Rs 25,000.00 credited to your A/c XX1234 on 01-09-26 by NEFT from ACME PVT LTD. -HDFC Bank', expect: { amountMinor: 2500000, accountLast4: '1234', merchant: 'ACME PVT LTD', templateId: 'hdfc_credit_neft', direction: 'credit' } },
+  { sender: 'JD-SBIINB', body: 'Dear UPI user A/C X4321 credited by 5,000.00 on date 12Sep26 from ravi@okaxis Refno 625800. -SBI', expect: { amountMinor: 500000, accountLast4: '4321', merchant: 'ravi@okaxis', templateId: 'sbi_upi_credit', direction: 'credit' } },
+  { sender: 'AD-KOTAKB', body: 'Received Rs.750.00 in your Kotak Bank AC X4455 from priya@ybl on 12-09-26.UPI Ref 625877.', expect: { amountMinor: 75000, accountLast4: '4455', merchant: 'priya@ybl', templateId: 'kotak_upi_received', direction: 'credit' } },
   // Non-bank senders, even with a perfect debit body
   { sender: 'AD-AMAZON', body: 'Rs.450.00 spent on HDFC Bank Card x1234 at SWIGGY on 2026-09-12:20:15:11.', expect: null },
   { sender: 'VM-SWIGGY', body: 'Your order of Rs 450 is confirmed. Rs 450 debited from your account xxxx1234.', expect: null },
   { sender: '+919876543210', body: 'Sent Rs.500.00\nFrom HDFC Bank A/C *1234\nTo ZOMATO LTD\nOn 12/09/26', expect: null },
   { sender: 'HDFCBK', body: 'Dear Customer, your account xxxx1234 has been debited for Rs. 500/- at Swiggy.', expect: null },
+  // Additional credit/reversal/cashback/card-bill fixtures for v1.2
+  // Plain credit fixtures
+  { sender: 'AD-HDFCBK', body: 'Rs 15,000.00 credited to your A/c XX5678 on 10-09-26 by IMPS from JOHN DOE. -HDFC Bank', expect: { amountMinor: 1500000, accountLast4: '5678', merchant: 'JOHN DOE', direction: 'credit' } },
+  { sender: 'VM-ICICIB', body: 'ICICI Bank Acct XX987 credited with INR 50,000.00 on 11-09-26 from SALARY CREDIT', expect: { amountMinor: 5000000, accountLast4: '987', direction: 'credit' } },
+  { sender: 'JD-SBIINB', body: 'Dear UPI user A/C X9988 credited by 1,200.00 on date 13Sep26 from amazon@pay Refno 625900. -SBI', expect: { amountMinor: 120000, accountLast4: '9988', merchant: 'amazon@pay', direction: 'credit' } },
+  { sender: 'AD-KOTAKB', body: 'Received Rs.2,500.00 in your Kotak Bank AC X4455 from rahul@ybl on 13-09-26.UPI Ref 625878.', expect: { amountMinor: 250000, accountLast4: '4455', merchant: 'rahul@ybl', direction: 'credit' } },
+  { sender: 'AD-HDFCBK', body: 'Rs 8,000.00 credited to your A/c XX4321 on 14-09-26 by RTGS from REAL ESTATE. -HDFC Bank', expect: { amountMinor: 800000, accountLast4: '4321', direction: 'credit' } },
+  // Reversal/Refund fixtures
+  { sender: 'AD-HDFCBK', body: 'Rs.1,200.00 reversed to your HDFC Bank Card x9988 for the transaction at FLIPKART on 11-09-26.', expect: { amountMinor: 120000, accountLast4: '9988', merchant: 'FLIPKART', direction: 'credit' } },
+  { sender: 'VM-ICICIB', body: 'Refund of Rs 450 from SWIGGY has been credited back to your ICICI Bank Acct XX1234.', expect: { amountMinor: 45000, accountLast4: '1234', merchant: 'SWIGGY', direction: 'credit' } },
+  { sender: 'AD-AXISBK', body: 'INR 2,500.00 refunded to A/c XX8899 for ZOMATO order', expect: { amountMinor: 250000, accountLast4: '8899', merchant: 'ZOMATO', direction: 'credit' } },
+  { sender: 'VM-ICICIB', body: 'Refund of Rs 850.50 from AMAZON has been credited back to your ICICI Bank Acct XX567.', expect: { amountMinor: 85050, accountLast4: '567', merchant: 'AMAZON', direction: 'credit' } },
+  { sender: 'AD-HDFCBK', body: 'Rs.2,500.00 reversed to your HDFC Bank Card x1234 for the transaction at BIGBASKET on 12-09-26.', expect: { amountMinor: 250000, accountLast4: '1234', merchant: 'BIGBASKET', direction: 'credit' } },
+  // Cashback fixtures
+  { sender: 'AD-HDFCBK', body: 'Rs 500.00 credited to account XX1234 towards cashback', expect: { amountMinor: 50000, accountLast4: '1234', direction: 'credit' } },
+  { sender: 'VM-ICICIB', body: 'Get 10% cashback on your next purchase of Rs 1,000', expect: null }, // promo-like, should still be filtered
+  { sender: 'AD-AXISBK', body: 'INR 750.00 refunded to A/c XX2211 for FLIPKART order', expect: { amountMinor: 75000, accountLast4: '2211', merchant: 'FLIPKART', direction: 'credit' } },
+  { sender: 'AD-KOTAKB', body: 'You have received Rs 150 from amit@ybl in your Kotak Bank AC X4455', expect: { amountMinor: 15000, accountLast4: '4455', merchant: 'amit@ybl', direction: 'credit' } },
+  // Card-bill and salary fixtures
+  { sender: 'AD-HDFCBK', body: 'Payment of Rs 12,000 received towards your credit card xx1234', expect: { amountMinor: 1200000, accountLast4: '1234', direction: 'credit' } },
+  { sender: 'VM-ICICIB', body: 'Amount Rs 2,000 credited due to failed transaction', expect: { amountMinor: 200000, direction: 'credit' } },
+  { sender: 'AD-HDFCBK', body: 'Salary credit of Rs 50,000 received', expect: { amountMinor: 5000000, direction: 'credit' } },
+  { sender: 'AD-KOTAKB', body: 'Rs 1,500 added to your wallet', expect: { amountMinor: 150000, direction: 'credit' } },
+  { sender: 'VM-SBIINB', body: 'Rs 300 cashback earned on your purchase', expect: { amountMinor: 30000, direction: 'credit' } },
+  { sender: 'AD-AXISBK', body: 'Refund initiated of Rs 1,000 to your account', expect: { amountMinor: 100000, direction: 'credit' } },
+  { sender: 'AD-HDFCBK', body: 'Amount Rs 2,500 credited as reversal', expect: { amountMinor: 250000, direction: 'credit' } },
+  { sender: 'AD-SBIINB', body: 'Payment received of Rs 5,000 via UPI', expect: { amountMinor: 500000, direction: 'credit' } },
+  { sender: 'AD-HDFCBK', body: 'Rs 12,000 paid towards your HDFC Credit Card ending 1234', expect: { amountMinor: 1200000, direction: 'credit' } },
   // A bank, but a shape no template knows
   { sender: 'AD-HDFCBK', body: 'Your HDFC Bank statement for August is ready. Download it from NetBanking.', expect: null },
 ];

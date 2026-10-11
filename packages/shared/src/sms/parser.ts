@@ -1,11 +1,12 @@
 /**
- * One message in, one debit (or nothing) out. See docs/12-sms-ingest.md#the-parser.
+ * One message in, one transaction (or nothing) out. See docs/12-sms-ingest.md#the-parser.
  *
- *   sender allowlist → hard exclusions → credit? → template match → confidence ≥ 0.6
+ *   sender allowlist → hard exclusions → direction → template match → confidence ≥ 0.6
  *
  * Each stage can only say no. A message that is not from a registered bank is
  * dropped before its body is looked at; an OTP or a declined payment never
- * reaches the templates; credits are dropped because v1 has no income model.
+ * reaches the templates. Credits, reversals, refunds, cashback and card-bill
+ * payments are parsed too (v1.2) and carry `direction: 'credit'`.
  *
  * Pure and body-blind on the way out: the result carries parsed fields only.
  */
@@ -13,7 +14,7 @@
 import { parseAmount } from '../money';
 import { classifyExclusion, isCredit } from './filters';
 import { isAllowlistedSender, senderEntity } from './sender';
-import { COMPILED_BUNDLED_REGISTRY, DEFAULT_TEMPLATE_CONFIDENCE } from './templates';
+import { COMPILED_BUNDLED_REGISTRY, DEFAULT_TEMPLATE_CONFIDENCE, GENERIC_TEMPLATE_ENTITY } from './templates';
 import type { CompiledRegistry, ParsedTransaction } from './types';
 
 /** Below this, a match is not trusted enough to put in front of the user. */
@@ -37,10 +38,10 @@ export function parseTransactionSms(
   if (!isAllowlistedSender(sender, extraEntities)) return null;
   const entity = senderEntity(sender)!;
   if (classifyExclusion(body) !== null) return null;
-  if (isCredit(body)) return null;
+  const direction = isCredit(body) ? 'credit' : 'debit';
 
   for (const template of registry.templates) {
-    if (template.entity.toUpperCase() !== entity) continue;
+    if (template.entity !== GENERIC_TEMPLATE_ENTITY && template.entity.toUpperCase() !== entity) continue;
     const confidence = template.confidence ?? DEFAULT_TEMPLATE_CONFIDENCE;
     if (confidence < MIN_PARSE_CONFIDENCE) continue;
 
@@ -58,7 +59,7 @@ export function parseTransactionSms(
     return {
       amountMinor: amount.minor,
       currency: amount.currency,
-      direction: 'debit',
+      direction,
       merchant,
       accountLast4,
       // Bank timestamps come in a dozen formats; until a template extracts

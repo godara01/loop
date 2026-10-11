@@ -31,7 +31,8 @@ describe('SMS corpus', () => {
       if (entry.expect === null) return assert.equal(result, null);
       assert.ok(result, 'expected a result');
       assert.ok(Number.isInteger(result.amountMinor));
-      assert.equal(result.direction, 'debit');
+      const wantDirection = (entry.expect as { direction?: string }).direction ?? 'debit';
+      assert.equal(result.direction, wantDirection);
       for (const [key, value] of Object.entries(entry.expect)) {
         assert.deepEqual(result[key as keyof ParsedTransaction], value, key);
       }

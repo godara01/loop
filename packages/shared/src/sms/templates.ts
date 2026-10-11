@@ -3,6 +3,13 @@ import type { CompiledRegistry, CompiledTemplate, TemplateRegistry, TemplateSpec
 /** Used when a template does not state its own confidence. */
 export const DEFAULT_TEMPLATE_CONFIDENCE = 0.85;
 
+/**
+ * Wildcard entity for templates whose message shape is bank-agnostic. The
+ * parser matches these against any allowlisted sender entity, so a generic
+ * credit/cashback pattern still must arrive from a registered bank.
+ */
+export const GENERIC_TEMPLATE_ENTITY = '*';
+
 /** Building blocks for the bundled patterns. JSON-serialisable strings, like everything in the registry. */
 const CUR = String.raw`(?:Rs\.?|INR|₹)\s*`;
 const AMT = String.raw`(?<amount>[0-9][0-9,]*(?:\.\d{1,2})?)`;
@@ -128,6 +135,169 @@ export const BUNDLED_REGISTRY = {
       flags: 'i',
       fields: { amount: 'amount', last4: 'last4' },
       confidence: 0.8,
+    },
+    // Credit SMS templates for v1.2
+    {
+      // Rs 25,000.00 credited to your A/c XX1234 on 01-09-26 by NEFT/IMPS/RTGS from ACME PVT LTD. -HDFC Bank
+      id: 'hdfc_credit_neft',
+      entity: 'HDFCBK',
+      pattern: `${CUR}${AMT}\\s+credited to your (?:A/c|account|Acct) ${MASK}(?<last4>\\d{4}) on [^ ]+ by (?:NEFT|IMPS|RTGS)(?: from (?<merchant>.+?))?(?:\\. -HDFC Bank|\\.|$)`,
+      flags: 'i',
+      fields: { amount: 'amount', last4: 'last4', merchant: 'merchant' },
+      confidence: 0.95,
+    },
+    {
+      // Dear UPI user A/C X4321 credited by 5,000.00 on date 12Sep26 from ravi@okaxis Refno 625800. -SBI
+      id: 'sbi_upi_credit',
+      entity: 'SBIINB',
+      pattern: `Dear UPI user A/C ${MASK}(?<last4>\\d{3,4}) credited by ${AMT} on date \\S+ from (?<merchant>[^\\s]+) Refno \\d+\\. -SBI`,
+      flags: 'i',
+      fields: { amount: 'amount', last4: 'last4', merchant: 'merchant' },
+      confidence: 0.95,
+    },
+    {
+      // Received Rs.750.00 in your Kotak Bank AC X4455 from priya@ybl on 12-09-26.UPI Ref 625877.
+      id: 'kotak_upi_received',
+      entity: 'KOTAKB',
+      pattern: `Received ${CUR}${AMT} in your Kotak Bank AC ${MASK}(?<last4>\\d{4}) from (?<merchant>[^\\s]+) on \\S+UPI Ref \\d+\\.`,
+      flags: 'i',
+      fields: { amount: 'amount', last4: 'last4', merchant: 'merchant' },
+      confidence: 0.9,
+    },
+    {
+      // ICICI Bank Acct XX987 credited with INR 50,000.00 on 11-09-26 from SALARY CREDIT
+      id: 'icici_credit_from',
+      entity: 'ICICIB',
+      pattern: `Acct ${MASK}(?<last4>\\d{3,4}) credited with ${CUR}${AMT} on [^;]+ from (?<merchant>.+?)(?:\\.|$)`,
+      flags: 'i',
+      fields: { amount: 'amount', last4: 'last4', merchant: 'merchant' },
+      confidence: 0.9,
+    },
+    {
+      // Rs 500.00 credited to account XX1234 towards cashback
+      id: 'generic_cashback',
+      entity: GENERIC_TEMPLATE_ENTITY,
+      pattern: `${CUR}${AMT}\\s+credited to account ${MASK}(?<last4>\\d{4}) towards cashback`,
+      flags: 'i',
+      fields: { amount: 'amount', last4: 'last4' },
+      confidence: 0.8,
+    },
+    {
+      // Payment of Rs 12,000 received towards your credit card xx1234
+      id: 'hdfc_card_bill_payment',
+      entity: 'HDFCBK',
+      pattern: `Payment of ${CUR}${AMT} received towards your credit card ${MASK}(?<last4>\\d{4})`,
+      flags: 'i',
+      fields: { amount: 'amount', last4: 'last4' },
+      confidence: 0.9,
+    },
+    {
+      // Refund of Rs 1,299 from CODECADEMY has been credited back to your ICICI Bank Acct XX567
+      id: 'icici_refund_credited',
+      entity: 'ICICIB',
+      pattern: `Refund of ${CUR}${AMT} from (?<merchant>[^\\s]+) has been credited back to your ICICI Bank Acct ${MASK}(?<last4>\\d{3,4})`,
+      flags: 'i',
+      fields: { amount: 'amount', last4: 'last4', merchant: 'merchant' },
+      confidence: 0.95,
+    },
+    {
+      // INR 3,450.00 refunded to A/c XX8899 for AMAZON PAY order
+      id: 'axis_refund_order',
+      entity: 'AXISBK',
+      pattern: `${CUR}${AMT}\\s+refunded to A/c ${MASK}(?<last4>\\d{4}) for (?<merchant>[^\\s]+) order`,
+      flags: 'i',
+      fields: { amount: 'amount', last4: 'last4', merchant: 'merchant' },
+      confidence: 0.9,
+    },
+    {
+      // Rs 450.00 reversed to your HDFC Bank Card x1234 ... (reversal)
+      id: 'hdfc_reversal_simple',
+      entity: 'HDFCBK',
+      pattern: `${CUR}${AMT}\\s+reversed to your HDFC Bank Card ${MASK}(?<last4>\\d{4}) for the transaction at (?<merchant>.+?) on `,
+      flags: 'i',
+      fields: { amount: 'amount', last4: 'last4', merchant: 'merchant' },
+      confidence: 0.95,
+    },
+    {
+      // Amount Rs 2,000 credited due to failed transaction
+      id: 'generic_failed_txn_refund',
+      entity: GENERIC_TEMPLATE_ENTITY,
+      pattern: `Amount ${CUR}${AMT}\\s+credited due to failed transaction`,
+      flags: 'i',
+      fields: { amount: 'amount' },
+      confidence: 0.8,
+    },
+    {
+      // Salary credit of Rs 50,000 received
+      id: 'generic_salary_credit',
+      entity: GENERIC_TEMPLATE_ENTITY,
+      pattern: `Salary credit of ${CUR}${AMT} received`,
+      flags: 'i',
+      fields: { amount: 'amount' },
+      confidence: 0.85,
+    },
+    {
+      // Rs 1,500 added to your wallet
+      id: 'generic_wallet_add',
+      entity: GENERIC_TEMPLATE_ENTITY,
+      pattern: `${CUR}${AMT}\\s+added to your wallet`,
+      flags: 'i',
+      fields: { amount: 'amount' },
+      confidence: 0.8,
+    },
+    {
+      // Rs 300 cashback earned on your purchase
+      id: 'generic_cashback_earned',
+      entity: GENERIC_TEMPLATE_ENTITY,
+      pattern: `${CUR}${AMT}\\s+cashback earned on your purchase`,
+      flags: 'i',
+      fields: { amount: 'amount' },
+      confidence: 0.8,
+    },
+    {
+      // You have received Rs 750 from priya@ybl in Kotak Bank AC X4455
+      id: 'kotak_upi_received_detailed',
+      entity: 'KOTAKB',
+      pattern: `You have received ${CUR}${AMT} from (?<merchant>[^\\s]+) in your Kotak Bank AC ${MASK}(?<last4>\\d{4})`,
+      flags: 'i',
+      fields: { amount: 'amount', last4: 'last4', merchant: 'merchant' },
+      confidence: 0.9,
+    },
+    {
+      // Refund initiated of Rs 1,000 to your account
+      id: 'generic_refund_initiated',
+      entity: GENERIC_TEMPLATE_ENTITY,
+      pattern: `Refund initiated of ${CUR}${AMT} to your account`,
+      flags: 'i',
+      fields: { amount: 'amount' },
+      confidence: 0.8,
+    },
+    {
+      // Amount Rs 2,500 credited as reversal
+      id: 'generic_amount_credited_reversal',
+      entity: GENERIC_TEMPLATE_ENTITY,
+      pattern: `Amount ${CUR}${AMT}\\s+credited as reversal`,
+      flags: 'i',
+      fields: { amount: 'amount' },
+      confidence: 0.8,
+    },
+    {
+      // Payment received of Rs 5,000 via UPI
+      id: 'generic_upi_payment_received',
+      entity: GENERIC_TEMPLATE_ENTITY,
+      pattern: `Payment received of ${CUR}${AMT} via UPI`,
+      flags: 'i',
+      fields: { amount: 'amount' },
+      confidence: 0.85,
+    },
+    {
+      // Rs 12,000 paid towards your HDFC Credit Card ending 1234
+      id: 'hdfc_credit_card_bill',
+      entity: 'HDFCBK',
+      pattern: `${CUR}${AMT}\\s+paid towards your HDFC Credit Card ending ${MASK}(?<last4>\\d{4})`,
+      flags: 'i',
+      fields: { amount: 'amount', last4: 'last4' },
+      confidence: 0.9,
     },
   ],
 } as const satisfies TemplateRegistry;

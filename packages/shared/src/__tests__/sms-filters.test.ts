@@ -41,11 +41,6 @@ describe('classifyExclusion', () => {
       'Txn failed: Rs 850 payment to zomato@icici from A/c XX4321 was not successful. Amount if debited will be refunded.',
       'Your payment of INR 1,200 could not be processed. Kotak Bank',
     ],
-    reversal: [
-      'Rs 450.00 reversed to your HDFC Bank Card x1234 for the transaction at SWIGGY on 10-09-26.',
-      'Refund of Rs 1,299 from CODECADEMY has been credited back to your A/c XX567. -ICICI',
-      'INR 3,450.00 refunded to A/c XX8899 for AMAZON PAY order. Axis Bank',
-    ],
   };
 
   for (const [label, messages] of Object.entries(cases)) {
@@ -60,11 +55,16 @@ describe('classifyExclusion', () => {
 });
 
 describe('isCredit', () => {
-  it('is true for money arriving', () => {
+  it('is true for money arriving — including reversals and refunds', () => {
     for (const message of [
       'Rs 25,000.00 credited to your A/c XX1234 on 01-09-26 by NEFT from ACME PVT LTD. -HDFC Bank',
       'Your a/c XX4321 is credited with INR 5,000.00 on 12-09-26 (UPI Ref 625800) from ravi@okaxis. -SBI',
       'You have received Rs 750 from priya@ybl in Kotak Bank AC X4455. UPI Ref 625877.',
+      'Rs 450.00 reversed to your HDFC Bank Card x1234 for the transaction at SWIGGY on 10-09-26.',
+      'Refund of Rs 1,299 from CODECADEMY has been credited back to your A/c XX567. -ICICI',
+      'INR 3,450.00 refunded to A/c XX8899 for AMAZON PAY order. Axis Bank',
+      'Rs 25 cashback credited to your HDFC Bank Card x1234',
+      'Payment of Rs 12,000 received towards your credit card xx1234',
     ]) {
       assert.equal(isCredit(message), true, message);
     }

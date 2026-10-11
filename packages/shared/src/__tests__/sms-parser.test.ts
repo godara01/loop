@@ -52,14 +52,19 @@ describe('parseTransactionSms', () => {
     assert.equal(parse(otp, 'AD-HDFCBK', RECEIVED), null);
   });
 
-  it('returns null for declined and reversed payments that still say "debited"', () => {
+  it('returns null for declined payments that still say "debited"', () => {
     assert.equal(parse('Rs 500 to be debited from your account xxxx1234 was declined.', 'AD-HDFCBK', RECEIVED), null);
-    assert.equal(parse('Rs 500 debited from your account xxxx1234 has been reversed.', 'AD-HDFCBK', RECEIVED), null);
   });
 
-  it('returns null for a credit', () => {
-    const credit = 'Rs 25,000.00 credited to your account xxxx1234 on 01-09-26 by NEFT. -HDFC Bank';
-    assert.equal(parse(credit, 'AD-HDFCBK', RECEIVED), null);
+  it('parses reversed and credited messages as credit', () => {
+    const reversed = parse('Rs 500 debited from your account xxxx1234 has been reversed.', 'AD-HDFCBK', RECEIVED);
+    assert.ok(reversed);
+    assert.equal(reversed.direction, 'credit');
+    assert.equal(reversed.amountMinor, 50000);
+    const credit = parse('Rs 25,000.00 credited to your account xxxx1234 on 01-09-26 by NEFT. -HDFC Bank', 'AD-HDFCBK', RECEIVED);
+    assert.ok(credit);
+    assert.equal(credit.direction, 'credit');
+    assert.equal(credit.amountMinor, 2500000);
   });
 
   it('rejects confidence 0.59 and accepts exactly 0.6', () => {
