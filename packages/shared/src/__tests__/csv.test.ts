@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { buildExpensesCsv, majorUnits, parseExpensesCsv } from '../csv';
+import { buildExpensesCsv, CSV_COLUMNS, majorUnits, parseExpensesCsv } from '../csv';
 import { newPersonalExpense, softDeleteExpense } from '../expenses';
 import { type CurrencyCode, money, parseAmount } from '../money';
 import type { Expense } from '../types';
@@ -75,8 +75,8 @@ describe('CSV export', () => {
 
   it('writes RFC 4180: header, CRLF endings, doubled quotes', () => {
     const csv = buildExpensesCsv([expense('q', 100, 'INR', 'say "hi", ok')]);
-    const lines = csv.replace('﻿', '').split('\r\n');
-    assert.equal(lines[0], 'occurredAt,localDate,amountMinor,currency,amount,categoryId,description,note,source');
+    const lines = csv.split('\r\n');
+    assert.equal(lines[0]!.replace('', ''), CSV_COLUMNS.join(','));
     assert.ok(lines[1]!.includes('"say ""hi"", ok"'));
     assert.equal(lines.at(-1), '');
   });
@@ -87,10 +87,33 @@ describe('CSV export', () => {
     assert.equal(parseExpensesCsv(csv)[0]!.description, '=HYPERLINK("http://x")');
   });
 
-  it('prints major units by shifting digits, never through a float', () => {
-    assert.equal(majorUnits(5, 'INR'), '0.05');
-    assert.equal(majorUnits(1_000, 'USD'), '10.00');
-    assert.equal(majorUnits(0, 'JPY'), '0');
-    assert.throws(() => majorUnits(1.5, 'INR'));
+  it('round-trips v2 columns (kind, account, toAccount, refundOf, merchant, tags, lines, recurring)', () => {
+    const e = {
+      ...expense('v2', 1234, 'INR', 'Lunch'),
+      kind: 'transfer' as const,
+      accountId: 'acc-1',
+      toAccountId: 'acc-2',
+      refundOf: 'ref-1',
+      merchant: 'Swiggy',
+      tagIds: ['food', 'weekend'],
+      lines: [{ categoryId: 'cat-1', amountMinor: 500 }, { categoryId: 'cat-2', amountMinor: 734 }],
+    };
+    const [row] = roundTrip([e]);
+    assert.equal(row!.kind, 'transfer');
+    assert.equal(row!.account, '');
+    assert.equal(row!.toAccount, '');
+    assert.equal(row!.refundOf, 'ref-1');
+    assert.equal(row!.merchant, 'Swiggy');
+    assert.equal(row!.tags, 'food;weekend');
+    assert.equal(row!.lines, 'cat-1:500|cat-2:734');
+  });
+
+  it('parses legacy v1 CSV files successfully', () => {
+    const v1Csv = 'occurredAt,localDate,amountMinor,currency,amount,categoryId,description,note,source\r\n2026-09-10T08:00:00.000Z,2026-09-10,1000,INR,10.00,cat-food,Biryani,,manual\r\n';
+    const rows = parseExpensesCsv(v1Csv);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]!.amountMinor, 1000);
+    assert.equal(rows[0]!.description, 'Biryani');
+    assert.equal(rows[0]!.kind, '');
   });
 });

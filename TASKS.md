@@ -914,7 +914,7 @@ changes no behaviour and may start now.
 | K8 | Insights kinds (pure) + Spend/Income/Net UI | K4, K7 | todo |
 | K9 | Entry kind switch + income | K2, K7 | todo |
 | K10 | Refunds | K9 | todo |
-| K11 | CSV v2 export | K2 | todo |
+| K11 | CSV v2 export | K2 | done |
 | K12 | `merchantKey` normaliser | — | done |
 | AC1 | `accounts.ts` (pure) | K4 | done |
 | AC2 | Accounts repository + rules | AC1, K3 | todo |

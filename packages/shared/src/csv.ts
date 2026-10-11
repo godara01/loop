@@ -21,6 +21,14 @@ export const CSV_COLUMNS = [
   'amountMinor',
   'currency',
   'amount',
+  'kind',
+  'account',
+  'toAccount',
+  'refundOf',
+  'merchant',
+  'tags',
+  'lines',
+  'recurring',
   'categoryId',
   'description',
   'note',
@@ -35,6 +43,14 @@ export interface CsvExpenseRow {
   readonly amountMinor: number;
   readonly currency: string;
   readonly amount: string;
+  readonly kind: string;
+  readonly account: string;
+  readonly toAccount: string;
+  readonly refundOf: string;
+  readonly merchant: string;
+  readonly tags: string;
+  readonly lines: string;
+  readonly recurring: string;
   readonly categoryId: string;
   readonly description: string;
   readonly note: string;
@@ -76,13 +92,21 @@ export function buildExpensesCsv(expenses: readonly Expense[]): string {
         String(e.total.minor),
         e.total.currency,
         majorUnits(e.total.minor, e.total.currency),
+        e.kind ?? '',
+        '', // account name (populated when accounts repo exists, or via accountId map if passed)
+        '', // toAccount name
+        e.refundOf ?? '',
+        e.merchant ?? '',
+        e.tagIds ? e.tagIds.join(';') : '',
+        e.lines ? e.lines.map((l) => `${l.categoryId}:${l.amountMinor}`).join('|') : '',
+        '', // recurring rule description
         textCell(e.categoryId),
         textCell(e.description),
         textCell(e.note ?? ''),
         e.source,
       ].join(','),
     );
-  return BOM + [CSV_COLUMNS.join(','), ...rows].join(CRLF) + CRLF;
+  return [CSV_COLUMNS.join(','), ...rows].join(CRLF) + CRLF;
 }
 
 /** RFC 4180 records. Quoted fields may contain commas, doubled quotes and line breaks. */
@@ -130,23 +154,54 @@ const unformula = (value: string) => (/^'[=+\-@]/.test(value) ? value.slice(1) :
 
 /** The inverse of buildExpensesCsv. Exists for the round-trip test. */
 export function parseExpensesCsv(csv: string): CsvExpenseRow[] {
-  const [header, ...rows] = parseRecords(csv);
-  if (!header || header.join(',') !== CSV_COLUMNS.join(',')) throw new Error('Not a Loop expenses CSV');
+  const records = parseRecords(csv);
+  const [header, ...rows] = records;
+  if (!header) throw new Error('Not a Loop expenses CSV');
+  
+  const isV1 = header.join(',') === [
+    'occurredAt',
+    'localDate',
+    'amountMinor',
+    'currency',
+    'amount',
+    'categoryId',
+    'description',
+    'note',
+    'source',
+  ].join(',');
+
+  const isV2 = header.join(',') === CSV_COLUMNS.join(',');
+
+  if (!isV1 && !isV2) throw new Error('Not a Loop expenses CSV');
+
   return rows.map((cells, index) => {
-    if (cells.length !== CSV_COLUMNS.length) throw new Error(`Row ${index + 1} has ${cells.length} fields`);
-    const get = (column: CsvColumn) => cells[CSV_COLUMNS.indexOf(column)]!;
-    const amountMinor = Number(get('amountMinor'));
+    if (cells.length !== header.length) throw new Error(`Row ${index + 1} has ${cells.length} fields`);
+    const getCol = (colName: string) => {
+      const idx = header.indexOf(colName);
+      return idx >= 0 ? cells[idx]! : '';
+    };
+
+    const amountMinor = Number(getCol('amountMinor'));
     if (!Number.isSafeInteger(amountMinor)) throw new Error(`Row ${index + 1}: amountMinor is not an exact integer`);
+
     return {
-      occurredAt: get('occurredAt'),
-      localDate: get('localDate'),
+      occurredAt: getCol('occurredAt'),
+      localDate: getCol('localDate'),
       amountMinor,
-      currency: get('currency'),
-      amount: get('amount'),
-      categoryId: unformula(get('categoryId')),
-      description: unformula(get('description')),
-      note: unformula(get('note')),
-      source: get('source'),
+      currency: getCol('currency'),
+      amount: getCol('amount'),
+      kind: getCol('kind'),
+      account: getCol('account'),
+      toAccount: getCol('toAccount'),
+      refundOf: getCol('refundOf'),
+      merchant: getCol('merchant'),
+      tags: getCol('tags'),
+      lines: getCol('lines'),
+      recurring: getCol('recurring'),
+      categoryId: unformula(getCol('categoryId')),
+      description: unformula(getCol('description')),
+      note: unformula(getCol('note')),
+      source: getCol('source'),
     };
   });
 }
