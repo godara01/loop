@@ -40,13 +40,19 @@ function applyToRollups(rollups: Rollups, before: Expense | null, after: Expense
 describe('rollups', () => {
   it('creates daily and monthly contributions', () => {
     assert.deepEqual(buildRollups([expense()]), {
-      daily: { '2026-09-23': { totalMinor: 1200, count: 1, byCategory: { food: 1200 } } },
+      daily: { '2026-09-23': { totalMinor: 1200, count: 1, byCategory: { food: 1200 }, refundCount: 0, refundMinor: 0, refundByCategory: {}, incomeCount: 0, incomeMinor: 0, incomeByCategory: {} } },
       monthly: {
         '2026-09': {
           totalMinor: 1200,
           count: 1,
           byCategory: { food: 1200 },
           byDay: { '2026-09-23': 1200 },
+          refundCount: 0,
+          refundMinor: 0,
+          refundByCategory: {},
+          incomeCount: 0,
+          incomeMinor: 0,
+          incomeByCategory: {},
         },
       },
     });
@@ -84,12 +90,12 @@ describe('rollups', () => {
   it('removes category and day keys when a delta zeroes them', () => {
     assert.deepEqual(
       applyDelta(
-        { totalMinor: 1200, count: 1, byCategory: { food: 1200 }, byDay: { '2026-09-23': 1200 } },
-        { totalMinor: -1200, count: -1, byCategory: { food: -1200 }, byDay: { '2026-09-23': -1200 } },
-      ),
-      { totalMinor: 0, count: 0, byCategory: {}, byDay: {} },
-    );
-  });
+      { totalMinor: 1200, count: 1, byCategory: { food: 1200 }, byDay: { '2026-09-23': 1200 }, refundCount: 0, refundMinor: 0, refundByCategory: {}, incomeCount: 0, incomeMinor: 0, incomeByCategory: {} },
+      { totalMinor: -1200, count: -1, byCategory: { food: -1200 }, byDay: { '2026-09-23': -1200 }, refundCount: 0, refundMinor: 0, refundByCategory: {}, incomeCount: 0, incomeMinor: 0, incomeByCategory: {} },
+    ),
+    { totalMinor: 0, count: 0, byCategory: {}, byDay: {}, refundCount: 0, refundMinor: 0, refundByCategory: {}, incomeCount: 0, incomeMinor: 0, incomeByCategory: {} },
+  );
+});
 
   it('matches a seeded create, edit, and soft-delete history', () => {
     let state = 0x5eed1234;
@@ -156,3 +162,57 @@ describe('rollups', () => {
     for (const rollup of Object.values(rebuilt.daily)) assert.ok(Number.isInteger(rollup.totalMinor));
   });
 });
+  it('income-only day survives', () => {
+    const income = expense({ categoryId: 'salary', kind: 'income' as const, total: money(10000, INR) });
+    const rollups = buildRollups([income]);
+    const day = rollups.daily['2026-09-23'];
+    assert.ok(day);
+    assert.equal(day.incomeCount, 1);
+    assert.equal(day.incomeMinor, 10000);
+    assert.equal(day.count, 0);
+    assert.equal(day.totalMinor, 0);
+  });
+
+  it('an edit that moves a category or an account is exact', () => {
+    const before = expense();
+    const after = expense({ categoryId: 'transport', total: money(1500, INR) });
+    const applied = applyToRollups(buildRollups([before]), before, after);
+    const rebuilt = buildRollups([after]);
+    assert.deepEqual(applied, rebuilt);
+  });
+
+  it('a sequence of operations equals buildRollups of what is left', () => {
+    const items: Expense[] = [
+      expense({ id: 'e1' }),
+      expense({ id: 'e2', categoryId: 'transport', total: money(500, INR) }),
+    ];
+    let state: Rollups = buildRollups(items);
+    // edit e1
+    const e1b = items[0]!;
+    const e1a = { ...e1b, total: money(2000, INR), categoryId: 'fun' };
+    state = applyToRollups(state, e1b, e1a);
+    // soft delete e2
+    const e2b = items[1]!;
+    const e2a = { ...e2b, deletedAt: NOW };
+    state = applyToRollups(state, e2b, e2a);
+    const left: Expense[] = [e1a];
+    assert.deepEqual(state, buildRollups(left));
+  });
+
+  it('a split doc contributes per line', () => {
+    const split = expense({
+      id: 'split-1',
+      lines: [
+        { categoryId: 'food', amountMinor: 800 },
+        { categoryId: 'drink', amountMinor: 400 },
+      ],
+      total: money(1200, INR),
+    });
+    const rollups = buildRollups([split]);
+    const day = rollups.daily['2026-09-23'];
+    assert.ok(day);
+    assert.equal(day.count, 1);
+    assert.equal(day.totalMinor, 1200);
+    assert.deepEqual(day.byCategory, { food: 800, drink: 400 });
+  });
+

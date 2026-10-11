@@ -907,7 +907,7 @@ changes no behaviour and may start now.
 | K1 | Kind types, validators, `sys-*` ids, merge `PendingExpense` | D10 | done |
 | K2 | `documents.ts` v2 converters + v1 fixture suite | K1 | done |
 | K3 | Rules v2 (transactions, pending) + tests | K2 | todo |
-| K4 | Rollups v2 + marker v2 maths (pure) | K1 | todo |
+| K4 | Rollups v2 + marker v2 maths (pure) | K1 | done |
 | K5 | `onExpenseWrite` v2 + trigger matrix + `rebuildUserLedger` | K2, K4, DP2 | todo |
 | K6 | Migration script + `meta/schema` + client "updating" state | K5 | todo |
 | K7 | Income categories + versioned seed | K1 | todo |

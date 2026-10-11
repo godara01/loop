@@ -129,6 +129,16 @@ export interface DailyRollup {
   readonly totalMinor: number;
   readonly count: number;
   readonly byCategory: Readonly<Record<string, number>>;
+  /**
+   * v2 buckets (docs/11-firebase.md#rollups-v2). Absent means zero, so a v1
+   * rollup document parses without defaulting. Keyed by leaf category.
+   */
+  readonly refundCount?: number;
+  readonly refundMinor?: number;
+  readonly refundByCategory?: Readonly<Record<string, number>>;
+  readonly incomeCount?: number;
+  readonly incomeMinor?: number;
+  readonly incomeByCategory?: Readonly<Record<string, number>>;
 }
 
 /** Function-maintained aggregate stored at monthlyRollups/{YYYY-MM}. */
