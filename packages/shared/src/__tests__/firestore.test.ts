@@ -424,3 +424,74 @@ describe('v2 transaction round-trips', () => {
     );
   });
 });
+
+describe('undefined value omission', () => {
+  it('omits undefined keys from v1-shaped Expense documents', () => {
+    const expense = newPersonalExpense({
+      id: 'exp-v1',
+      uid: UID,
+      total: money(10000, 'INR'),
+      categoryId: 'cat-food',
+      description: 'Lunch',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+    });
+    // Explicitly set v2 fields to undefined to simulate v1 shape
+    const v1Expense = {
+      ...expense,
+      kind: undefined,
+      accountId: undefined,
+      toAccountId: undefined,
+      refundOf: undefined,
+      merchant: undefined,
+      merchantKey: undefined,
+      tagIds: undefined,
+      lines: undefined,
+      categoryIds: undefined,
+      recurringId: undefined,
+      importId: undefined,
+      groupRefId: undefined,
+      paidMinor: undefined,
+      direction: undefined,
+      excludeFromSpend: undefined,
+      schemaVersion: undefined,
+    };
+    const doc = expenseToDoc(v1Expense);
+    const values = Object.values(doc);
+    assert.equal(values.includes(undefined), false);
+  });
+
+  it('omits undefined keys from v1-shaped PendingExpense documents', () => {
+    const pending = {
+      id: 'pending-v1',
+      status: 'pending',
+      amountMinor: 45_000,
+      currency: 'INR',
+      merchant: 'SWIGGY',
+      accountLast4: '1234',
+      occurredAt: '2026-09-13T09:58:00.000Z',
+      receivedAt: NOW,
+      source: 'sms',
+      templateId: 'hdfc-card-debit-v1',
+      confidence: 0.92,
+      suggestedCategoryId: null,
+      suggestionConfidence: null,
+      suggestionModelVersion: null,
+      expenseId: null,
+      displayHint: 'HDFC ••1234 · SWIGGY',
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
+    // Explicitly set optional v2 fields to undefined to simulate v1 shape
+    const v1Pending = {
+      ...pending,
+      kind: undefined,
+      merchantKey: undefined,
+      suggestedAccountId: undefined,
+    };
+    const doc = pendingExpenseToDoc(v1Pending as unknown as PendingExpense);
+    const values: unknown[] = Object.values(doc);
+    assert.equal(values.includes(undefined), false);
+  });
+});

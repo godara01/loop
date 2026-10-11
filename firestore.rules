@@ -62,10 +62,36 @@ service cloud.firestore {
           && request.resource.data.amountMinor > 0
           && request.resource.data.currency is string
           && isLocalDate(request.resource.data.localDate)
-          && (!('createdLocalDate' in request.resource.data) 
-              || request.resource.data.createdLocalDate == null 
+          && (!('createdLocalDate' in request.resource.data)
+              || request.resource.data.createdLocalDate == null
               || isLocalDate(request.resource.data.createdLocalDate))
-          && request.resource.data.categoryId is string;
+          && request.resource.data.categoryId is string
+          // Kind validation: clients may write kind only in expense | income | refund | transfer
+          && (!('kind' in request.resource.data)
+              || request.resource.data.kind == null
+              || request.resource.data.kind in ['expense', 'income', 'refund', 'transfer'])
+          // Transfer validation: if kind is transfer, then toAccountId must differ from accountId
+          && (!('kind' in request.resource.data)
+              || request.resource.data.kind == null
+              || request.resource.data.kind != 'transfer'
+              || (request.resource.data.toAccountId is string
+                  && request.resource.data.accountId is string
+                  && request.resource.data.toAccountId != request.resource.data.accountId))
+          // Optional new fields are type-checked when present
+          && (!('accountId' in request.resource.data) || request.resource.data.accountId is string || request.resource.data.accountId == null)
+          && (!('toAccountId' in request.resource.data) || request.resource.data.toAccountId is string || request.resource.data.toAccountId == null)
+          && (!('refundOf' in request.resource.data) || request.resource.data.refundOf is string || request.resource.data.refundOf == null)
+          && (!('merchant' in request.resource.data) || request.resource.data.merchant is string || request.resource.data.merchant == null)
+          && (!('merchantKey' in request.resource.data) || request.resource.data.merchantKey is string || request.resource.data.merchantKey == null)
+          && (!('tagIds' in request.resource.data) || request.resource.data.tagIds is list || request.resource.data.tagIds == null)
+          && (!('lines' in request.resource.data) || request.resource.data.lines is list || request.resource.data.lines == null)
+          && (!('categoryIds' in request.resource.data) || request.resource.data.categoryIds is list || request.resource.data.categoryIds == null)
+          && (!('recurringId' in request.resource.data) || request.resource.data.recurringId is string || request.resource.data.recurringId == null)
+          && (!('importId' in request.resource.data) || request.resource.data.importId is string || request.resource.data.importId == null)
+          // rollupApplied and meta/schema are owner-readable and client-unwritable
+          && !('rollupApplied' in request.resource.data)
+          && !('meta' in request.resource.data)
+          && !('schema' in request.resource.data);
 
         // Deletion is soft — an update setting deletedAt. Hard deletes are a
         // scheduled Function's job.

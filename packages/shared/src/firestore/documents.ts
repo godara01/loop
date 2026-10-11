@@ -38,6 +38,21 @@ export class DocumentShapeError extends Error {
   }
 }
 
+/**
+ * Returns a copy of the object with all undefined properties omitted.
+ * Null values are retained.
+ */
+function dropUndefined<T extends object>(obj: T): T {
+  const result = {} as T;
+  for (const key of Object.keys(obj) as Array<keyof T>) {
+    // @ts-ignore: We know the key exists in T and the value is of the correct type
+    if (obj[key] !== undefined) {
+      result[key] = obj[key];
+    }
+  }
+  return result;
+}
+
 type Fields = Readonly<Record<string, unknown>>;
 
 const CURRENCIES = Object.keys(CURRENCY_SYMBOL) as CurrencyCode[];
@@ -403,7 +418,7 @@ function parseLines(path: string, value: unknown): readonly { readonly categoryI
 }
 
 export function expenseToDoc(expense: Expense): ExpenseDoc {
-  return {
+  return dropUndefined({
     amountMinor: expense.total.minor,
     currency: expense.total.currency,
     kind: expense.kind,
@@ -438,7 +453,7 @@ export function expenseToDoc(expense: Expense): ExpenseDoc {
     createdAt: expense.createdAt,
     updatedAt: expense.updatedAt,
     deletedAt: expense.deletedAt,
-  };
+  });
 }
 
 export function parseExpense(uid: string, expenseId: string, data: unknown): Expense {
@@ -659,7 +674,7 @@ function optionalUnit(path: string, d: Fields, field: string): number | null {
 
 /** `id` is the document id, so it is not stored inside the document. */
 export function pendingExpenseToDoc(pending: PendingExpense): PendingExpenseDoc {
-  return {
+  return dropUndefined({
     status: pending.status,
     amountMinor: pending.amountMinor,
     currency: pending.currency,
@@ -677,7 +692,7 @@ export function pendingExpenseToDoc(pending: PendingExpense): PendingExpenseDoc 
     displayHint: pending.displayHint,
     createdAt: pending.createdAt,
     updatedAt: pending.updatedAt,
-  };
+  });
 }
 
 export function parsePendingExpense(uid: string, pendingExpenseId: string, data: unknown): PendingExpense {

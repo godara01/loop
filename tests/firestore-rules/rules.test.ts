@@ -221,6 +221,39 @@ describe('expenses', () => {
   it("keeps one user out of another's expenses", async () => {
     await assertFails(setDoc(doc(as(BOB), p.expense(ALICE, 'e-1')), validExpense()));
   });
+
+  it('allows valid transaction kinds and rejects invalid ones', async () => {
+    await assertSucceeds(setDoc(ref(), validExpense({ kind: 'income' })));
+    await assertSucceeds(setDoc(ref(), validExpense({ kind: 'refund' })));
+    await assertFails(setDoc(ref(), validExpense({ kind: 'settlement' })));
+    await assertFails(setDoc(ref(), validExpense({ kind: 'loan' })));
+    await assertFails(setDoc(ref(), validExpense({ kind: 'bogus' })));
+  });
+
+  it('validates transfer accounts correctly', async () => {
+    await assertSucceeds(setDoc(ref(), validExpense({ kind: 'transfer', accountId: 'acc-1', toAccountId: 'acc-2' })));
+    await assertFails(setDoc(ref(), validExpense({ kind: 'transfer', accountId: 'acc-1', toAccountId: 'acc-1' })));
+    await assertFails(setDoc(ref(), validExpense({ kind: 'transfer', accountId: 'acc-1' })));
+  });
+
+  it('type-checks optional new fields when present', async () => {
+    await assertSucceeds(setDoc(ref(), validExpense({ accountId: 'acc-1', merchant: 'Swiggy', tagIds: ['food'], schemaVersion: 2 })));
+    await assertFails(setDoc(ref(), validExpense({ accountId: 123 })));
+    await assertFails(setDoc(ref(), validExpense({ merchant: true })));
+    await assertFails(setDoc(ref(), validExpense({ tagIds: 'not-a-list' })));
+    await assertFails(setDoc(ref(), validExpense({ lines: 'not-a-list' })));
+    await assertFails(setDoc(ref(), validExpense({ categoryIds: 'not-a-list' })));
+    await assertFails(setDoc(ref(), validExpense({ recurringId: 123 })));
+    await assertFails(setDoc(ref(), validExpense({ importId: 123 })));
+    await assertFails(setDoc(ref(), validExpense({ refundOf: 123 })));
+    await assertFails(setDoc(ref(), validExpense({ merchantKey: 123 })));
+  });
+
+  it('blocks client writes to rollupApplied, meta, and schema', async () => {
+    await assertFails(setDoc(ref(), validExpense({ rollupApplied: true })));
+    await assertFails(setDoc(ref(), validExpense({ meta: {} })));
+    await assertFails(setDoc(ref(), validExpense({ schema: 1 })));
+  });
 });
 
 describe('check-ins', () => {
