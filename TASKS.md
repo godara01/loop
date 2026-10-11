@@ -15,6 +15,9 @@ their automated tests pass. None of them has run on a device yet; those checks
 are in the device queue. M7 (SMS) is scaffolding only. M8 (hardening) hasn't
 started.
 
+
+> **Agent session 2026-10-11 — state for whoever resumes.** Landed on `work/device`: L1–L5, K1, K2, K3, K4, K7, K9, K11, K12, AC1, SM1 (all verified: typecheck, shared/mobile tests, invariants, testids, a11y, rules). D10 is partly done (see its row). **Known red: `npm run test:functions` has 6 failing tests** because K4 rewrote the shared rollup maths and `functions/src/{rollups,handlers}.ts` have not been ported yet — that is exactly task **K5** (todo; three attempts failed, a partial patch is saved outside the repo at `../loop-wip/K5-partial-attempts.patch`, do not trust it). **Unfinished WIP branches (not merged):** `task/k10-wip` (K10 refunds: shared `refundableRemainder`/`apportionRefund` + tests done, refund screen / entry refund mode / detail section not done), `task/sm2-wip` (SM2 `matchRefund`/`pairTransfers` partial, unverified). Next ready tasks: K5, K8, K10, SM2, K6 (after K5), AC2, then the rest of P2. Opencode model notes: see the saved model registry (nvidia nemotron / openrouter models work; stagger concurrent starts by 30 s).
+
 ---
 
 ## How to work this file (read before every task)
