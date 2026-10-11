@@ -18,12 +18,14 @@ export function ExpenseRow({
 }) {
   const time = new Date(expense.occurredAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   const title = expense.description || category?.name || 'Expense';
+  const isIncome = expense.kind === 'income';
+  const amountText = isIncome ? `+${formatMoney(expense.total)}` : formatMoney(expense.total);
 
   return (
     <Pressable
       testID={`expense-row-${expense.id}`}
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${formatMoney(expense.total)}`}
+      accessibilityLabel={`${title}, ${amountText}${isIncome ? ', income' : ''}`}
       onPress={() => {
         haptic('tap');
         onPress();
@@ -43,8 +45,10 @@ export function ExpenseRow({
           {title}
         </Text>
       </View>
-      <Text style={styles.amount} testID={`expense-row-${expense.id}-amount`}>
-        {formatMoney(expense.total)}
+      <Text
+        style={[styles.amount, isIncome && styles.amountIncome]}
+        testID={`expense-row-${expense.id}-amount`}>
+        {amountText}
       </Text>
     </Pressable>
   );
@@ -59,4 +63,5 @@ const styles = StyleSheet.create({
   pending: { ...type.monoSm, color: colors.social },
   title: { ...type.bodyLg, color: colors.text },
   amount: { ...type.monoLg, fontSize: 17, color: colors.text },
+  amountIncome: { color: colors.credit },
 });

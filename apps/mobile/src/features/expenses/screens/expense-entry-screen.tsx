@@ -10,7 +10,6 @@ import {
   type Category,
   type Expense,
   ExpenseError,
-  FALLBACK_CATEGORY_SLUG,
   MAX_DESCRIPTION_LENGTH,
   type Money,
   MAX_NOTE_LENGTH,
@@ -22,6 +21,7 @@ import {
   formatMoney,
   layout,
   localDateOf,
+  newIncome,
   newPersonalExpense,
   orderForEntry,
   palette,
@@ -33,7 +33,7 @@ import {
   todayISO,
   type,
 } from '@loop/shared';
-import { router, useNavigation } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -61,12 +61,22 @@ import { newExpenseId, saveExpense } from '../api/expense-repository';
 import { AmountPad } from '../components/amount-pad';
 import { CategoryStrip } from '../components/category-strip';
 import { DeleteExpenseSheet } from '../components/delete-expense-sheet';
+import { KindSwitch } from '../components/kind-switch';
 import { useExpense, useExpensesForLastDays } from '../hooks/use-expenses';
 import { amountOf, canSave, displayAmount, inputFromMoney } from '../model/amount-input';
+import {
+  applyKindSwitch,
+  categoriesForKind,
+  entryKindFromParam,
+  type EntryKind,
+  preselectForKind,
+  saveLabelForKind,
+} from '../model/entry-kind';
 import { usageCounts } from '../model/ledger';
 
 const REPEAT_WINDOW_MS = 10 * 60_000;
 const USAGE_WINDOW_DAYS = 30;
+const INCOME_USAGE_WINDOW_DAYS = 90;
 
 const logWriteFailure = (error: unknown) => console.warn('[expenses] write rejected', error);
 
@@ -107,9 +117,11 @@ export function ExpenseEntryScreen({
   const navigation = useNavigation();
   const { uid, profile } = useSession();
   const currency = profile.currency;
+  const params = useLocalSearchParams<{ kind?: string }>();
 
   const categoriesState = useCategories();
   const recent = useExpensesForLastDays(USAGE_WINDOW_DAYS);
+  const incomeRecent = useExpensesForLastDays(INCOME_USAGE_WINDOW_DAYS);
   const existing = useExpense(mode === 'edit' ? expenseId : undefined);
 
   const { draft, startNew, startFrom, update, abandon, clear } = useDraftStore();
@@ -123,14 +135,23 @@ export function ExpenseEntryScreen({
   const leaving = useRef(false);
   const initialDraft = useRef<ExpenseDraft | null>(null);
 
+  const [entryKind, setEntryKind] = useState<EntryKind>(() => {
+    if (mode !== 'new') return 'expense';
+    return entryKindFromParam(params.kind);
+  });
+
+  const kindCounts: ReadonlyMap<string, number> = useMemo(() => {
+    const source = entryKind === 'income' ? incomeRecent : recent;
+    if (source.status !== 'ready') return new Map<string, number>();
+    const windowDays = entryKind === 'income' ? INCOME_USAGE_WINDOW_DAYS : USAGE_WINDOW_DAYS;
+    return usageCounts(source.snapshot.expenses, addDays(todayISO(), -(windowDays - 1)));
+  }, [entryKind, recent, incomeRecent]);
+
   const activeCategories: Category[] = useMemo(() => {
     if (categoriesState.status !== 'ready') return [];
-    const counts =
-      recent.status === 'ready'
-        ? usageCounts(recent.snapshot.expenses, addDays(todayISO(), -(USAGE_WINDOW_DAYS - 1)))
-        : new Map<string, number>();
-    return orderForEntry(categoriesState.snapshot.categories, counts, false);
-  }, [categoriesState, recent]);
+    const pool = categoriesForKind(categoriesState.snapshot.categories, entryKind);
+    return orderForEntry(pool, kindCounts, false);
+  }, [categoriesState, entryKind, kindCounts]);
 
   // Initialise the draft once: blank for a new entry, the expense for an edit.
   useEffect(() => {
@@ -164,17 +185,12 @@ export function ExpenseEntryScreen({
     }
   }, [mode, existing, approval, started, startNew, startFrom]);
 
-  // Preselect the most-used category of the last 30 days, else OTHER.
   useEffect(() => {
-    if (!started || draft.categoryId !== null || activeCategories.length === 0) return;
-    const counts =
-      recent.status === 'ready'
-        ? usageCounts(recent.snapshot.expenses, addDays(todayISO(), -(USAGE_WINDOW_DAYS - 1)))
-        : new Map<string, number>();
-    const mostUsed = activeCategories.find((c) => (counts.get(c.id) ?? 0) > 0);
-    const fallback = activeCategories.find((c) => c.slug === FALLBACK_CATEGORY_SLUG) ?? activeCategories[0];
-    update({ categoryId: (mostUsed ?? fallback)?.id ?? null });
-  }, [started, draft.categoryId, activeCategories, recent, update]);
+    if (!started || draft.categoryId !== null) return;
+    if (categoriesState.status !== 'ready') return;
+    const id = preselectForKind(categoriesState.snapshot.categories, entryKind, kindCounts);
+    if (id) update({ categoryId: id });
+  }, [started, draft.categoryId, categoriesState, entryKind, kindCounts, update]);
 
   const dirty =
     mode === 'new'
@@ -255,16 +271,29 @@ export function ExpenseEntryScreen({
       }
       let expense: Expense;
       if (mode === 'new') {
-        expense = newPersonalExpense({
-          id: newExpenseId(uid),
-          uid,
-          total,
-          categoryId: draft.categoryId,
-          description: draft.description,
-          note: draft.note,
-          occurredAt: composeOccurredAt(draft.localDate, timeOfDayOf(nowIso), now),
-          now: nowIso,
-        });
+        if (entryKind === 'income') {
+          expense = newIncome({
+            id: newExpenseId(uid),
+            uid,
+            total,
+            categoryId: draft.categoryId,
+            description: draft.description,
+            note: draft.note,
+            occurredAt: composeOccurredAt(draft.localDate, timeOfDayOf(nowIso), now),
+            now: nowIso,
+          });
+        } else {
+          expense = newPersonalExpense({
+            id: newExpenseId(uid),
+            uid,
+            total,
+            categoryId: draft.categoryId,
+            description: draft.description,
+            note: draft.note,
+            occurredAt: composeOccurredAt(draft.localDate, timeOfDayOf(nowIso), now),
+            now: nowIso,
+          });
+        }
       } else {
         if (existing.status !== 'ready') return;
         const original = existing.expense;
@@ -341,6 +370,22 @@ export function ExpenseEntryScreen({
   }
 
   const selectedCategory = activeCategories.find((c) => c.id === draft.categoryId);
+  const saveLabel = mode === 'new' ? saveLabelForKind(entryKind) : 'Save changes';
+
+  const handleKindChange = (nextKind: EntryKind) => {
+    if (nextKind === entryKind) return;
+    const source = nextKind === 'income' ? incomeRecent : recent;
+    const windowDays = nextKind === 'income' ? INCOME_USAGE_WINDOW_DAYS : USAGE_WINDOW_DAYS;
+    const counts =
+      source.status === 'ready'
+        ? usageCounts(source.snapshot.expenses, addDays(todayISO(), -(windowDays - 1)))
+        : new Map<string, number>();
+    const categories = categoriesState.status === 'ready' ? categoriesState.snapshot.categories : [];
+    setEntryKind(nextKind);
+    setError(null);
+    const switched = applyKindSwitch(draft, nextKind, preselectForKind(categories, nextKind, counts));
+    update({ categoryId: switched.categoryId });
+  };
 
   return (
     <KeyboardAvoidingView
@@ -359,6 +404,12 @@ export function ExpenseEntryScreen({
         </Text>
         <View style={styles.headerSpacer} />
       </View>
+
+      {mode === 'new' ? (
+        <View style={styles.kindSwitchWrap}>
+          <KindSwitch value={entryKind} onChange={handleKindChange} />
+        </View>
+      ) : null}
 
       {mode === 'edit' ? (
         // A row of its own, clear of the top-right corner: every dev build
@@ -392,7 +443,7 @@ export function ExpenseEntryScreen({
         <Animated.View style={shakeStyle}>
           <Text
             testID="entry-amount"
-            style={styles.amount}
+            style={[styles.amount, entryKind === 'income' && styles.amountIncome]}
             numberOfLines={1}
             adjustsFontSizeToFit
             accessibilityLabel={`Amount ${displayAmount(draft.amount, currency)}`}>
@@ -520,7 +571,7 @@ export function ExpenseEntryScreen({
       <View testID="entry-save" accessible>
         <TactileButton
           testID="entry-save-button"
-          label={mode === 'new' ? 'Save' : mode === 'approve' ? 'Approve' : 'Update'}
+          label={mode === 'new' ? saveLabel : mode === 'approve' ? 'Approve' : 'Update'}
           fullWidth
           onPress={onSave}
         />
@@ -561,6 +612,8 @@ const styles = StyleSheet.create({
   muted: { ...type.bodyLg, color: colors.textMuted },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.sm },
   headerSpacer: { width: 26 },
+  kindSwitchWrap: { paddingHorizontal: 0, paddingBottom: space.xs },
+  amountIncome: { color: colors.credit },
   editActions: { flexDirection: 'row', gap: space.lg, marginBottom: space.xs },
   editAction: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   editActionLabel: { ...type.monoSm, color: colors.textMuted },

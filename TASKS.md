@@ -912,7 +912,7 @@ changes no behaviour and may start now.
 | K6 | Migration script + `meta/schema` + client "updating" state | K5 | todo |
 | K7 | Income categories + versioned seed | K1 | done |
 | K8 | Insights kinds (pure) + Spend/Income/Net UI | K4, K7 | todo |
-| K9 | Entry kind switch + income | K2, K7 | todo |
+| K9 | Entry kind switch + income | K2, K7 | done |
 | K10 | Refunds | K9 | todo |
 | K11 | CSV v2 export | K2 | done |
 | K12 | `merchantKey` normaliser | — | done |

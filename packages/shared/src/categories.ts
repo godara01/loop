@@ -298,6 +298,7 @@ export function categoryFromTemplate(
     readonly id: string;
     readonly kind: CategoryKind;
     readonly type?: CategoryType;
+    readonly slug?: string;
     readonly sortOrder: number;
     readonly createdAt: string;
     readonly archivedAt?: string | null;
@@ -306,7 +307,7 @@ export function categoryFromTemplate(
   const type = options.type ?? ('section' in template ? 'expense' : 'income');
   return {
     id: options.id,
-    slug: template.slug,
+    slug: options.slug ?? template.slug,
     name: template.name,
     icon: { kind: 'glyph', name: template.glyph },
     colorToken: template.colorToken,
@@ -387,6 +388,7 @@ export function incomeCategoriesToSeed(
     categories.push(
       categoryFromTemplate(template, {
         id: idFor(slug),
+        slug,
         kind: 'essential',
         type: 'income',
         sortOrder: nextSortOrder++,
