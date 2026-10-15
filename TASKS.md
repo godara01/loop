@@ -925,7 +925,7 @@ changes no behaviour and may start now.
 | AC4 | Entry account chip | AC2, K9 | todo |
 | AC5 | Transfers | AC4 | todo |
 | SM1 | Credit / reversal / cashback / card-bill parsing + fixtures | K1 | done |
-| SM2 | `matchRefund` + `pairTransfers` (pure) | SM1, K12 | todo |
+| SM2 | `matchRefund` + `pairTransfers` (pure) | SM1, K12 | done |
 | SM3 | Ingest v2 + inbox cards per kind | SM2, AC2, K3, K10 | todo |
 | DP8 | Ledger filter facets: kind, account | DP7, AC2 | todo |
 | K13 | P2 Maestro flows | K6, K8, K10, K11, AC3, AC5, SM3, DP8 | todo |

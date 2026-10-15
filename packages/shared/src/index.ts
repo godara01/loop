@@ -27,6 +27,10 @@ export type {
 } from './sms/dedupe';
 export { bankLabel, buildDisplayHint } from './sms/display-hint';
 export type { DisplayHintFields } from './sms/display-hint';
+export { matchRefund, refundableRemainderForExpense } from './sms/refund-match';
+export type { RefundMatch } from './sms/refund-match';
+export { pairTransfers } from './sms/transfer-pair';
+export type { TransferPair } from './sms/transfer-pair';
 export {
   BUNDLED_REGISTRY,
   COMPILED_BUNDLED_REGISTRY,
