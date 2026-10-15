@@ -21,6 +21,7 @@ started.
 > 2. **No device run of refunds yet:** Record refund from the edit screen, the prefilled remainder, "X of Y refunded", the overspend note, and "Original deleted". These belong with K13 / D11.
 > 3. **K5 known limit, unfixed:** a span `rebuildUserLedger` can't repair an expense whose move *out* of the span the trigger never processed (see the K5 commit body). Decide whether that needs a task.
 > 4. **K5 part B and SM2 haven't run on a device.** Their parity and pairing tests passed only in unit and functions tests.
+> 5. **Local cleanup left on the dev machine:** remove worktree `../loop-w3` and branch `task/k10-wip` (local and `origin`), then `git worktree prune`. The auto-mode check blocked these from the agent. `../loop-wip/` only holds backup patches.
 >
 > Next ready tasks: K8, AC2, K6 (after K5, now unblocked), then SM3 once AC2 and K3 are done. opencode notes: the `opencode-delegate` skill was patched for opencode v2.0.29 (no `--dir`, `model#variant`, `--standalone`); the kr/claude-sonnet provider ran out of credit on 2026-10-15, and the Nemotron models worked but are slow.
 
