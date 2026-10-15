@@ -58,7 +58,7 @@ export type OnboardingStep = 'welcome' | 'profile' | 'feel' | 'categories' | 'fi
 export type SmsCaptureState = 'unseen' | 'shown' | 'dismissed' | 'denied' | 'granted';
 
 /** Where an expense came from. SMS-derived ones are approved, never automatic. */
-export type ExpenseSource = 'manual' | 'sms' | 'shared' | 'group';
+export type ExpenseSource = 'manual' | 'sms' | 'shared' | 'group' | 'import';
 
 export type TransactionKind = 'expense' | 'income' | 'refund' | 'transfer' | 'settlement' | 'loan';
 

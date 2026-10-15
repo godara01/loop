@@ -327,3 +327,497 @@ describe('L3 Functions — Custom Category Creation', () => {
     assert.equal(wallet.coinBalance, 5);
   });
 });
+
+describe('L3 Functions — Expense Matrix (kind × source)', () => {
+  const NOW = '2026-09-05T10:00:00.000Z';
+  const DATE = '2026-09-05';
+
+  beforeEach(async () => {
+    await clearUser(ALICE);
+  });
+
+  // Helper to create a basic expense
+  function makeExpense(overrides: Record<string, unknown> = {}) {
+    return {
+      amountMinor: 5000,
+      currency: 'INR',
+      localDate: DATE,
+      categoryId: 'cat-coffee',
+      createdAt: NOW,
+      occurredAt: NOW,
+      deletedAt: null,
+      ...overrides,
+    };
+  }
+
+  it('manual expense → check-in + expense_logged (+ categorised + first_expense)', async () => {
+    // Create a custom category first so we can test categorised
+    await db.doc(firestorePaths.category(ALICE, 'cat-coffee')).set({
+      slug: 'COFFEE',
+      name: 'Coffee',
+      icon: { kind: 'glyph', name: 'coffee' },
+      colorToken: 'BROWN',
+      kind: 'custom',
+      sortOrder: 0,
+      createdAt: NOW,
+      archivedAt: null,
+    });
+
+    await handleExpenseWrite(db, ALICE, 'exp1', null, makeExpense({ source: 'manual' }), NOW);
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, DATE)).get();
+    assert.ok(checkIn.exists, 'check-in should exist');
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.deepEqual(rules, ['categorised', 'expense_logged', 'first_expense']);
+
+    const wallet = await getWallet(ALICE);
+    // expense_logged(2) + categorised(1) + first_expense(10) = 13
+    // check_in is NOT awarded here (only via handleCheckInCreate/day_banked)
+    assert.equal(wallet.coinBalance, 2 + 1 + 10);
+  });
+
+  it('sms expense → check-in + expense_logged (+ categorised + first_expense)', async () => {
+    await db.doc(firestorePaths.category(ALICE, 'cat-coffee')).set({
+      slug: 'COFFEE',
+      name: 'Coffee',
+      icon: { kind: 'glyph', name: 'coffee' },
+      colorToken: 'BROWN',
+      kind: 'custom',
+      sortOrder: 0,
+      createdAt: NOW,
+      archivedAt: null,
+    });
+
+    await handleExpenseWrite(db, ALICE, 'exp1', null, makeExpense({ source: 'sms' }), NOW);
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, DATE)).get();
+    assert.ok(checkIn.exists, 'check-in should exist');
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.deepEqual(rules, ['categorised', 'expense_logged', 'first_expense']);
+  });
+
+  it('manual income → check-in only, no coins', async () => {
+    await handleExpenseWrite(db, ALICE, 'inc1', null, makeExpense({ kind: 'income', source: 'manual' }), NOW);
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, DATE)).get();
+    assert.ok(checkIn.exists, 'check-in should exist');
+
+    const ledger = await getLedger(ALICE);
+    assert.equal(ledger.length, 0, 'no coins for income');
+
+    const wallet = await getWallet(ALICE);
+    assert.equal(wallet.coinBalance, 0);
+  });
+
+  it('manual refund → check-in only, no coins', async () => {
+    await handleExpenseWrite(db, ALICE, 'ref1', null, makeExpense({ kind: 'refund', source: 'manual' }), NOW);
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, DATE)).get();
+    assert.ok(checkIn.exists, 'check-in should exist');
+
+    const ledger = await getLedger(ALICE);
+    assert.equal(ledger.length, 0, 'no coins for refund');
+  });
+
+  it('transfer → nothing (no check-in, no coins)', async () => {
+    await handleExpenseWrite(
+      db,
+      ALICE,
+      'tx1',
+      null,
+      makeExpense({ kind: 'transfer', accountId: 'acc-a', toAccountId: 'acc-b' }),
+      NOW,
+    );
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, DATE)).get();
+    assert.ok(!checkIn.exists, 'no check-in for transfer');
+
+    const ledger = await getLedger(ALICE);
+    assert.equal(ledger.length, 0);
+  });
+
+  it('settlement → nothing (bookkeeping)', async () => {
+    await handleExpenseWrite(db, ALICE, 'st1', null, makeExpense({ kind: 'settlement' }), NOW);
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, DATE)).get();
+    assert.ok(!checkIn.exists);
+
+    const ledger = await getLedger(ALICE);
+    assert.equal(ledger.length, 0);
+  });
+
+  it('loan → nothing (bookkeeping)', async () => {
+    await handleExpenseWrite(db, ALICE, 'ln1', null, makeExpense({ kind: 'loan' }), NOW);
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, DATE)).get();
+    assert.ok(!checkIn.exists);
+
+    const ledger = await getLedger(ALICE);
+    assert.equal(ledger.length, 0);
+  });
+
+  it('expense with recurringId → check-in only, no coins', async () => {
+    await handleExpenseWrite(
+      db,
+      ALICE,
+      'exp-rec',
+      null,
+      makeExpense({ recurringId: 'rec-rent', source: 'manual' }),
+      NOW,
+    );
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, DATE)).get();
+    assert.ok(checkIn.exists, 'check-in should exist for recurring');
+
+    const ledger = await getLedger(ALICE);
+    assert.equal(ledger.length, 0, 'no coins for recurring');
+
+    const wallet = await getWallet(ALICE);
+    assert.equal(wallet.coinBalance, 0);
+  });
+
+  it('source: group (squad mirror) → nothing', async () => {
+    await handleExpenseWrite(db, ALICE, 'exp-group', null, makeExpense({ source: 'group' }), NOW);
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, DATE)).get();
+    assert.ok(!checkIn.exists, 'no check-in for group mirror');
+
+    const ledger = await getLedger(ALICE);
+    assert.equal(ledger.length, 0);
+  });
+
+  it('source: import → nothing (also no rollups)', async () => {
+    await handleExpenseWrite(db, ALICE, 'exp-import', null, makeExpense({ source: 'import' }), NOW);
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, DATE)).get();
+    assert.ok(!checkIn.exists, 'no check-in for import');
+
+    const ledger = await getLedger(ALICE);
+    assert.equal(ledger.length, 0);
+  });
+
+  it('source: shared → treated as own entry (check-in + coins for expense)', async () => {
+    await db.doc(firestorePaths.category(ALICE, 'cat-coffee')).set({
+      slug: 'COFFEE',
+      name: 'Coffee',
+      icon: { kind: 'glyph', name: 'coffee' },
+      colorToken: 'BROWN',
+      kind: 'custom',
+      sortOrder: 0,
+      createdAt: NOW,
+      archivedAt: null,
+    });
+
+    await handleExpenseWrite(db, ALICE, 'exp-shared', null, makeExpense({ source: 'shared' }), NOW);
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, DATE)).get();
+    assert.ok(checkIn.exists, 'check-in should exist for shared');
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.deepEqual(rules, ['categorised', 'expense_logged', 'first_expense']);
+  });
+
+  it('update (beforeData exists) → no check-in, no coins', async () => {
+    // First create
+    await handleExpenseWrite(db, ALICE, 'exp1', null, makeExpense({ source: 'manual' }), NOW);
+    const ledgerAfterCreate = await getLedger(ALICE);
+    const balanceAfterCreate = (await getWallet(ALICE)).coinBalance;
+
+    // Now update
+    await handleExpenseWrite(
+      db,
+      ALICE,
+      'exp1',
+      makeExpense({ source: 'manual' }),
+      makeExpense({ source: 'manual', amountMinor: 6000 }),
+      NOW,
+    );
+
+    const ledgerAfterUpdate = await getLedger(ALICE);
+    const balanceAfterUpdate = (await getWallet(ALICE)).coinBalance;
+
+    assert.equal(ledgerAfterUpdate.length, ledgerAfterCreate.length, 'no new coins on update');
+    assert.equal(balanceAfterUpdate, balanceAfterCreate, 'balance unchanged on update');
+  });
+
+  it('soft delete (afterData.deletedAt) → no check-in, no coins', async () => {
+    // First create
+    await handleExpenseWrite(db, ALICE, 'exp1', null, makeExpense({ source: 'manual' }), NOW);
+    const ledgerAfterCreate = await getLedger(ALICE);
+    const balanceAfterCreate = (await getWallet(ALICE)).coinBalance;
+
+    // Now soft delete
+    await handleExpenseWrite(
+      db,
+      ALICE,
+      'exp1',
+      makeExpense({ source: 'manual' }),
+      makeExpense({ source: 'manual', deletedAt: '2026-09-05T11:00:00.000Z' }),
+      NOW,
+    );
+
+    const ledgerAfterDelete = await getLedger(ALICE);
+    const balanceAfterDelete = (await getWallet(ALICE)).coinBalance;
+
+    assert.equal(ledgerAfterDelete.length, ledgerAfterCreate.length, 'no new coins on soft delete');
+    assert.equal(balanceAfterDelete, balanceAfterCreate, 'balance unchanged on soft delete');
+  });
+
+  it('backdated expense (localDate < createdLocalDate) → nothing', async () => {
+    const backdatedNow = '2026-09-05T10:00:00.000Z';
+    const backdatedCreatedAt = '2026-09-03T10:00:00.000Z'; // Created on 09-03
+    await handleExpenseWrite(
+      db,
+      ALICE,
+      'exp-backdated',
+      null,
+      makeExpense({
+        source: 'manual',
+        localDate: '2026-09-01', // Occurred on 09-01
+        createdAt: backdatedCreatedAt,
+        createdLocalDate: '2026-09-03',
+      }),
+      backdatedNow,
+    );
+
+    const checkIn = await db.doc(firestorePaths.checkIn(ALICE, '2026-09-01')).get();
+    assert.ok(!checkIn.exists, 'no check-in for backdated');
+
+    const ledger = await getLedger(ALICE);
+    assert.equal(ledger.length, 0, 'no coins for backdated');
+  });
+
+  it('expense in OTHER category → NOT categorised', async () => {
+    // Use OTHER category (system slug = OTHER)
+    await handleExpenseWrite(
+      db,
+      ALICE,
+      'exp-other',
+      null,
+      makeExpense({ categoryId: 'OTHER', source: 'manual' }),
+      NOW,
+    );
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.ok(!rules.includes('categorised'), 'OTHER should not count as categorised');
+    assert.ok(rules.includes('expense_logged'), 'should still get expense_logged');
+  });
+
+  it('custom category "Mother\'s Day" → categorised (slug not OTHER)', async () => {
+    // Create a custom category named "Mother's Day" with slug MOTHERS_DAY
+    await db.doc(firestorePaths.category(ALICE, 'cat-mothers-day')).set({
+      slug: 'MOTHERS_DAY',
+      name: "Mother's Day",
+      icon: { kind: 'glyph', name: 'gift' },
+      colorToken: 'PINK',
+      kind: 'custom',
+      sortOrder: 0,
+      createdAt: NOW,
+      archivedAt: null,
+    });
+
+    await handleExpenseWrite(
+      db,
+      ALICE,
+      'exp-mothers',
+      null,
+      makeExpense({ categoryId: 'cat-mothers-day', source: 'manual' }),
+      NOW,
+    );
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.ok(rules.includes('categorised'), "Mother's Day should count as categorised");
+  });
+
+  it('expense_logged dailyCap (3 per day) enforced', async () => {
+    await db.doc(firestorePaths.category(ALICE, 'cat-coffee')).set({
+      slug: 'COFFEE',
+      name: 'Coffee',
+      icon: { kind: 'glyph', name: 'coffee' },
+      colorToken: 'BROWN',
+      kind: 'custom',
+      sortOrder: 0,
+      createdAt: NOW,
+      archivedAt: null,
+    });
+
+    // Create 4 expenses on same day
+    for (let i = 0; i < 4; i++) {
+      await handleExpenseWrite(
+        db,
+        ALICE,
+        `exp${i}`,
+        null,
+        makeExpense({ source: 'manual' }),
+        NOW,
+      );
+    }
+
+    const ledger = await getLedger(ALICE);
+    const expenseLogged = ledger.filter((e) => e.ruleId === 'expense_logged');
+    assert.equal(expenseLogged.length, 3, 'dailyCap of 3 enforced for expense_logged');
+
+    // check_in is NOT awarded via handleExpenseWrite (only via handleCheckInCreate/day_banked)
+    const checkIn = ledger.filter((e) => e.ruleId === 'check_in');
+    assert.equal(checkIn.length, 0, 'check_in not awarded via handleExpenseWrite');
+  });
+});
+
+describe('L3 Functions — Zero-spend', () => {
+  const NOW = '2026-09-05T10:00:00.000Z';
+  const DATE = '2026-09-05';
+
+  beforeEach(async () => {
+    await clearUser(ALICE);
+  });
+
+  function makeExpense(overrides: Record<string, unknown> = {}) {
+    return {
+      amountMinor: 5000,
+      currency: 'INR',
+      localDate: DATE,
+      categoryId: 'cat-coffee',
+      createdAt: NOW,
+      occurredAt: NOW,
+      deletedAt: null,
+      ...overrides,
+    };
+  }
+
+  it('income-only day → zero-spend (awards zero_spend)', async () => {
+    await handleExpenseWrite(db, ALICE, 'inc1', null, makeExpense({ kind: 'income', amountMinor: 10000 }), NOW);
+
+    await handleCheckInCreate(db, ALICE, DATE, NOW);
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.ok(rules.includes('check_in'), 'check-in awarded');
+    assert.ok(rules.includes('zero_spend'), 'zero-spend awarded for income-only day');
+
+    const wallet = await getWallet(ALICE);
+    assert.equal(wallet.coinBalance, 5 + 3); // check_in(5) + zero_spend(3)
+  });
+
+  it('refund-only day → zero-spend', async () => {
+    await handleExpenseWrite(db, ALICE, 'ref1', null, makeExpense({ kind: 'refund', amountMinor: 5000 }), NOW);
+
+    await handleCheckInCreate(db, ALICE, DATE, NOW);
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.ok(rules.includes('zero_spend'), 'zero-spend awarded for refund-only day');
+  });
+
+  it('transfer-only day → zero-spend', async () => {
+    await handleExpenseWrite(
+      db,
+      ALICE,
+      'tx1',
+      null,
+      makeExpense({ kind: 'transfer', amountMinor: 5000, accountId: 'acc-a', toAccountId: 'acc-b' }),
+      NOW,
+    );
+
+    await handleCheckInCreate(db, ALICE, DATE, NOW);
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.ok(rules.includes('zero_spend'), 'zero-spend awarded for transfer-only day');
+  });
+
+  it('expense with excludeFromSpend → zero-spend', async () => {
+    await handleExpenseWrite(
+      db,
+      ALICE,
+      'exp-excluded',
+      null,
+      makeExpense({ kind: 'expense', amountMinor: 5000, excludeFromSpend: true }),
+      NOW,
+    );
+
+    await handleCheckInCreate(db, ALICE, DATE, NOW);
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.ok(rules.includes('zero_spend'), 'excluded expense does not break zero-spend');
+  });
+
+  it('day with a counting mirror (source: group, amountMinor > 0) → NOT zero-spend', async () => {
+    // Real mirror: stores user's share in amountMinor, allocations: []
+    const mirror = makeExpense({
+      source: 'group',
+      amountMinor: 1200, // user's share
+      allocations: [],
+      groupId: 'grp-123',
+    });
+    await db.doc(firestorePaths.expense(ALICE, 'exp-group')).set(mirror);
+    await handleExpenseWrite(db, ALICE, 'exp-group', null, mirror, NOW);
+
+    await handleCheckInCreate(db, ALICE, DATE, NOW);
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.ok(!rules.includes('zero_spend'), 'counting mirror breaks zero-spend');
+    assert.ok(rules.includes('check_in'), 'check-in still awarded');
+  });
+
+  it('mirror with amountMinor 0 → zero-spend', async () => {
+    // Mirror with 0 share (user owes nothing)
+    const mirror = makeExpense({
+      source: 'group',
+      amountMinor: 0,
+      allocations: [],
+      groupId: 'grp-123',
+    });
+    await db.doc(firestorePaths.expense(ALICE, 'exp-group-zero')).set(mirror);
+    await handleExpenseWrite(db, ALICE, 'exp-group-zero', null, mirror, NOW);
+
+    await handleCheckInCreate(db, ALICE, DATE, NOW);
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.ok(rules.includes('zero_spend'), 'mirror with 0 share does not break zero-spend');
+  });
+
+  it('day with an excluded mirror (source: group, excludeFromSpend) → zero-spend', async () => {
+    const mirror = makeExpense({
+      source: 'group',
+      amountMinor: 3000,
+      excludeFromSpend: true,
+      allocations: [],
+      groupId: 'grp-123',
+    });
+    await db.doc(firestorePaths.expense(ALICE, 'exp-group-excl')).set(mirror);
+    await handleExpenseWrite(db, ALICE, 'exp-group-excl', null, mirror, NOW);
+
+    await handleCheckInCreate(db, ALICE, DATE, NOW);
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.ok(rules.includes('zero_spend'), 'excluded mirror does not break zero-spend');
+  });
+
+  it('expense with amountMinor === 0 → zero-spend (amount must be > 0)', async () => {
+    await handleExpenseWrite(
+      db,
+      ALICE,
+      'exp-zero',
+      null,
+      makeExpense({ kind: 'expense', amountMinor: 0 }),
+      NOW,
+    );
+
+    await handleCheckInCreate(db, ALICE, DATE, NOW);
+
+    const ledger = await getLedger(ALICE);
+    const rules = ledger.map((e) => e.ruleId).sort();
+    assert.ok(rules.includes('zero_spend'), 'zero amount does not break zero-spend');
+  });
+});

@@ -356,7 +356,7 @@ export interface ExpenseDoc {
   readonly deletedAt: string | null;
 }
 
-const EXPENSE_SOURCES: readonly ExpenseSource[] = ['manual', 'sms', 'shared', 'group'];
+const EXPENSE_SOURCES: readonly ExpenseSource[] = ['manual', 'sms', 'shared', 'group', 'import'];
 const TRANSACTION_KINDS: readonly TransactionKind[] = ['expense', 'income', 'refund', 'transfer', 'settlement', 'loan'];
 const SPLIT_MODES: readonly SplitMode[] = ['even', 'shares', 'exact', 'percentage'];
 const LOCAL_DATE = /^\d{4}-\d{2}-\d{2}$/;

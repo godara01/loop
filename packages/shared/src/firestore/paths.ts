@@ -56,6 +56,9 @@ export const firestorePaths = {
   accounts: (uid: string) => `${user(uid)}/accounts`,
   account: (uid: string, accountId: string) => `${user(uid)}/accounts/${segment(accountId, 'accountId')}`,
 
+  accountBalances: (uid: string) => `${user(uid)}/accountBalances`,
+  accountBalance: (uid: string, accountId: string) => `${user(uid)}/accountBalances/${segment(accountId, 'accountId')}`,
+
   meta: (uid: string, docId: string) => `${user(uid)}/meta/${segment(docId, 'docId')}`,
   metaSchema: (uid: string) => `${user(uid)}/meta/schema`,
 } as const;

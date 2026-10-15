@@ -150,7 +150,7 @@ export interface ChipContext extends MatchContext {
 }
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const SOURCE_LABELS: Record<ExpenseSource, string> = { manual: 'Manual', sms: 'SMS', shared: 'Shared', group: 'Squad' };
+const SOURCE_LABELS: Record<ExpenseSource, string> = { manual: 'Manual', sms: 'SMS', shared: 'Shared', group: 'Squad', import: 'Import' };
 
 /** `2026-03-12` → `12 MAR` (the Insights custom-chip format). */
 function shortDate(date: string): string {
