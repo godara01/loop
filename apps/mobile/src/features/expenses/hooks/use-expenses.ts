@@ -9,6 +9,7 @@ import {
   observeExpensesInRange,
   observeExpensesSince,
   observeRecentExpenses,
+  observeRefundsOf,
 } from '../api/expense-repository';
 
 export type ExpensesState =
@@ -100,5 +101,24 @@ export function useExpense(expenseId: string | undefined): ExpenseState {
       (error) => setState({ status: 'error', message: error.message }),
     );
   }, [uid, expenseId]);
+  return state;
+}
+
+/** Refunds of a given original expense, for the edit screen's "Refunds" section. */
+export function useRefundsOf(originalId: string | undefined): ExpensesState {
+  const { uid } = useSession();
+  const [state, setState] = useState<ExpensesState>({ status: 'loading' });
+  useEffect(() => {
+    if (!originalId) {
+      setState({ status: 'ready', snapshot: { expenses: [], invalid: [], fromCache: false, pendingIds: new Set() } });
+      return;
+    }
+    return observeRefundsOf(
+      uid,
+      originalId,
+      (snapshot) => setState({ status: 'ready', snapshot }),
+      (error) => setState({ status: 'error', message: error.message }),
+    );
+  }, [uid, originalId]);
   return state;
 }

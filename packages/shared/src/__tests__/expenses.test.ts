@@ -8,12 +8,15 @@ import { after, before, describe, it } from 'node:test';
 
 import {
   ExpenseError,
+  apportionRefund,
+  canRecordRefund,
   duplicateExpense,
   editPersonalExpense,
   newIncome,
   newPersonalExpense,
   newRefund,
   newTransfer,
+  refundableRemainder,
   restoreExpense,
   softDeleteExpense,
   validateTransaction,
@@ -22,6 +25,7 @@ import { DocumentShapeError, expenseToDoc, parseExpense } from '../firestore/doc
 import { money } from '../money';
 import { settleUp } from '../settle';
 import { localDateOf } from '../streak';
+import type { Expense } from '../types';
 
 const UID = 'user-1';
 const NOW = '2026-09-16T10:00:00.000Z';
@@ -347,8 +351,241 @@ describe('validateTransaction and K1 transaction constructors', () => {
       /Refund requires refundOf/,
     );
     assert.throws(
-      () => validateTransaction({ kind: 'income', categoryId: 'sys-transfer' }),
-      /Income requires an income category/,
+      () => validateTransaction({ kind: 'refund', categoryId: 'cat-1', refundOf: '' }),
+      /Refund requires refundOf/,
+    );
+  });
+
+  it('refundableRemainder computes correct remainder after multiple refunds', () => {
+    const original = coffee({ total: money(10000, INR) });
+    const ref1 = newRefund({
+      id: 'ref-1',
+      uid: UID,
+      total: money(3000, INR),
+      categoryId: 'cat-food',
+      description: 'Partial 1',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+      refundOf: 'e-1',
+    });
+    const ref2 = newRefund({
+      id: 'ref-2',
+      uid: UID,
+      total: money(2000, INR),
+      categoryId: 'cat-food',
+      description: 'Partial 2',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+      refundOf: 'e-1',
+    });
+
+    const rem = refundableRemainder(original, [ref1, ref2]);
+    assert.equal(rem.minor, 5000);
+    assert.equal(rem.currency, INR);
+  });
+
+  it('refundableRemainder ignores soft-deleted refunds', () => {
+    const original = coffee({ total: money(10000, INR) });
+    const liveRefund = newRefund({
+      id: 'ref-1',
+      uid: UID,
+      total: money(3000, INR),
+      categoryId: 'cat-food',
+      description: 'Live',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+      refundOf: 'e-1',
+    });
+    const deletedRefund = softDeleteExpense(
+      newRefund({
+        id: 'ref-2',
+        uid: UID,
+        total: money(2000, INR),
+        categoryId: 'cat-food',
+        description: 'Deleted',
+        note: null,
+        occurredAt: NOW,
+        now: NOW,
+        refundOf: 'e-1',
+      }),
+      NOW,
+    );
+
+    const rem = refundableRemainder(original, [liveRefund, deletedRefund]);
+    assert.equal(rem.minor, 7000); // 10000 - 3000 (ignoring the 2000 deleted)
+  });
+
+  it('refundableRemainder ignores refunds for a different original', () => {
+    const original = coffee({ total: money(10000, INR) });
+    const otherOriginal = coffee({ id: 'e-2', total: money(5000, INR) });
+    const liveRefund = newRefund({
+      id: 'ref-1',
+      uid: UID,
+      total: money(3000, INR),
+      categoryId: 'cat-food',
+      description: 'Live',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+      refundOf: 'e-1',
+    });
+    const otherRefund = newRefund({
+      id: 'ref-2',
+      uid: UID,
+      total: money(2000, INR),
+      categoryId: 'cat-food',
+      description: 'Other original',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+      refundOf: 'e-2',
+    });
+
+    const rem = refundableRemainder(original, [liveRefund, otherRefund]);
+    assert.equal(rem.minor, 7000); // 10000 - 3000 (ignoring the 2000 for other original)
+  });
+
+  it('apportionRefund correctly divides refund across lines proportionally and sums exactly', () => {
+    const original = {
+      ...coffee({ total: money(10000, INR) }),
+      lines: [
+        { categoryId: 'cat-food', amountMinor: 6000 },
+        { categoryId: 'cat-drink', amountMinor: 4000 },
+      ],
+    };
+    const refundTotal = money(5000, INR);
+
+    const lines = apportionRefund(original, refundTotal);
+    const sum = lines.reduce((acc, l) => acc + l.amountMinor, 0);
+    assert.equal(sum, refundTotal.minor);
+    assert.equal(lines.length, 2);
+    // 5000 * 6000/10000 = 3000, 5000 * 4000/10000 = 2000
+    assert.equal(lines[0]!.amountMinor, 3000);
+    assert.equal(lines[0]!.categoryId, 'cat-food');
+    assert.equal(lines[1]!.amountMinor, 2000);
+    assert.equal(lines[1]!.categoryId, 'cat-drink');
+  });
+
+  it('apportionRefund handles awkward amounts that test exact sum', () => {
+    const original = {
+      ...coffee({ total: money(1000, INR) }),
+      lines: [
+        { categoryId: 'cat-a', amountMinor: 333 },
+        { categoryId: 'cat-b', amountMinor: 333 },
+        { categoryId: 'cat-c', amountMinor: 334 },
+      ],
+    };
+    const refundTotal = money(101, INR);
+
+    const lines = apportionRefund(original, refundTotal);
+    const sum = lines.reduce((acc, l) => acc + l.amountMinor, 0);
+    assert.equal(sum, 101); // Must sum exactly
+    assert.equal(lines.length, 3);
+    assert.equal(lines[0]!.categoryId, 'cat-a');
+    assert.equal(lines[1]!.categoryId, 'cat-b');
+    assert.equal(lines[2]!.categoryId, 'cat-c');
+  });
+
+  it('canRecordRefund returns true for regular expenses', () => {
+    const expense = coffee();
+    assert.equal(canRecordRefund(expense), true);
+  });
+
+  it('canRecordRefund refuses refunds of mirrors', () => {
+    const mirror = { ...coffee(), source: 'group' as const };
+    assert.equal(canRecordRefund(mirror), false);
+  });
+
+  it('canRecordRefund refuses refunds of transfers', () => {
+    const transfer = newTransfer({
+      id: 'tr-1',
+      uid: UID,
+      total: money(10000, INR),
+      description: 'Transfer',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+      accountId: 'acc-1',
+      toAccountId: 'acc-2',
+    });
+    assert.equal(canRecordRefund(transfer), false);
+  });
+
+  it('canRecordRefund refuses refunds of income', () => {
+    const income = newIncome({
+      id: 'inc-1',
+      uid: UID,
+      total: money(50000, INR),
+      categoryId: 'cat-salary',
+      description: 'Salary',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+    });
+    assert.equal(canRecordRefund(income), false);
+  });
+
+  it('canRecordRefund refuses refunds of other refunds', () => {
+    const refund = newRefund({
+      id: 'ref-1',
+      uid: UID,
+      total: money(5000, INR),
+      categoryId: 'cat-food',
+      description: 'Refund',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+      refundOf: 'e-1',
+    });
+    assert.equal(canRecordRefund(refund), false);
+  });
+
+  it('canRecordRefund refuses soft-deleted expenses', () => {
+    const deletedExpense = softDeleteExpense(coffee(), NOW);
+    assert.equal(canRecordRefund(deletedExpense), false);
+  });
+
+  it('refundableRemainder and apportionRefund work with deleted original', () => {
+    const original = softDeleteExpense(coffee({ total: money(10000, INR) }), NOW);
+    const refund = newRefund({
+      id: 'ref-1',
+      uid: UID,
+      total: money(3000, INR),
+      categoryId: 'cat-food',
+      description: 'Refund of deleted',
+      note: null,
+      occurredAt: NOW,
+      now: NOW,
+      refundOf: 'e-1',
+    });
+
+    // Should not throw
+    const rem = refundableRemainder(original, [refund]);
+    assert.equal(rem.minor, 7000);
+
+    const allocations = apportionRefund(original, refund.total);
+    assert.equal(allocations.length, 1);
+  });
+
+  it('newRefund rejects amount exceeding refundable remainder', () => {
+    assert.throws(
+      () =>
+        newRefund({
+          id: 'ref-1',
+          uid: UID,
+          total: money(5000, INR),
+          categoryId: 'cat-food',
+          description: 'Too much',
+          note: null,
+          occurredAt: NOW,
+          now: NOW,
+          refundOf: 'e-1',
+          refundableRemainder: money(3000, INR),
+        }),
+      /exceeds refundable remainder/,
     );
   });
 });

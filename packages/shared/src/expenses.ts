@@ -14,6 +14,7 @@ import { SYSTEM_CATEGORY_IDS } from './categories';
 import type { Money } from './money';
 import { localDateOf } from './streak';
 import type { Expense, ExpenseSource, TransactionKind } from './types';
+import { distributeLargestRemainder } from './internal/largest-remainder';
 
 export class ExpenseError extends Error {}
 
@@ -75,6 +76,8 @@ export interface RefundInput {
   readonly accountId?: string | null;
   readonly source?: ExpenseSource;
   readonly pendingId?: string | null;
+  readonly lines?: readonly { readonly categoryId: string; readonly amountMinor: number }[] | null;
+  readonly refundableRemainder?: Money;
 }
 
 export interface TransactionValidationInput {
@@ -234,12 +237,21 @@ export function newTransfer(input: TransferInput): Expense {
 export function newRefund(input: RefundInput): Expense {
   checkAmount(input.total);
   checkNotFuture(input.occurredAt, input.now);
+  
+  // Validate the refund amount does not exceed the refundable remainder
+  if (input.refundableRemainder && input.total.minor > input.refundableRemainder.minor) {
+    throw new ExpenseError(
+      `Refund amount ${input.total.minor} exceeds refundable remainder ${input.refundableRemainder.minor}`,
+    );
+  }
+  
   validateTransaction({
     kind: 'refund',
     categoryId: input.categoryId,
     refundOf: input.refundOf,
     accountId: input.accountId,
   });
+  
   return {
     id: input.id,
     kind: 'refund',
@@ -262,6 +274,7 @@ export function newRefund(input: RefundInput): Expense {
     deletedAt: null,
     refundOf: input.refundOf,
     ...(input.accountId ? { accountId: input.accountId } : {}),
+    ...(input.lines && input.lines.length > 0 ? { lines: input.lines } : {}),
   };
 }
 
@@ -300,6 +313,60 @@ export function editPersonalExpense(expense: Expense, patch: ExpensePatch, now: 
     allocations: [{ memberId: expense.paidBy, amount: total }],
     updatedAt: now,
   };
+}
+
+/**
+ * Can we record a refund against this expense? False for squad mirrors, refunds,
+ * transfers, settlements, loans, income, and soft-deleted expenses.
+ */
+export function canRecordRefund(expense: Expense): boolean {
+  const kind = expense.kind ?? 'expense';
+  if (kind !== 'expense') return false;
+  if (expense.source === 'group') return false;
+  if (expense.deletedAt !== null) return false;
+  return true;
+}
+
+export function refundableRemainder(original: Expense, refunds: readonly Expense[]): Money {
+  const liveRefunds = refunds.filter((r) => r.deletedAt === null && r.refundOf === original.id);
+  const totalRefunded = liveRefunds.reduce((sum, r) => sum + r.total.minor, 0);
+  return {
+    currency: original.total.currency,
+    minor: Math.max(0, original.total.minor - totalRefunded),
+  };
+}
+
+/**
+ * Apportions a refund amount across the original expense's lines proportionally.
+ * Returns the refund's lines with the same categoryIds as the original, amounts
+ * distributed via largest-remainder, summing exactly to the refund total.
+ */
+export function apportionRefund(
+  original: Expense,
+  refundTotal: Money,
+): { readonly categoryId: string; readonly amountMinor: number }[] {
+  if (original.lines == null || original.lines.length === 0) {
+    return [{ categoryId: original.categoryId, amountMinor: refundTotal.minor }];
+  }
+
+  const originalLines = original.lines;
+  const weights = originalLines.map((line) => line.amountMinor);
+  const shares = distributeLargestRemainder(refundTotal.minor, weights);
+
+  const resultLines = shares.map((share, i) => ({
+    categoryId: originalLines[i]!.categoryId,
+    amountMinor: share,
+  }));
+
+  // Verify exactness (distributeLargestRemainder guarantees this)
+  const finalAllocated = resultLines.reduce((sum, l) => sum + l.amountMinor, 0);
+  if (finalAllocated !== refundTotal.minor) {
+    throw new ExpenseError(
+      `Allocation drift in apportionRefund: allocated ${finalAllocated} but total is ${refundTotal.minor}`,
+    );
+  }
+
+  return resultLines;
 }
 
 /** Soft delete: the row stays, so undo is trivial and sync stays honest. */

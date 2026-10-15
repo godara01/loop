@@ -14,6 +14,9 @@ import {
   type Money,
   MAX_NOTE_LENGTH,
   addDays,
+  apportionRefund,
+  canRecordRefund,
+  categoryColors,
   colors,
   composeOccurredAt,
   duplicateExpense,
@@ -23,9 +26,11 @@ import {
   localDateOf,
   newIncome,
   newPersonalExpense,
+  newRefund as newRefundExpense,
   orderForEntry,
   palette,
   radius,
+  refundableRemainder,
   restoreExpense,
   softDeleteExpense,
   space,
@@ -62,7 +67,7 @@ import { AmountPad } from '../components/amount-pad';
 import { CategoryStrip } from '../components/category-strip';
 import { DeleteExpenseSheet } from '../components/delete-expense-sheet';
 import { KindSwitch } from '../components/kind-switch';
-import { useExpense, useExpensesForLastDays } from '../hooks/use-expenses';
+import { useExpense, useExpensesForLastDays, useRefundsOf } from '../hooks/use-expenses';
 import { amountOf, canSave, displayAmount, inputFromMoney } from '../model/amount-input';
 import {
   applyKindSwitch,
@@ -109,7 +114,7 @@ export function ExpenseEntryScreen({
   expenseId,
   approval,
 }: {
-  mode: 'new' | 'edit' | 'approve';
+  mode: 'new' | 'edit' | 'approve' | 'refund';
   expenseId?: string;
   approval?: ApprovalSource;
 }) {
@@ -123,6 +128,12 @@ export function ExpenseEntryScreen({
   const recent = useExpensesForLastDays(USAGE_WINDOW_DAYS);
   const incomeRecent = useExpensesForLastDays(INCOME_USAGE_WINDOW_DAYS);
   const existing = useExpense(mode === 'edit' ? expenseId : undefined);
+  const originalExpenseState = useExpense(mode === 'refund' ? expenseId : undefined);
+  const original = mode === 'refund' && originalExpenseState.status === 'ready' ? originalExpenseState.expense : null;
+  // Load refunds for the original expense in both refund and edit modes
+  const refundSourceId = mode === 'refund' ? expenseId : (existing.status === 'ready' ? existing.expense?.id : undefined);
+  const refundsState = useRefundsOf(refundSourceId ?? undefined);
+  const refunds = refundsState.status === 'ready' ? refundsState.snapshot.expenses : [];
 
   const { draft, startNew, startFrom, update, abandon, clear } = useDraftStore();
   const offerUndo = useUndoStore((s) => s.offerUndo);
@@ -132,6 +143,15 @@ export function ExpenseEntryScreen({
   const [showMore, setShowMore] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+// Load original expense when editing a refund to check if it's deleted
+const originalExpenseStateForDeletionCheck = useExpense(
+  mode === 'edit' && existing.status === 'ready' && existing.expense.kind === 'refund'
+    ? (existing.expense.refundOf ?? undefined)
+    : undefined
+);
+  const originalExpenseForDeletionCheck = originalExpenseStateForDeletionCheck.status === 'ready' ? originalExpenseStateForDeletionCheck.expense : null;
+  const originalDeleted = originalExpenseStateForDeletionCheck.status === 'missing' || (originalExpenseStateForDeletionCheck.status === 'ready' && originalExpenseForDeletionCheck?.deletedAt !== null);
   const leaving = useRef(false);
   const initialDraft = useRef<ExpenseDraft | null>(null);
 
@@ -139,19 +159,6 @@ export function ExpenseEntryScreen({
     if (mode !== 'new') return 'expense';
     return entryKindFromParam(params.kind);
   });
-
-  const kindCounts: ReadonlyMap<string, number> = useMemo(() => {
-    const source = entryKind === 'income' ? incomeRecent : recent;
-    if (source.status !== 'ready') return new Map<string, number>();
-    const windowDays = entryKind === 'income' ? INCOME_USAGE_WINDOW_DAYS : USAGE_WINDOW_DAYS;
-    return usageCounts(source.snapshot.expenses, addDays(todayISO(), -(windowDays - 1)));
-  }, [entryKind, recent, incomeRecent]);
-
-  const activeCategories: Category[] = useMemo(() => {
-    if (categoriesState.status !== 'ready') return [];
-    const pool = categoriesForKind(categoriesState.snapshot.categories, entryKind);
-    return orderForEntry(pool, kindCounts, false);
-  }, [categoriesState, entryKind, kindCounts]);
 
   // Initialise the draft once: blank for a new entry, the expense for an edit.
   useEffect(() => {
@@ -182,8 +189,35 @@ export function ExpenseEntryScreen({
       startFrom(fromExpense);
       initialDraft.current = fromExpense;
       setStarted(true);
+    } else if (mode === 'refund' && original && refundsState.status === 'ready') {
+      // Initialize refund mode: pre-fill with refundable remainder, copy category/lines/account
+      const remainder = refundableRemainder(original, refunds);
+      const fromOriginal: ExpenseDraft = {
+        amount: inputFromMoney(remainder),
+        categoryId: original.categoryId,
+        description: original.description,
+        note: '',
+        localDate: todayISO(),
+      };
+      startFrom(fromOriginal);
+      initialDraft.current = fromOriginal;
+      setStarted(true);
     }
-  }, [mode, existing, approval, started, startNew, startFrom]);
+  }, [mode, existing, approval, original, refunds, started, startNew, startFrom]);
+
+  // Recalculate when entryKind changes
+  const kindCounts: ReadonlyMap<string, number> = useMemo(() => {
+    const source = entryKind === 'income' ? incomeRecent : recent;
+    if (source.status !== 'ready') return new Map<string, number>();
+    const windowDays = entryKind === 'income' ? INCOME_USAGE_WINDOW_DAYS : USAGE_WINDOW_DAYS;
+    return usageCounts(source.snapshot.expenses, addDays(todayISO(), -(windowDays - 1)));
+  }, [entryKind, recent, incomeRecent]);
+
+  const activeCategories: Category[] = useMemo(() => {
+    if (categoriesState.status !== 'ready') return [];
+    const pool = categoriesForKind(categoriesState.snapshot.categories, entryKind);
+    return orderForEntry(pool, kindCounts, false);
+  }, [categoriesState, entryKind, kindCounts]);
 
   useEffect(() => {
     if (!started || draft.categoryId !== null) return;
@@ -295,22 +329,47 @@ export function ExpenseEntryScreen({
           });
         }
       } else {
-        if (existing.status !== 'ready') return;
-        const original = existing.expense;
-        const dateChanged = draft.localDate !== original.localDate;
-        expense = editPersonalExpense(
-          original,
-          {
+        if (mode === 'refund') {
+          if (!original) return;
+          // Validate amount against refundable remainder
+          const remainder = refundableRemainder(original, refunds);
+          // Apportion the refund amount across the original's lines
+          const lines = apportionRefund(original, total);
+          if (total.minor > remainder.minor) {
+            return refuse(`Refund amount exceeds refundable remainder of ${formatMoney(remainder)}`);
+          }
+          expense = newRefundExpense({
+            id: newExpenseId(uid),
+            uid,
             total,
-            categoryId: draft.categoryId,
+            categoryId: original.categoryId,
             description: draft.description,
             note: draft.note,
-            occurredAt: dateChanged
-              ? composeOccurredAt(draft.localDate, timeOfDayOf(original.occurredAt), now)
-              : original.occurredAt,
-          },
-          nowIso,
-        );
+            occurredAt: composeOccurredAt(draft.localDate, timeOfDayOf(nowIso), now),
+            now: nowIso,
+            refundOf: original.id,
+            accountId: original.accountId,
+            lines,
+            refundableRemainder: remainder,
+          });
+        } else {
+          if (existing.status !== 'ready') return;
+          const original = existing.expense;
+          const dateChanged = draft.localDate !== original.localDate;
+          expense = editPersonalExpense(
+            original,
+            {
+              total,
+              categoryId: draft.categoryId,
+              description: draft.description,
+              note: draft.note,
+              occurredAt: dateChanged
+                ? composeOccurredAt(draft.localDate, timeOfDayOf(original.occurredAt), now)
+                : original.occurredAt,
+            },
+            nowIso,
+          );
+        }
       }
       saveExpense(uid, expense).catch(logWriteFailure);
     } catch (failure) {
@@ -400,17 +459,44 @@ export function ExpenseEntryScreen({
           <Ionicons name="close" size={26} color={colors.text} />
         </Pressable>
         <Text style={styles.eyebrow}>
-          {mode === 'new' ? 'NEW EXPENSE' : mode === 'approve' ? 'APPROVE EXPENSE' : 'EDIT EXPENSE'}
+          {mode === 'new' ? 'NEW EXPENSE' : mode === 'approve' ? 'APPROVE EXPENSE' : mode === 'refund' ? 'RECORD REFUND' : 'EDIT EXPENSE'}
         </Text>
         <View style={styles.headerSpacer} />
       </View>
-
-      {mode === 'new' ? (
+      {mode === 'refund' ? (
+        <View style={styles.kindSwitchWrap} testID="refund-kind-tag" accessibilityRole="none" accessibilityLabel="Refund mode">
+          <View style={styles.refundTag}>
+            <Ionicons name="refresh-circle-outline" size={16} color={colors.credit} />
+            <Text style={styles.refundTagText}>REFUND</Text>
+          </View>
+        </View>
+      ) : mode === 'new' ? (
         <View style={styles.kindSwitchWrap}>
           <KindSwitch value={entryKind} onChange={handleKindChange} />
         </View>
       ) : null}
 
+      {mode === 'edit' && existing.status === 'ready' && canRecordRefund(existing.expense) ? (
+        <Pressable
+          testID="entry-record-refund"
+          accessibilityRole="button"
+          accessibilityLabel="Record refund"
+          hitSlop={8}
+          onPress={() => {
+            haptic('selection');
+            router.push(`/expense/refund/${existing.expense.id}`);
+          }}
+          style={styles.refundRecordButton}>
+          <Ionicons name="refresh-circle-outline" size={16} color={palette.lime[400]} />
+          <Text style={styles.refundRecordButtonText}>RECORD REFUND</Text>
+        </Pressable>
+      ) : null}
+
+      {mode === 'edit' && existing.status === 'ready' && existing.expense.kind === 'refund' && originalDeleted ? (
+        <View testID="refund-original-deleted" style={styles.refundOriginalDeleted}>
+          <Text style={type.bodyLg}>Original deleted</Text>
+        </View>
+      ) : null}
       {mode === 'edit' ? (
         // A row of its own, clear of the top-right corner: every dev build
         // overlays a floating "open dev menu" button there, and icon-only
@@ -472,15 +558,30 @@ export function ExpenseEntryScreen({
           </Pressable>
         ) : null}
 
-        <CategoryStrip
-          categories={activeCategories}
-          selectedId={draft.categoryId}
-          onSelect={(categoryId) => {
-            setError(null);
-            update({ categoryId });
-          }}
-          onAddNew={() => router.push('/category/catalogue?returnTo=entry')}
-        />
+        {mode === 'refund' ? (
+          // Read-only category display for refund mode
+          <View testID="refund-category-display" style={styles.refundCategoryDisplay}>
+            <Text style={styles.refundCategoryLabel}>Category</Text>
+            {selectedCategory ? (
+              <View style={styles.refundCategoryChip}>
+                <View style={[styles.refundCategoryDot, { backgroundColor: categoryColors[selectedCategory.colorToken].tint }]} />
+                <Text style={styles.refundCategoryName}>{selectedCategory.name}</Text>
+              </View>
+            ) : (
+              <Text style={styles.refundCategoryName}>Loading...</Text>
+            )}
+          </View>
+        ) : (
+          <CategoryStrip
+            categories={activeCategories}
+            selectedId={draft.categoryId}
+            onSelect={(categoryId) => {
+              setError(null);
+              update({ categoryId });
+            }}
+            onAddNew={() => router.push('/category/catalogue?returnTo=entry')}
+          />
+        )}
 
         <TextInput
           testID="entry-description"
@@ -556,6 +657,42 @@ export function ExpenseEntryScreen({
             multiline
             style={[styles.input, styles.note]}
           />
+        ) : null}
+
+        {mode === 'edit' && existing.status === 'ready' && refunds.filter((r) => r.deletedAt === null).length > 0 ? (
+          <View testID="refunds-section" style={styles.refundsSection}>
+            <Text testID="refunds-section-title" style={styles.refundsSectionTitle}>Refunds</Text>
+            {refunds.filter((r) => r.deletedAt === null).map((refund) => (
+              <View key={refund.id} testID={`refund-row-${refund.id}`} style={[styles.refundRow, refund.deletedAt && styles.refundRowDeleted]}>
+                <View style={styles.refundInfo}>
+                  <Text testID={`refund-amount-${refund.id}`} style={styles.refundAmount}>
+                    {formatMoney(refund.total)}
+                  </Text>
+                  <Text testID={`refund-date-${refund.id}`} style={styles.refundDate}>
+                    {refund.localDate}
+                  </Text>
+                </View>
+              </View>
+            ))}
+            {(() => {
+              const liveRefunds = refunds.filter((r) => r.deletedAt === null);
+              const totalRefunded = liveRefunds.reduce((sum, r) => sum + r.total.minor, 0);
+              const remainder = Math.max(0, existing.expense.total.minor - totalRefunded);
+              if (totalRefunded > existing.expense.total.minor) {
+                const excess = totalRefunded - existing.expense.total.minor;
+                return (
+                  <Text testID="refunds-exceed" style={[type.bodyLg, { color: colors.debit }]}>
+                    Refunds exceed the purchase by {formatMoney({ minor: excess, currency: existing.expense.total.currency })}
+                  </Text>
+                );
+              }
+              return (
+                 <Text testID="refunds-summary" style={type.bodyLg}>
+                  {formatMoney({ minor: totalRefunded, currency: existing.expense.total.currency })} of {formatMoney(existing.expense.total)} refunded
+                </Text>
+              );
+            })()}
+          </View>
         ) : null}
 
         <AmountPad
@@ -662,4 +799,23 @@ const styles = StyleSheet.create({
   dateChipTextSelected: { color: palette.void },
   moreToggle: { marginLeft: 'auto' },
   moreText: { ...type.monoSm, color: colors.textMuted },
-});
+  refundTag: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  refundTagText: { ...type.monoSm, color: colors.credit },
+  refundCategoryDisplay: { marginTop: space.xs },
+  refundCategoryLabel: { ...type.monoSm, color: colors.textMuted, marginBottom: space.xs },
+  refundCategoryChip: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  refundCategoryDot: { width: 8, height: 8, borderRadius: 4 },
+  refundCategoryName: { ...type.bodyLg, color: colors.text },
+  refundsSection: { marginTop: space.lg, paddingTop: space.lg, borderTopWidth: 1.5, borderTopColor: colors.border },
+  refundsSectionTitle: { ...type.monoSm, color: colors.textMuted, marginBottom: space.md },
+  refundRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: space.sm },
+  refundRowDeleted: { opacity: 0.5 },
+  refundInfo: { flex: 1 },
+  refundAmount: { ...type.monoLg, color: colors.credit, fontFamily: type.monoLg.fontFamily },
+  refundDate: { ...type.monoSm, color: colors.textMuted, marginTop: 2 },
+  refundNote: { ...type.bodySm, color: colors.textMuted, marginTop: 2 },
+  refundExceeds: { ...type.bodySm, color: colors.debit, marginTop: space.md },
+  refundRecordButton: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.md },
+  refundRecordButtonText: { ...type.monoSm, color: palette.lime[400] },
+    refundOriginalDeleted: { ...type.bodyLg, color: colors.textMuted, marginTop: space.xs },
+ });

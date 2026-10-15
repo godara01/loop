@@ -201,3 +201,33 @@ export function observeExpense(
     (error) => onError(toError(error)),
   );
 }
+
+/**
+ * Observes all refunds of a given original expense (where refundOf === originalId).
+ * Returns live and soft-deleted refunds; the caller filters as needed.
+ * Sorted client-side newest first.
+ */
+export function observeRefundsOf(
+  uid: string,
+  originalId: string,
+  onChange: (snapshot: ExpensesSnapshot) => void,
+  onError: OnError,
+): Unsubscribe {
+  const { db } = firebase();
+  const q = query(
+    collection(db, firestorePaths.expenses(uid)),
+    where('refundOf', '==', originalId),
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const snapshot = toSnapshot(uid, snap.docs, snap.metadata.fromCache);
+      // Sort client-side newest first
+      const sortedExpenses = [...snapshot.expenses].sort(
+        (a, b) => b.occurredAt.localeCompare(a.occurredAt),
+      );
+      onChange({ ...snapshot, expenses: sortedExpenses });
+    },
+    (error) => onError(toError(error)),
+  );
+}
