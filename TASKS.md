@@ -16,7 +16,13 @@ are in the device queue. M7 (SMS) is scaffolding only. M8 (hardening) hasn't
 started.
 
 
-> **Agent session 2026-10-11 — state for whoever resumes.** Landed on `work/device`: L1–L5, K1, K2, K3, K4, K7, K9, K11, K12, AC1, SM1 (all verified: typecheck, shared/mobile tests, invariants, testids, a11y, rules). D10 is partly done (see its row). **Known red: `npm run test:functions` has 6 failing tests** because K4 rewrote the shared rollup maths and `functions/src/{rollups,handlers}.ts` have not been ported yet — that is exactly task **K5** (todo; three attempts failed, a partial patch is saved outside the repo at `../loop-wip/K5-partial-attempts.patch`, do not trust it). **Unfinished WIP branches (not merged):** `task/k10-wip` (K10 refunds: shared `refundableRemainder`/`apportionRefund` + tests done, refund screen / entry refund mode / detail section not done), `task/sm2-wip` (SM2 `matchRefund`/`pairTransfers` partial, unverified). Next ready tasks: K5, K8, K10, SM2, K6 (after K5), AC2, then the rest of P2. Opencode model notes: see the saved model registry (nvidia nemotron / openrouter models work; stagger concurrent starts by 30 s).
+> **Agent session 2026-10-15 — state for whoever resumes.** `master` = `work/device` = `666335d`; K5, SM2 and K10 landed and the old known red is gone (on `f604a0c`: test:functions 74, rules 64, typecheck 0, shared 523 + NY 524 + Kolkata 9, mobile 266, invariants/testids/a11y exit 0). **Not yet checked — do these next time:**
+> 1. **K10 `666335d` was finished in a cloud session and has not been re-verified locally.** Run `npm run typecheck`, `npm test`, `npm run test:functions`, `npm run test:rules`, `npm run check:invariants`, `npm run check:testids`, `npm run check:a11y -- --max 0` on `master`, and record the counts in the baseline table.
+> 2. **No device check yet** for K5, SM2 or K10 (owner runs section D): refund flow on Loop_API35 (Record refund from the edit screen → pre-filled remainder → save; Refunds section "X of Y refunded"; overspend note; "Original deleted"), and rollups/account balances after an edit/delete on device.
+> 3. **K5 known limit, untested:** a `rebuildUserLedger` span rebuild cannot repair an expense whose move *out of* the span the trigger never processed.
+> 4. **Cleanup left over:** remove worktree `../loop-w3` and branch `task/k10-wip` (local and `origin`), then `git worktree prune`. The `../loop-wip/` patches are backups only.
+>
+> Next ready tasks: K6, K8, AC2, SM3 (after AC2), then the rest of P2. Opencode: `oc-run.sh` was updated for opencode v2 (`--standalone`, `model#variant`); kr/* models are out of credit — use the NVIDIA Nemotron models.
 
 ---
 
