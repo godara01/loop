@@ -17,6 +17,15 @@ dependencies and parallel lanes, plus a device queue (section D) for everything
 that needs the Android emulator. Don't create other trackers (`PLAN.md`,
 `GATES.md`, `docs/tasks/`).
 
+## How Claude works here
+
+**Claude orchestrates; opencode implements.** By default, Claude delegates
+implementation tasks from `TASKS.md` to opencode sessions using the owner's
+opencode delegation skill, and acts as the orchestrator: it picks ready tasks,
+writes each brief, sets up a worktree per session (rule 10 in `TASKS.md`),
+reviews the result, re-runs the "Done when" checks itself, and lands the commit.
+Claude writes the code itself only when the owner explicitly asks it to.
+
 ## Repo layout
 
 ```
