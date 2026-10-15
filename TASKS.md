@@ -16,7 +16,13 @@ are in the device queue. M7 (SMS) is scaffolding only. M8 (hardening) hasn't
 started.
 
 
-> **Agent session 2026-10-11 — state for whoever resumes.** Landed on `work/device`: L1–L5, K1, K2, K3, K4, K7, K9, K11, K12, AC1, SM1 (all verified: typecheck, shared/mobile tests, invariants, testids, a11y, rules). D10 is partly done (see its row). **Known red: `npm run test:functions` has 6 failing tests** because K4 rewrote the shared rollup maths and `functions/src/{rollups,handlers}.ts` have not been ported yet — that is exactly task **K5** (todo; three attempts failed, a partial patch is saved outside the repo at `../loop-wip/K5-partial-attempts.patch`, do not trust it). **Unfinished WIP branches (not merged):** `task/k10-wip` (K10 refunds: shared `refundableRemainder`/`apportionRefund` + tests done, refund screen / entry refund mode / detail section not done), `task/sm2-wip` (SM2 `matchRefund`/`pairTransfers` partial, unverified). Next ready tasks: K5, K8, K10, SM2, K6 (after K5), AC2, then the rest of P2. Opencode model notes: see the saved model registry (nvidia nemotron / openrouter models work; stagger concurrent starts by 30 s).
+> **Agent session 2026-10-15 — state for whoever resumes.** `work/device` is merged into `master`, plus SM2, K5 (parts A and B) and K10 (`666335d`). The old known red is gone: on `f604a0c`, `test:functions` 74/74, `test:rules` 64/64, typecheck, unit tests, invariants, testids and a11y all passed. **Not yet checked (do these first next session):**
+> 1. **K10 was not re-run against `test:rules` / `test:functions` on top of K5.** Only typecheck, `npm test` (mobile 266, shared 538, 0 failed), invariants, testids and `check:a11y -- --max 0` ran on `666335d`. K10 doesn't touch rules or functions, but run both once to confirm.
+> 2. **No device run of refunds yet:** Record refund from the edit screen, the prefilled remainder, "X of Y refunded", the overspend note, and "Original deleted". These belong with K13 / D11.
+> 3. **K5 known limit, unfixed:** a span `rebuildUserLedger` can't repair an expense whose move *out* of the span the trigger never processed (see the K5 commit body). Decide whether that needs a task.
+> 4. **K5 part B and SM2 haven't run on a device.** Their parity and pairing tests passed only in unit and functions tests.
+>
+> Next ready tasks: K8, AC2, K6 (after K5, now unblocked), then SM3 once AC2 and K3 are done. opencode notes: the `opencode-delegate` skill was patched for opencode v2.0.29 (no `--dir`, `model#variant`, `--standalone`); the kr/claude-sonnet provider ran out of credit on 2026-10-15, and the Nemotron models worked but are slow.
 
 ---
 
