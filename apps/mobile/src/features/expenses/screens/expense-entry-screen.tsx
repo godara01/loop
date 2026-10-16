@@ -459,7 +459,7 @@ const originalExpenseStateForDeletionCheck = useExpense(
           <Ionicons name="close" size={26} color={colors.text} />
         </Pressable>
         <Text style={styles.eyebrow}>
-          {mode === 'new' ? 'NEW EXPENSE' : mode === 'approve' ? 'APPROVE EXPENSE' : mode === 'refund' ? 'RECORD REFUND' : 'EDIT EXPENSE'}
+          {mode === 'new' ? (entryKind === 'income' ? 'NEW INCOME' : 'NEW EXPENSE') : mode === 'approve' ? 'APPROVE EXPENSE' : mode === 'refund' ? 'RECORD REFUND' : 'EDIT EXPENSE'}
         </Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -484,17 +484,20 @@ const originalExpenseStateForDeletionCheck = useExpense(
           hitSlop={8}
           onPress={() => {
             haptic('selection');
-            router.push(`/expense/refund/${existing.expense.id}`);
+            // Replace, not push: the entry screens share one draft store, so a
+            // refund opened on top would overwrite this edit's draft and leave
+            // it blank (₹0) underneath when the refund saves.
+            router.replace(`/expense/refund/${existing.expense.id}`);
           }}
           style={styles.refundRecordButton}>
-          <Ionicons name="refresh-circle-outline" size={16} color={palette.lime[400]} />
+          <Ionicons name="refresh-circle-outline" size={16} color={palette.lime} />
           <Text style={styles.refundRecordButtonText}>RECORD REFUND</Text>
         </Pressable>
       ) : null}
 
       {mode === 'edit' && existing.status === 'ready' && existing.expense.kind === 'refund' && originalDeleted ? (
         <View testID="refund-original-deleted" style={styles.refundOriginalDeleted}>
-          <Text style={type.bodyLg}>Original deleted</Text>
+          <Text style={[type.bodyLg, { color: colors.textMuted }]}>Original deleted</Text>
         </View>
       ) : null}
       {mode === 'edit' ? (
@@ -687,7 +690,7 @@ const originalExpenseStateForDeletionCheck = useExpense(
                 );
               }
               return (
-                 <Text testID="refunds-summary" style={type.bodyLg}>
+                 <Text testID="refunds-summary" style={[type.bodyLg, { color: colors.text }]}>
                   {formatMoney({ minor: totalRefunded, currency: existing.expense.total.currency })} of {formatMoney(existing.expense.total)} refunded
                 </Text>
               );
@@ -708,7 +711,7 @@ const originalExpenseStateForDeletionCheck = useExpense(
       <View testID="entry-save" accessible>
         <TactileButton
           testID="entry-save-button"
-          label={mode === 'new' ? saveLabel : mode === 'approve' ? 'Approve' : 'Update'}
+          label={mode === 'new' ? saveLabel : mode === 'approve' ? 'Approve' : mode === 'refund' ? 'Save refund' : 'Update'}
           fullWidth
           onPress={onSave}
         />
@@ -792,8 +795,8 @@ const styles = StyleSheet.create({
     paddingVertical: space.xs + 2,
   },
   dateChipSelected: {
-    backgroundColor: palette.lime[400],
-    borderColor: palette.lime[400],
+    backgroundColor: palette.lime,
+    borderColor: palette.lime,
   },
   dateChipText: { ...type.monoSm, color: colors.text },
   dateChipTextSelected: { color: palette.void },
@@ -816,6 +819,6 @@ const styles = StyleSheet.create({
   refundNote: { ...type.bodySm, color: colors.textMuted, marginTop: 2 },
   refundExceeds: { ...type.bodySm, color: colors.debit, marginTop: space.md },
   refundRecordButton: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.md },
-  refundRecordButtonText: { ...type.monoSm, color: palette.lime[400] },
+  refundRecordButtonText: { ...type.monoSm, color: palette.lime },
     refundOriginalDeleted: { ...type.bodyLg, color: colors.textMuted, marginTop: space.xs },
  });

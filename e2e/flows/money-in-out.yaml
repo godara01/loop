@@ -1,0 +1,69 @@
+# v1.2 money in and out, end to end (docs/05 § Spend, Income, Net; docs/17 §
+# Refunds): spend, income, a partial refund, the three Insights views, offline,
+# and deleting the original. First run 2026-10-16 on Loop_API35.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
+# 1. Spend 500 on SHOPPING
+- tapOn: { id: "dock-add" }
+- extendedWaitUntil: { visible: { id: "entry-amount" }, timeout: 15000 }
+- tapOn: { id: "pad-key-5" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "category-chip-SHOPPING" }
+- tapOn: { id: "entry-description" }
+- inputText: "Shoes"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn: { id: "entry-save" }
+- extendedWaitUntil: { visible: { id: "screen-orbit" }, timeout: 15000 }
+# 2. Income 1000
+- tapOn: { id: "dock-add" }
+- extendedWaitUntil: { visible: { id: "entry-amount" }, timeout: 15000 }
+- tapOn: { id: "kind-switch-income" }
+- tapOn: { id: "pad-key-1" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "category-chip-SALARY" }
+- tapOn: { id: "entry-save" }
+- extendedWaitUntil: { visible: { id: "screen-orbit" }, timeout: 15000 }
+# 3. Refund 200 of the shoes: open it from the ledger
+- tapOn: { id: "tab-activity" }
+- tapOn: { text: "Shoes" }
+- extendedWaitUntil: { visible: { id: "entry-record-refund" }, timeout: 15000 }
+- tapOn: { id: "entry-record-refund" }
+- extendedWaitUntil: { visible: { id: "entry-amount" }, timeout: 15000 }
+- longPressOn: { id: "pad-key-backspace" }
+- tapOn: { id: "pad-key-2" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "entry-save" }
+- waitForAnimationToEnd
+# 4. Saving the refund returns to the ledger (not a blank edit screen)
+- assertVisible: { id: "screen-ledger" }
+# 5. Insights this month: Spend 500-200=300, Income 1000, Net 700
+- tapOn: { id: "tab-insights" }
+- extendedWaitUntil: { visible: { id: "insights-view-spend" }, timeout: 15000 }
+- assertVisible: { id: "insights-period-total", text: "₹300.00" }
+- tapOn: { id: "insights-view-income" }
+- assertVisible: { id: "insights-period-total", text: "₹1,000.00" }
+- tapOn: { id: "insights-view-net" }
+- assertVisible: { id: "insights-period-total", text: "₹700.00" }
+- assertVisible: { id: "insights-net-in" }
+- assertVisible: { id: "insights-net-out" }
+# 6. Offline: the numbers stay (current month comes from the cache)
+- setAirplaneMode: enabled
+- tapOn: { id: "insights-view-spend" }
+- assertVisible: { id: "insights-period-total", text: "₹300.00" }
+- setAirplaneMode: disabled
+# 7. Delete the original; its refund stays and says "Original deleted"
+- tapOn: { id: "tab-activity" }
+- tapOn: { text: "Shoes", index: 1 }
+- extendedWaitUntil: { visible: { id: "entry-delete" }, timeout: 15000 }
+- tapOn: { id: "entry-delete" }
+- assertVisible: { id: "delete-sheet" }
+- tapOn: { id: "delete-confirm" }
+- waitForAnimationToEnd
+- tapOn: { text: "Shoes", index: 0 }
+- extendedWaitUntil: { visible: { id: "refund-original-deleted" }, timeout: 15000 }
