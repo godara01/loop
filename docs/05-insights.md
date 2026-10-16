@@ -355,10 +355,12 @@ the expenses, the expenses win and the rollup is regenerated.
 
 - [ ] (v1.1) A custom range persists across launches, steps by its own length, and
       can't reach the future or exceed 366 days.
-- [ ] (v1.2) Spend, Income and Net each equal hand-computed values over a fixture
+- [x] (v1.2) Spend, Income and Net each equal hand-computed values over a fixture
       with expenses, refunds (same and later period), income, transfers and
       squad mirrors (excluded and included).
-- [ ] (v1.2) Percentages still sum to 100 with a net-negative category present.
+      (proof: packages/shared/src/__tests__/insights.test.ts › "spend / income / net (v1.2)" and "rollups + cache merge per view (v1.2)")
+- [x] (v1.2) Percentages still sum to 100 with a net-negative category present.
+      (proof: packages/shared/src/__tests__/insights.test.ts › "keeps percentages summing to 100 with a net-negative category present")
 - [ ] (v1.4) The trend draws no bars before the first transaction.
 - [ ] (v1.4) The projection is hidden before day 7 and with < 28 days of history,
       and the formula sheet's numbers add up to the projection exactly.

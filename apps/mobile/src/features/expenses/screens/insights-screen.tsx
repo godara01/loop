@@ -1,10 +1,13 @@
 /**
  * Category and day views. Past days come from Function-maintained rollups,
- * this month from the offline-first expense cache, merged by mergePeriodSources.
+ * this month from the offline-first expense cache, merged per Spend / Income /
+ * Net view by mergePeriodSourcesForView (docs/05-insights.md § Spend, Income, Net).
  */
 
 import {
   type Category,
+  type InsightsView,
+  type Money,
   type Period,
   type PeriodKind,
   addDays,
@@ -13,12 +16,13 @@ import {
   colors,
   compareToPrevious,
   customPeriod,
+  deltaTone,
   displayPercentages,
   formatMoney,
   intensityStep,
   isCurrentPeriod,
   layout,
-  mergePeriodSources,
+  mergePeriodSourcesForView,
   periodOf,
   previousPeriod,
   savedCustomPeriod,
@@ -73,6 +77,12 @@ function cachedRecords(state: ExpensesState) {
 
 const PERIOD_LABEL: Record<PeriodKind, string> = { week: 'WEEK', month: 'MONTH', rolling30: '30 DAYS', custom: 'CUSTOM' };
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const VIEWS: readonly { readonly view: InsightsView; readonly label: string; readonly testID: string }[] = [
+  { view: 'spend', label: 'SPEND', testID: 'insights-view-spend' },
+  { view: 'income', label: 'INCOME', testID: 'insights-view-income' },
+  { view: 'net', label: 'NET', testID: 'insights-view-net' },
+];
+const HERO_LABEL: Record<InsightsView, string> = { spend: 'period spend', income: 'period income', net: 'period net' };
 
 export function InsightsScreen() {
   const insets = useSafeAreaInsets();
@@ -84,6 +94,7 @@ export function InsightsScreen() {
       : periodOf(settings.insightsPeriod, todayISO())
   );
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [view, setView] = useState<InsightsView>('spend');
   // Past days read rollups; this month reads the offline cache (docs/05-insights.md#data-sources).
   const cacheFrom = monthStart(todayISO());
   const previous = previousPeriod(period);
@@ -98,20 +109,23 @@ export function InsightsScreen() {
     [categories],
   );
   const model = useMemo(() => {
-    const merged = mergePeriodSources({
+    const merged = mergePeriodSourcesForView({
       period,
       currency: profile.currency,
       cacheFrom,
       rollups: rollups.status === 'ready' ? rollups.rollups : {},
       cached: cachedRecords(expenses),
-    });
+    }, view);
     return {
       ...merged,
       maximum: Math.max(...merged.days.map((day) => day.total.minor), 0),
       maximumWeekday: Math.max(...merged.weekdays.map((value) => value.minor), 1),
     };
-  }, [expenses, rollups, period, cacheFrom, profile.currency]);
-  const { visible, collapsed } = collapseLongTail(model.totals);
+  }, [expenses, rollups, period, cacheFrom, profile.currency, view]);
+  // A net-refund category (Spend view) sits under the chart, outside the 100% (docs/17).
+  const positiveTotals = model.totals.filter((row) => row.total.minor > 0);
+  const netRefunds = model.totals.filter((row) => row.total.minor < 0);
+  const { visible, collapsed } = collapseLongTail(positiveTotals);
   const percentages = displayPercentages(model.totals);
   const percentageById = new Map(model.totals.map((row, index) => [row.categoryId, percentages[index] ?? 0]));
   const atPresent = isCurrentPeriod(period, todayISO());
@@ -125,6 +139,11 @@ export function InsightsScreen() {
       setPeriod(periodOf(kind, todayISO()));
     }
   };
+  const changeView = (next: InsightsView) => {
+    if (next === view) return;
+    haptic('selection');
+    setView(next);
+  };
   const step = (direction: -1 | 1) => {
     if (direction === 1 && atPresent) return;
     haptic('selection');
@@ -133,13 +152,13 @@ export function InsightsScreen() {
 
   const previousReady = previousExpenses.status === 'ready' && previousRollups.status !== 'loading' && previousRollups.status !== 'error';
   const previousTotal = previousReady
-    ? mergePeriodSources({
+    ? mergePeriodSourcesForView({
         period: previous,
         currency: profile.currency,
         cacheFrom,
         rollups: previousRollups.status === 'ready' ? previousRollups.rollups : {},
         cached: cachedRecords(previousExpenses),
-      }).total
+      }, view).total
     : null;
   const needsConnection = rollups.status === 'ready' && rollups.maybeUnfetched;
 
@@ -155,6 +174,8 @@ export function InsightsScreen() {
     console.log(`[perf] insights ready ${Math.round(performance.now() - mountedAt.current)}ms cached=${cached} rollupDays=${rollups.status === 'ready' ? Object.keys(rollups.rollups).length : 0}`);
   }, [sourcesReady, expenses, rollups]);
   const delta = previousTotal ? compareToPrevious(model.stats.total, previousTotal) : null;
+  const tone = delta ? deltaTone(view, delta) : 'neutral';
+  const netNegative = view === 'net' && model.stats.total.minor < 0;
 
   const customLabel = useMemo(() => {
     if (settings.insightsPeriod !== 'custom' || !settings.insightsCustomStartDate || !settings.insightsCustomEndDate) {
@@ -199,6 +220,20 @@ export function InsightsScreen() {
         ))}
       </View>
 
+      <View style={styles.periodControl} accessibilityRole="tablist">
+        {VIEWS.map((item) => (
+          <Pressable
+            key={item.view}
+            testID={item.testID}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: view === item.view }}
+            onPress={() => changeView(item.view)}
+            style={[styles.periodChip, view === item.view && styles.periodChipActive]}>
+            <Text style={[styles.periodLabel, view === item.view && styles.periodLabelActive]}>{item.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+
       <View style={styles.navigator}>
         <Pressable testID="insights-previous" accessibilityRole="button" accessibilityLabel="Previous period" onPress={() => step(-1)} hitSlop={10}><Text style={styles.nav}>‹</Text></Pressable>
         <View style={styles.rangeBlock}><Text testID="insights-period-current" style={styles.range}>{settings.insightsPeriod === 'custom' ? customLabel : PERIOD_LABEL[settings.insightsPeriod]}</Text><Text style={styles.range}>{period.startDate} — {addDays(period.endDate, -1)}</Text></View>
@@ -214,21 +249,26 @@ export function InsightsScreen() {
       ) : (
         <>
           <Card hero accent="credit" style={styles.hero}>
-            <MonoTag tone="credit">period spend</MonoTag>
-            <Text testID="insights-period-total" style={styles.total}>{formatMoney(model.stats.total)}</Text>
+            <MonoTag tone="credit">{HERO_LABEL[view]}</MonoTag>
+            <Text testID="insights-period-total" style={[styles.total, netNegative && styles.totalNegative]}>{formatMoney(model.stats.total)}</Text>
             <View style={styles.heroFooter}>
-              <Text style={styles.caption}>{model.stats.count} {model.stats.count === 1 ? 'expense' : 'expenses'} · {model.stats.zeroSpendDays} quiet days</Text>
-              {delta && delta.percent !== null ? <Text style={[styles.delta, delta.direction === 'down' ? styles.deltaGood : delta.direction === 'up' ? styles.deltaBad : styles.deltaFlat]}>{delta.percent > 0 ? '+' : ''}{Math.round(delta.percent)}%</Text> : null}
+              <Text style={styles.caption}>{model.stats.count} {view === 'spend' ? (model.stats.count === 1 ? 'expense' : 'expenses') : model.stats.count === 1 ? 'entry' : 'entries'}{view === 'spend' ? ` · ${model.stats.zeroSpendDays} quiet days` : ''}</Text>
+              {delta && delta.percent !== null ? <Text testID="insights-delta" style={[styles.delta, tone === 'good' ? styles.deltaGood : tone === 'bad' ? styles.deltaBad : styles.deltaFlat]}>{delta.percent > 0 ? '+' : ''}{Math.round(delta.percent)}%</Text> : null}
             </View>
           </Card>
 
           {model.days.filter((day) => day.count > 0).length < 3 ? <Text style={styles.thinData}>{EMPTY_STATES.insightsThinData}</Text> : null}
 
-          <Text style={styles.section}>BY CATEGORY</Text>
-          <Card style={styles.list}>
-            {visible.map((row) => <CategoryRow key={row.categoryId} row={row} category={categoriesById.get(row.categoryId)} percent={percentageById.get(row.categoryId) ?? 0} period={period} />)}
-            {collapsed.length > 0 ? <LongTail rows={collapsed} categoriesById={categoriesById} percentages={percentageById} period={period} /> : null}
-          </Card>
+          <Text style={styles.section}>{view === 'net' ? 'IN AND OUT' : 'BY CATEGORY'}</Text>
+          {view === 'net' ? (
+            <Card style={styles.list}><InOutBars totals={model.totals} currency={profile.currency} /></Card>
+          ) : (
+            <Card style={styles.list}>
+              {visible.map((row) => <CategoryRow key={row.categoryId} row={row} category={categoriesById.get(row.categoryId)} percent={percentageById.get(row.categoryId) ?? 0} period={period} />)}
+              {collapsed.length > 0 ? <LongTail rows={collapsed} categoriesById={categoriesById} percentages={percentageById} period={period} /> : null}
+              {netRefunds.map((row) => <NetRefundRow key={row.categoryId} row={row} category={categoriesById.get(row.categoryId)} />)}
+            </Card>
+          )}
 
           <Text style={styles.section}>BY DAY</Text>
           <Card style={styles.calendar}>
@@ -302,10 +342,30 @@ function LongTail({ rows, categoriesById, percentages, period }: { rows: readonl
   return <View style={styles.longTail}><Pressable testID="insights-long-tail" accessibilityRole="button" accessibilityLabel={`${rows.length} small categories`} accessibilityState={{ expanded }} onPress={() => { haptic('tap'); setExpanded((value) => !value); }}><Text style={styles.collapsed}>{expanded ? '−' : '+'} {rows.length} SMALL CATEGORIES · {formatMoney({ minor: total, currency: rows[0]!.total.currency })}</Text></Pressable>{expanded ? rows.map((row) => <CategoryRow key={row.categoryId} row={row} category={categoriesById.get(row.categoryId)} percent={percentages.get(row.categoryId) ?? 0} period={period} />) : null}</View>;
 }
 
+/** A category whose refunds outweigh its spend this period: no bar, lime amount, never clamped (docs/17). */
+function NetRefundRow({ row, category }: { row: ReturnType<typeof totalsByCategory>[number]; category: Category | undefined }) {
+  const tint = category ? categoryColors[category.colorToken].tint : colors.textMuted;
+  return <View testID={`insights-net-refund-${row.categoryId}`} accessible accessibilityLabel={`${category?.name ?? 'Unknown'}, net refund ${formatMoney(row.total)}`} style={styles.categoryTop}><View style={styles.amountGroup}><MonoTag tint={tint}>{category?.name ?? 'Unknown'}</MonoTag><MonoTag tone="credit">refund</MonoTag></View><View style={styles.amountGroup}><Text style={styles.refundAmount}>{formatMoney(row.total)}</Text><Text style={styles.caption}>net refund</Text></View></View>;
+}
+
+/** Net view: two bars, money in and money out, scaled to the larger. */
+function InOutBars({ totals, currency }: { totals: readonly ReturnType<typeof totalsByCategory>[number][]; currency: Money['currency'] }) {
+  const inMinor = totals.find((row) => row.categoryId === 'in')?.total.minor ?? 0;
+  const outMinor = totals.find((row) => row.categoryId === 'out')?.total.minor ?? 0;
+  const scale = Math.max(Math.abs(inMinor), Math.abs(outMinor), 1);
+  const bar = (label: string, minor: number, color: string, testID: string) => (
+    <View testID={testID} accessible accessibilityLabel={`${label}, ${formatMoney({ minor, currency })}`} style={styles.categoryRow}>
+      <View style={styles.categoryTop}><MonoTag tint={color}>{label}</MonoTag><Text style={styles.amount}>{formatMoney({ minor, currency })}</Text></View>
+      <View style={styles.track}><View style={[styles.bar, { backgroundColor: color, width: `${Math.max((Math.max(minor, 0) / scale) * 100, 2)}%` }]} /></View>
+    </View>
+  );
+  return <>{bar('IN', inMinor, colors.credit, 'insights-net-in')}{bar('OUT', outMinor, colors.debit, 'insights-net-out')}</>;
+}
+
 function Stat({ label, value }: { label: string; value: string }) { return <View style={styles.stat}><Text style={styles.statLabel}>{label}</Text><Text style={styles.statValue}>{value}</Text></View>; }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: layout.screenMargin, gap: space.md }, eyebrow: { ...type.monoSm, color: colors.textMuted }, title: { ...type.headlineLg, color: colors.text, marginTop: 2 }, periodControl: { flexDirection: 'row', gap: space.xs }, periodChip: { borderWidth: 1.5, borderColor: colors.border, borderRadius: 99, paddingHorizontal: space.sm, paddingVertical: space.xs }, periodChipActive: { backgroundColor: colors.credit, borderColor: colors.credit }, periodLabel: { ...type.monoSm, color: colors.textMuted }, periodLabelActive: { color: colors.onAccent }, navigator: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, nav: { ...type.displayLg, color: colors.credit }, rangeBlock: { alignItems: 'center' }, range: { ...type.monoSm, color: colors.textMuted }, disabled: { color: colors.border }, hero: { gap: space.sm }, heroFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }, total: { ...type.displayLg, color: colors.credit }, caption: { ...type.bodyMd, color: colors.textMuted, flex: 1 }, delta: { ...type.monoMd, borderWidth: 1.5, borderRadius: 99, paddingHorizontal: space.sm, paddingVertical: 2 }, deltaGood: { color: colors.credit, borderColor: colors.credit }, deltaBad: { color: colors.debit, borderColor: colors.debit }, deltaFlat: { color: colors.textMuted, borderColor: colors.border }, thinData: { ...type.bodyMd, color: colors.textMuted }, section: { ...type.monoSm, color: colors.textMuted, marginTop: space.sm }, list: { gap: space.md }, categoryRow: { gap: space.xs }, categoryTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }, amount: { ...type.monoSm, color: colors.text },
+  screen: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: layout.screenMargin, gap: space.md }, eyebrow: { ...type.monoSm, color: colors.textMuted }, title: { ...type.headlineLg, color: colors.text, marginTop: 2 }, periodControl: { flexDirection: 'row', gap: space.xs }, periodChip: { borderWidth: 1.5, borderColor: colors.border, borderRadius: 99, paddingHorizontal: space.sm, paddingVertical: space.xs }, periodChipActive: { backgroundColor: colors.credit, borderColor: colors.credit }, periodLabel: { ...type.monoSm, color: colors.textMuted }, periodLabelActive: { color: colors.onAccent }, navigator: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, nav: { ...type.displayLg, color: colors.credit }, rangeBlock: { alignItems: 'center' }, range: { ...type.monoSm, color: colors.textMuted }, disabled: { color: colors.border }, hero: { gap: space.sm }, heroFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }, total: { ...type.displayLg, color: colors.credit }, totalNegative: { color: colors.debit }, refundAmount: { ...type.monoSm, color: colors.credit }, caption: { ...type.bodyMd, color: colors.textMuted, flex: 1 }, delta: { ...type.monoMd, borderWidth: 1.5, borderRadius: 99, paddingHorizontal: space.sm, paddingVertical: 2 }, deltaGood: { color: colors.credit, borderColor: colors.credit }, deltaBad: { color: colors.debit, borderColor: colors.debit }, deltaFlat: { color: colors.textMuted, borderColor: colors.border }, thinData: { ...type.bodyMd, color: colors.textMuted }, section: { ...type.monoSm, color: colors.textMuted, marginTop: space.sm }, list: { gap: space.md }, categoryRow: { gap: space.xs }, categoryTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }, amount: { ...type.monoSm, color: colors.text },
   // Amount and percentage as separate runs with no breakable space: on Android
   // the mono font's letterSpacing plus the fallback ₹ glyph under-measures the
   // line, and a single "₹100.00 · 67%" wrapped its percentage out of view.

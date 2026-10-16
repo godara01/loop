@@ -69,7 +69,11 @@ export function contributionsOf(tx: Expense): TxContributions {
 
   const lines = tx.lines && tx.lines.length > 0 ? tx.lines : null;
 
-  if (kind === 'expense') {
+  // Squad mirrors with excludeFromSpend add nothing to the buckets
+  // (docs/11-firebase.md#rollups-v2); their account flows below still apply.
+  if (excludeFromSpend) {
+    // no bucket contributions
+  } else if (kind === 'expense') {
     if (lines) {
       for (const line of lines) {
         const cat = line.categoryId;

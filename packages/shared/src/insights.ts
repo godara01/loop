@@ -15,7 +15,7 @@
 
 import { distributeLargestRemainder } from './internal/largest-remainder';
 import { type CurrencyCode, type Money, money } from './money';
-import type { DailyRollup } from './types';
+import type { DailyRollup, TransactionKind } from './types';
 
 /** Half-open [startDate, endDate) over LOCAL dates. */
 export interface Period {
@@ -34,6 +34,15 @@ export interface SpendRecord {
   readonly categoryId: string;
   readonly total: Money;
   readonly deletedAt?: string | null;
+  // ——— v1.2, all optional so v1 records and v1 rollup rows still fit ———
+  readonly id?: string;
+  /** Absent means 'expense'. */
+  readonly kind?: TransactionKind;
+  /** Split lines. When present, the record counts per line instead of per `categoryId`. */
+  readonly lines?: readonly { readonly categoryId: string; readonly amountMinor: number }[] | null;
+  readonly refundOf?: string | null;
+  /** Squad mirrors the user chose to keep out of their own numbers. */
+  readonly excludeFromSpend?: boolean;
 }
 
 export interface CategoryTotal {
@@ -272,7 +281,9 @@ export function totalsByDay(
  * divide). Same method as money splitting, for the same reason.
  */
 export function displayPercentages(totals: readonly CategoryTotal[]): number[] {
-  const weights = totals.map((t) => Math.abs(t.total.minor));
+  // A net-refund category (total < 0) sits outside the 100% (docs/17 § Refunds
+  // across periods): it gets 0 and the positive categories share all of 100.
+  const weights = totals.map((t) => Math.max(0, t.total.minor));
   if (weights.length === 0) return [];
   if (weights.every((w) => w === 0)) return weights.map(() => 0);
   return distributeLargestRemainder(100, weights);
@@ -371,6 +382,196 @@ export function collapseLongTail(
   return collapsed.length > 1 ? { visible, collapsed } : { visible: totals.slice(), collapsed: [] };
 }
 
+// ── Spend, Income, Net (v1.2) ─────────────────────────────────────────────
+// docs/05-insights.md § Spend, Income, Net and docs/17 § Refunds.
+
+export type InsightsView = 'spend' | 'income' | 'net';
+
+/** One signed contribution of a record to a view's headline, keyed by category. */
+interface ViewRow {
+  readonly categoryId: string;
+  readonly minor: number;
+}
+
+function linesOf(record: SpendRecord): readonly ViewRow[] {
+  if (record.lines && record.lines.length > 0) {
+    return record.lines.map((line) => ({ categoryId: line.categoryId, minor: line.amountMinor }));
+  }
+  return [{ categoryId: record.categoryId, minor: record.total.minor }];
+}
+
+/**
+ * What a live, in-period record adds to a view. Spend is expense minus refund;
+ * Income is income; Net is income minus spend, its rows keyed `in` and `out`.
+ * Transfers, settlements, loans and excluded mirrors contribute nothing.
+ */
+function viewRows(record: SpendRecord, view: InsightsView): readonly ViewRow[] {
+  if (record.excludeFromSpend === true) return [];
+  const kind = record.kind ?? 'expense';
+  const sign = kind === 'expense' ? 1 : kind === 'refund' ? -1 : 0;
+  if (view === 'spend') {
+    return sign === 0 ? [] : linesOf(record).map((row) => ({ categoryId: row.categoryId, minor: sign * row.minor }));
+  }
+  if (view === 'income') return kind === 'income' ? linesOf(record) : [];
+  if (kind === 'income') return [{ categoryId: 'in', minor: record.total.minor }];
+  if (sign === 0) return [];
+  const spent = linesOf(record).reduce((sum, row) => sum + row.minor, 0);
+  return [{ categoryId: 'out', minor: -sign * spent }];
+}
+
+function isOriginal(record: SpendRecord): boolean {
+  return isLive(record) && record.id !== undefined && (record.kind ?? 'expense') === 'expense';
+}
+
+/**
+ * Caps the refunds of each original at the original's amount, so two offline
+ * devices refunding the same purchase never push spend below zero
+ * (docs/17 § When two offline devices over-refund). Refunds are taken in
+ * `localDate`, then `id` order; the one that crosses the cap keeps the
+ * remainder and later ones become 0. Only applies when the original is among
+ * `records` — rollups store raw sums. Returns a same-length array in the same
+ * order, with copies for changed records; the input is never mutated.
+ */
+export function clampRefunds<T extends SpendRecord>(records: readonly T[]): T[] {
+  const capById = new Map<string, number>();
+  for (const record of records) {
+    if (isOriginal(record)) capById.set(record.id as string, record.total.minor);
+  }
+
+  const refundIndexes = new Map<string, number[]>();
+  records.forEach((record, index) => {
+    if (record.kind !== 'refund' || !isLive(record) || !record.refundOf || !capById.has(record.refundOf)) return;
+    const list = refundIndexes.get(record.refundOf) ?? [];
+    list.push(index);
+    refundIndexes.set(record.refundOf, list);
+  });
+
+  const clampedAmount = new Map<number, number>();
+  for (const [originalId, indexes] of refundIndexes) {
+    indexes.sort((a, b) => {
+      const left = records[a] as T;
+      const right = records[b] as T;
+      return left.localDate.localeCompare(right.localDate) || (left.id ?? '').localeCompare(right.id ?? '') || a - b;
+    });
+    let room = capById.get(originalId) ?? 0;
+    for (const index of indexes) {
+      const amount = (records[index] as T).total.minor;
+      const kept = Math.max(0, Math.min(amount, room));
+      room -= kept;
+      if (kept !== amount) clampedAmount.set(index, kept);
+    }
+  }
+
+  return records.map((record, index) => {
+    const kept = clampedAmount.get(index);
+    if (kept === undefined) return record;
+    const lines =
+      record.lines && record.lines.length > 0
+        ? kept === 0
+          ? record.lines.map((line) => ({ ...line, amountMinor: 0 }))
+          : distributeLargestRemainder(kept, record.lines.map((line) => Math.abs(line.amountMinor))).map((amountMinor, i) => ({
+              ...(record.lines as NonNullable<T['lines']>)[i]!,
+              amountMinor,
+            }))
+        : record.lines;
+    return { ...record, total: money(kept, record.total.currency), lines };
+  });
+}
+
+function viewTotal(records: readonly SpendRecord[], period: Period, view: InsightsView): number {
+  let minor = 0;
+  for (const record of inScope(clampRefunds(records), period)) {
+    for (const row of viewRows(record, view)) minor += row.minor;
+  }
+  return minor;
+}
+
+/** Expense minus refund for the period. Cash-basis, so it can be negative. */
+export function periodSpend(records: readonly SpendRecord[], period: Period, currency: CurrencyCode): Money {
+  return money(viewTotal(records, period, 'spend'), currency);
+}
+
+export function periodIncome(records: readonly SpendRecord[], period: Period, currency: CurrencyCode): Money {
+  return money(viewTotal(records, period, 'income'), currency);
+}
+
+/** Income minus spend, with its sign. */
+export function periodNet(records: readonly SpendRecord[], period: Period, currency: CurrencyCode): Money {
+  return money(viewTotal(records, period, 'net'), currency);
+}
+
+type Buckets = Map<string, { minor: number; count: number }>;
+
+function addBucket(map: Buckets, key: string, minor: number, count: number): void {
+  const bucket = map.get(key) ?? { minor: 0, count: 0 };
+  bucket.minor += minor;
+  bucket.count += count;
+  map.set(key, bucket);
+}
+
+/**
+ * Category rows from buckets: zero rows dropped, shares over the positive rows
+ * only (a net-refund row has share 0), largest first, ties by id.
+ */
+function categoryRows(buckets: Buckets, currency: CurrencyCode): CategoryTotal[] {
+  const rows = [...buckets.entries()].filter(([, bucket]) => bucket.minor !== 0);
+  const positive = rows.reduce((sum, [, bucket]) => sum + Math.max(0, bucket.minor), 0);
+  return rows
+    .map(([categoryId, bucket]) => ({
+      categoryId,
+      total: money(bucket.minor, currency),
+      count: bucket.count,
+      share: positive === 0 || bucket.minor <= 0 ? 0 : bucket.minor / positive,
+    }))
+    .sort((a, b) => b.total.minor - a.total.minor || a.categoryId.localeCompare(b.categoryId));
+}
+
+/**
+ * Net per category for Spend (expense lines add, refund lines subtract, so a
+ * category can be negative) or Income. A split record counts once in each
+ * category it touches.
+ */
+export function totalsByCategoryForKind(
+  records: readonly SpendRecord[],
+  period: Period,
+  view: 'spend' | 'income',
+  currency: CurrencyCode,
+): CategoryTotal[] {
+  const buckets: Buckets = new Map();
+  for (const record of inScope(clampRefunds(records), period)) {
+    const rows = viewRows(record, view);
+    for (const row of rows) addBucket(buckets, row.categoryId, row.minor, 0);
+    for (const categoryId of new Set(rows.map((row) => row.categoryId))) addBucket(buckets, categoryId, 0, 1);
+  }
+  return categoryRows(buckets, currency);
+}
+
+/** Every day in the period with that day's spend, income or net. `count` is the records counted. */
+export function totalsByDayForView(
+  records: readonly SpendRecord[],
+  period: Period,
+  view: InsightsView,
+  currency: CurrencyCode,
+): DayTotal[] {
+  const buckets: Buckets = new Map();
+  for (const record of inScope(clampRefunds(records), period)) {
+    const rows = viewRows(record, view);
+    if (rows.length === 0) continue;
+    addBucket(buckets, record.localDate, rows.reduce((sum, row) => sum + row.minor, 0), 1);
+  }
+  return daysInPeriod(period).map((date) => {
+    const bucket = buckets.get(date);
+    return { date, total: money(bucket?.minor ?? 0, currency), count: bucket?.count ?? 0 };
+  });
+}
+
+/** The delta chip's colour meaning per view: less spend is good, more income or net is good. */
+export function deltaTone(view: InsightsView, delta: Delta): 'good' | 'bad' | 'neutral' {
+  if (delta.direction === 'flat') return 'neutral';
+  const goodDirection = view === 'spend' ? 'down' : 'up';
+  return delta.direction === goodDirection ? 'good' : 'bad';
+}
+
 // ── Rollups + cache ───────────────────────────────────────────────────────
 
 /**
@@ -453,6 +654,80 @@ export function mergePeriodSources(sources: PeriodSources): PeriodInsights {
   return {
     total: money(grandTotal, currency),
     totals,
+    days,
+    stats: statsFromDays(days, currency),
+    weekdays: weekdayAveragesFromDays(days, currency),
+    categoryCountsExact: !usedRollups,
+  };
+}
+
+/** What a v2 daily rollup adds to a view: the day's amount, record count and category rows. */
+function rollupView(rollup: DailyRollup, view: InsightsView): { minor: number; count: number; rows: ViewRow[] } {
+  const spendRows = (): ViewRow[] => {
+    const net = new Map<string, number>();
+    for (const [categoryId, minor] of Object.entries(rollup.byCategory)) net.set(categoryId, (net.get(categoryId) ?? 0) + minor);
+    for (const [categoryId, minor] of Object.entries(rollup.refundByCategory ?? {})) net.set(categoryId, (net.get(categoryId) ?? 0) - minor);
+    return [...net.entries()].map(([categoryId, minor]) => ({ categoryId, minor }));
+  };
+  const spend = rollup.totalMinor - (rollup.refundMinor ?? 0);
+  const spendCount = rollup.count + (rollup.refundCount ?? 0);
+  const income = rollup.incomeMinor ?? 0;
+  const incomeCount = rollup.incomeCount ?? 0;
+
+  if (view === 'spend') return { minor: spend, count: spendCount, rows: spendRows() };
+  if (view === 'income') {
+    return { minor: income, count: incomeCount, rows: Object.entries(rollup.incomeByCategory ?? {}).map(([categoryId, minor]) => ({ categoryId, minor })) };
+  }
+  return { minor: income - spend, count: spendCount + incomeCount, rows: [{ categoryId: 'in', minor: income }, { categoryId: 'out', minor: -spend }] };
+}
+
+/**
+ * `mergePeriodSources` for one Spend / Income / Net view. Past days read the
+ * v2 rollup buckets (a v1 rollup reads as expense-only); recent days read the
+ * cached docs, with over-refunds clamped. Equal, to the minor unit, to
+ * computing the same period from the documents alone (absent over-refunds,
+ * which rollups store raw).
+ *
+ * In the Net view the category rows are `in` (income) and `out` (spend), both
+ * as positive-when-normal amounts so the two bars read naturally.
+ */
+export function mergePeriodSourcesForView(sources: PeriodSources, view: InsightsView): PeriodInsights {
+  const { period, currency, cacheFrom, rollups, cached } = sources;
+  const dayBuckets: Buckets = new Map();
+  const categoryBuckets: Buckets = new Map();
+  let usedRollups = false;
+
+  for (const date of daysInPeriod(period)) {
+    if (date >= cacheFrom) continue;
+    usedRollups = true;
+    const rollup = rollups[date];
+    if (!rollup) continue;
+    const day = rollupView(rollup, view);
+    addBucket(dayBuckets, date, day.minor, day.count);
+    for (const row of day.rows) addBucket(categoryBuckets, row.categoryId, row.minor, 0);
+  }
+
+  for (const record of inScope(clampRefunds(cached), period)) {
+    if (record.localDate < cacheFrom) continue;
+    const rows = viewRows(record, view);
+    if (rows.length === 0) continue;
+    addBucket(dayBuckets, record.localDate, rows.reduce((sum, row) => sum + row.minor, 0), 1);
+    for (const row of rows) addBucket(categoryBuckets, row.categoryId, row.minor, 0);
+    for (const categoryId of new Set(rows.map((row) => row.categoryId))) addBucket(categoryBuckets, categoryId, 0, 1);
+  }
+
+  if (view === 'net') {
+    const out = categoryBuckets.get('out');
+    if (out) out.minor = -out.minor;
+  }
+
+  const days = daysInPeriod(period).map((date) => {
+    const bucket = dayBuckets.get(date);
+    return { date, total: money(bucket?.minor ?? 0, currency), count: bucket?.count ?? 0 };
+  });
+  return {
+    total: money(days.reduce((sum, day) => sum + day.total.minor, 0), currency),
+    totals: categoryRows(categoryBuckets, currency),
     days,
     stats: statsFromDays(days, currency),
     weekdays: weekdayAveragesFromDays(days, currency),
