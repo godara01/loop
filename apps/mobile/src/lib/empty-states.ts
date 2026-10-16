@@ -12,6 +12,7 @@ export const EMPTY_STATES = {
   /** Past periods while meta/schema.ledger < 2 (docs/27 § Migration script). */
   insightsUpdatingHistory: 'Updating your history…',
   inbox: 'Transaction messages will show up here for you to approve.',
+  accounts: 'Add where your money lives — a bank, a card, cash.',
 } as const;
 
 export type EmptyStateSurface = keyof typeof EMPTY_STATES;

@@ -13,6 +13,7 @@ import {
   onSnapshot,
   setDoc,
   updateDoc,
+  writeBatch,
 } from '@react-native-firebase/firestore';
 import {
   type Account,
@@ -134,6 +135,15 @@ export function newAccountId(uid: string): string {
 export function saveAccount(uid: string, account: Account): Promise<void> {
   const { db } = firebase();
   return setDoc(doc(db, firestorePaths.account(uid, account.id)), accountToDoc(account, new Date().toISOString()));
+}
+
+/** One batch for the whole drag result, so a reorder is never seen half-applied. */
+export function saveAccountOrder(uid: string, accounts: readonly Account[]): Promise<void> {
+  const { db } = firebase();
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+  for (const account of accounts) batch.set(doc(db, firestorePaths.account(uid, account.id)), accountToDoc(account, now));
+  return batch.commit();
 }
 
 /** Archive is the normal way out: its transactions keep their `accountId` (docs/18 § Edge cases). */

@@ -5,3 +5,4 @@ export { CatalogueScreen, type CatalogueReturnTo } from './screens/catalogue-scr
 export { CategoryEditorScreen } from './screens/category-editor-screen';
 export { ManageCategoriesScreen } from './screens/manage-categories-screen';
 export { saveCategory } from './api/category-repository';
+export { ColorTokenPicker } from './components/color-token-picker';

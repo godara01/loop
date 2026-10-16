@@ -40,6 +40,7 @@ import {
   useWallet,
 } from '@/features/gamification';
 import { haptic } from '@/lib/haptics';
+import { AccountsCard } from '@/features/accounts';
 import { EMPTY_STATES } from '@/lib/empty-states';
 
 import { ExpenseRow } from '../components/expense-row';
@@ -152,6 +153,8 @@ export function OrbitScreen() {
             : `${todays.length} ${todays.length === 1 ? 'expense' : 'expenses'} logged`}
         </Text>
       </Card>
+
+      <AccountsCard />
 
       <View style={styles.checkInContainer}>
         <CheckInPlate
