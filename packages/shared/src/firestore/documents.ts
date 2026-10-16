@@ -25,7 +25,7 @@ import { CURRENCY_SYMBOL, type CurrencyCode, money } from '../money';
 import type { PendingExpense, PendingExpenseSource, PendingExpenseStatus } from '../sms/types';
 import type { SplitMode } from '../split';
 import { CATEGORY_COLOR_TOKENS } from '../theme';
-import type { Expense, ExpenseSource, OnboardingStep, SmsCaptureState, TransactionKind, UserProfile, UserSettings } from '../types';
+import type { AccountChoiceKind, Expense, ExpenseSource, OnboardingStep, SmsCaptureState, TransactionKind, UserProfile, UserSettings } from '../types';
 import { firestorePaths } from './paths';
 
 export class DocumentShapeError extends Error {
@@ -301,7 +301,23 @@ export function parseSettings(uid: string, data: unknown): UserSettings {
       d.onboardingStep === undefined || d.onboardingStep === null
         ? null
         : oneOf(path, d, 'onboardingStep', ONBOARDING_STEPS),
+    ...(d.lastAccountByKind !== undefined && d.lastAccountByKind !== null
+      ? { lastAccountByKind: parseLastAccountByKind(path, d.lastAccountByKind) }
+      : {}),
   };
+}
+
+const ACCOUNT_CHOICE_KINDS: readonly AccountChoiceKind[] = ['expense', 'income', 'transfer'];
+
+/** A map of kind → account id. Unknown kinds are dropped (a newer client may add one); a non-string id throws. */
+function parseLastAccountByKind(path: string, value: unknown): Partial<Record<AccountChoiceKind, string>> {
+  const map = record(path, 'lastAccountByKind', value);
+  const out: Partial<Record<AccountChoiceKind, string>> = {};
+  for (const kind of ACCOUNT_CHOICE_KINDS) {
+    if (map[kind] === undefined || map[kind] === null) continue;
+    out[kind] = text(`${path}#lastAccountByKind`, map, kind);
+  }
+  return out;
 }
 
 export function settingsToDoc(settings: UserSettings, updatedAt: string): SettingsDoc {

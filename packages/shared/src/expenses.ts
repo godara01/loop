@@ -284,6 +284,8 @@ export interface ExpensePatch {
   readonly description?: string;
   readonly note?: string | null;
   readonly occurredAt?: string;
+  /** v1.2: move the transaction to another account, or `null` for none. */
+  readonly accountId?: string | null;
 }
 
 /**
@@ -311,6 +313,7 @@ export function editPersonalExpense(expense: Expense, patch: ExpensePatch, now: 
     occurredAt,
     localDate: localDateOf(occurredAt),
     allocations: [{ memberId: expense.paidBy, amount: total }],
+    ...(patch.accountId !== undefined ? { accountId: patch.accountId } : {}),
     updatedAt: now,
   };
 }

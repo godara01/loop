@@ -589,3 +589,12 @@ describe('validateTransaction and K1 transaction constructors', () => {
     );
   });
 });
+
+describe('edit: account (v1.2)', () => {
+  it('moves an expense to another account, clears it with null, and leaves it alone when absent', () => {
+    const onCard = { ...coffee(), accountId: 'acc-card' };
+    assert.equal(editPersonalExpense(onCard, { accountId: 'acc-bank' }, NOW).accountId, 'acc-bank');
+    assert.equal(editPersonalExpense(onCard, { accountId: null }, NOW).accountId, null);
+    assert.equal(editPersonalExpense(onCard, { description: 'Latte' }, NOW).accountId, 'acc-card');
+  });
+});

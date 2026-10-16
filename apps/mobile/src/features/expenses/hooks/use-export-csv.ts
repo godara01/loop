@@ -7,9 +7,10 @@
 import { buildExpensesCsv, todayISO } from '@loop/shared';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { useSession } from '@/core/providers/bootstrap-provider';
+import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 
 import { fetchLiveExpenses } from '../api/expense-repository';
 
@@ -22,6 +23,12 @@ export type ExportState =
 export function useExportCsv(): { state: ExportState; exportCsv: () => Promise<void> } {
   const { uid } = useSession();
   const [state, setState] = useState<ExportState>({ status: 'idle' });
+  // Archived accounts included: old transactions still name them.
+  const accounts = useAccounts();
+  const accountNames = useMemo(
+    () => new Map(accounts.status === 'ready' ? accounts.snapshot.accounts.map((a) => [a.id, a.name] as const) : []),
+    [accounts],
+  );
 
   const exportCsv = useCallback(async () => {
     setState({ status: 'exporting' });
@@ -34,7 +41,7 @@ export function useExportCsv(): { state: ExportState; exportCsv: () => Promise<v
       const file = new File(Paths.cache, `loop-expenses-${todayISO()}.csv`);
       if (file.exists) file.delete();
       file.create();
-      file.write(buildExpensesCsv(expenses));
+      file.write(buildExpensesCsv(expenses, accountNames));
       await Sharing.shareAsync(file.uri, {
         mimeType: 'text/csv',
         dialogTitle: 'Export expenses',
@@ -44,7 +51,7 @@ export function useExportCsv(): { state: ExportState; exportCsv: () => Promise<v
     } catch (error) {
       setState({ status: 'error', message: `Export failed: ${error instanceof Error ? error.message : String(error)}` });
     }
-  }, [uid]);
+  }, [uid, accountNames]);
 
   return { state, exportCsv };
 }

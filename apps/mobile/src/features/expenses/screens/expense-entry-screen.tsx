@@ -57,8 +57,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePickerSheet } from '@/components/ui/date-picker-sheet';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { useSession } from '@/core/providers/bootstrap-provider';
+import { useSettings } from '@/core/providers/settings-provider';
 import { type ExpenseDraft, useDraftStore } from '@/core/state/draft-store';
 import { useUndoStore } from '@/core/state/undo-store';
+// Deep paths: the accounts index re-exports screens that import this feature.
+import { AccountChip } from '@/features/accounts/components/account-chip';
+import { useAccounts } from '@/features/accounts/hooks/use-accounts';
+import { defaultAccountId, rememberAccount, showAccountRow } from '@/features/accounts/model/default-account';
 import { useCategories } from '@/features/categories';
 import { haptic } from '@/lib/haptics';
 
@@ -136,6 +141,9 @@ export function ExpenseEntryScreen({
   const refunds = refundsState.status === 'ready' ? refundsState.snapshot.expenses : [];
 
   const { draft, startNew, startFrom, update, abandon, clear } = useDraftStore();
+  const { settings, update: updateSettings } = useSettings();
+  const accountsState = useAccounts();
+  const allAccounts = accountsState.status === 'ready' ? accountsState.snapshot.accounts : [];
   const offerUndo = useUndoStore((s) => s.offerUndo);
 
   const [started, setStarted] = useState(false);
@@ -159,6 +167,22 @@ const originalExpenseStateForDeletionCheck = useExpense(
     if (mode !== 'new') return 'expense';
     return entryKindFromParam(params.kind);
   });
+
+  // Accounts (docs/18 § Entry sheet integration): hidden until an active account
+  // exists; a new entry defaults to the account last used for its kind. Refunds
+  // copy the original's account, and approvals get theirs in SM3.
+  const editingKind = existing.status === 'ready' ? (existing.expense.kind ?? 'expense') : null;
+  const showAccounts =
+    showAccountRow(allAccounts) &&
+    (mode === 'new' || (mode === 'edit' && (editingKind === 'expense' || editingKind === 'income')));
+  const accountChoice: string | null =
+    draft.accountId !== undefined
+      ? draft.accountId
+      : mode === 'new'
+        ? defaultAccountId(entryKind, settings.lastAccountByKind, allAccounts)
+        : null;
+  // An archived account stays visible as the current choice on an old entry.
+  const accountOptions = allAccounts.filter((account) => account.archivedAt === null || account.id === accountChoice);
 
   // Initialise the draft once: blank for a new entry, the expense for an edit.
   useEffect(() => {
@@ -185,6 +209,7 @@ const originalExpenseStateForDeletionCheck = useExpense(
         description: e.description,
         note: e.note ?? '',
         localDate: e.localDate,
+        accountId: e.accountId ?? null,
       };
       startFrom(fromExpense);
       initialDraft.current = fromExpense;
@@ -283,6 +308,7 @@ const originalExpenseStateForDeletionCheck = useExpense(
 
     const now = new Date();
     const nowIso = now.toISOString();
+    const accountId = accountChoice;
     try {
       if (mode === 'approve') {
         if (!approval) return;
@@ -315,6 +341,7 @@ const originalExpenseStateForDeletionCheck = useExpense(
             note: draft.note,
             occurredAt: composeOccurredAt(draft.localDate, timeOfDayOf(nowIso), now),
             now: nowIso,
+            accountId,
           });
         } else {
           expense = newPersonalExpense({
@@ -326,8 +353,11 @@ const originalExpenseStateForDeletionCheck = useExpense(
             note: draft.note,
             occurredAt: composeOccurredAt(draft.localDate, timeOfDayOf(nowIso), now),
             now: nowIso,
+            accountId,
           });
         }
+        const remembered = rememberAccount(entryKind, accountId, settings.lastAccountByKind);
+        if (remembered) updateSettings({ lastAccountByKind: remembered });
       } else {
         if (mode === 'refund') {
           if (!original) return;
@@ -366,6 +396,7 @@ const originalExpenseStateForDeletionCheck = useExpense(
               occurredAt: dateChanged
                 ? composeOccurredAt(draft.localDate, timeOfDayOf(original.occurredAt), now)
                 : original.occurredAt,
+              ...(showAccounts ? { accountId } : {}),
             },
             nowIso,
           );
@@ -443,7 +474,8 @@ const originalExpenseStateForDeletionCheck = useExpense(
     setEntryKind(nextKind);
     setError(null);
     const switched = applyKindSwitch(draft, nextKind, preselectForKind(categories, nextKind, counts));
-    update({ categoryId: switched.categoryId });
+    // Each kind remembers its own account: a switch goes back to that default.
+    update({ categoryId: switched.categoryId, accountId: undefined });
   };
 
   return (
@@ -585,6 +617,14 @@ const originalExpenseStateForDeletionCheck = useExpense(
             onAddNew={() => router.push('/category/catalogue?returnTo=entry')}
           />
         )}
+
+        {showAccounts ? (
+          <AccountChip
+            accounts={accountOptions}
+            value={accountChoice}
+            onChange={(accountId) => update({ accountId })}
+          />
+        ) : null}
 
         <TextInput
           testID="entry-description"

@@ -18,6 +18,11 @@ export interface ExpenseDraft {
   readonly description: string;
   readonly note: string;
   readonly localDate: string;
+  /**
+   * v1.2: the chosen account. `undefined` = not touched, so a new entry uses the
+   * remembered default for its kind; `null` = None (docs/18).
+   */
+  readonly accountId?: string | null;
 }
 
 const EMPTY_DRAFT: ExpenseDraft = { amount: EMPTY_AMOUNT, categoryId: null, description: '', note: '', localDate: todayISO() };
