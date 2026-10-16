@@ -88,6 +88,7 @@ export const AccountScreen = () => {
     setIsWorking(true);
     try {
       await linkWithProvider('google');
+      refreshFromAuth();
       haptic('splitConfirm');
     } catch (err: any) {
       handleErrorCode(err?.code ?? 'unknown');
@@ -135,6 +136,7 @@ export const AccountScreen = () => {
     setIsWorking(true);
     try {
       await unlinkProvider('google');
+      refreshFromAuth();
     } catch (err: any) {
       handleErrorCode(err?.code ?? 'unknown');
     } finally {
@@ -149,6 +151,7 @@ export const AccountScreen = () => {
         if (authState.status === 'signed-in' && verificationId) {
           const credential = await verifyPhoneOtp(verificationId, code);
           await linkPhoneCredential(credential);
+          refreshFromAuth();
           haptic('splitConfirm');
           setOtpVisible(false);
           setVerificationId(undefined);
@@ -167,7 +170,7 @@ export const AccountScreen = () => {
     const norm = normalizePhone(phoneNumber);
     if (!norm) return;
     try {
-      const confirmation = await sendPhoneOtp(norm);
+      const confirmation = await sendPhoneOtp(norm, true);
       setVerificationId(confirmation.verificationId ?? undefined);
       setResendToken(Date.now());
       haptic('tap');
@@ -195,21 +198,22 @@ export const AccountScreen = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   
   useEffect(() => {
-    const updateCurrentUser = async () => {
-      try {
-        const user = auth.currentUser;
-        setCurrentUser(user);
-      } catch (error) {
-        console.warn('Failed to get current user:', error);
-        setCurrentUser(null);
-      }
-    };
-    
-    updateCurrentUser();
-    
-    const subscriber = auth.onAuthStateChanged(updateCurrentUser);
+    refreshFromAuth();
+    const subscriber = auth.onAuthStateChanged(refreshFromAuth);
     return () => subscriber();
   }, [auth]);
+
+  /**
+   * Linking mutates the SAME user object and fires no onAuthStateChanged, so
+   * after a link the screen re-reads the user into fresh state objects (a
+   * same-reference setState would not re-render).
+   */
+  function refreshFromAuth() {
+    const user = auth.currentUser;
+    setCurrentUser(user ? { email: user.email, phoneNumber: user.phoneNumber } : null);
+    setLinkedProviders(user ? user.providerData.map((p) => p.providerId) : []);
+    if (user) setIsLinked(!user.isAnonymous);
+  }
 
   return (
     <View

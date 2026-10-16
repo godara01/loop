@@ -81,10 +81,43 @@ export const createLinkService = ({
   };
 
   // Phone authentication methods
-  const sendPhoneOtp = async (phoneNumber: string) => {
-    const auth = getAuth();
-    const confirmation = await auth.signInWithPhoneNumber(phoneNumber);
-    return confirmation;
+  // Linking must only VERIFY the number. signInWithPhoneNumber can sign the
+  // device in as the phone's own user (Android instant verification, and the
+  // Auth emulator), after which linkWithCredential fails and the anonymous
+  // user's data is orphaned. verifyPhoneNumber never changes the current user.
+  const sendPhoneOtp = async (phoneNumber: string, forceResend = false): Promise<{ verificationId: string | null }> => {
+    // The listener's own promise only settles on auto-verify or timeout on
+    // Android; the OTP sheet needs the verificationId as soon as the code is sent.
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const settle = (verificationId: string | null) => {
+        if (settled) return;
+        settled = true;
+        resolve({ verificationId });
+      };
+      getAuth()
+        .verifyPhoneNumber(phoneNumber, forceResend)
+        .on(
+          'state_changed',
+          (snapshot: { state: string; verificationId: string; error: unknown }) => {
+            if (snapshot.state === 'error') {
+              if (!settled) {
+                settled = true;
+                reject(snapshot.error);
+              }
+              return;
+            }
+            // 'sent', or 'verified'/'timeout' on Android: all carry the id the credential needs.
+            settle(snapshot.verificationId ?? null);
+          },
+          (error: unknown) => {
+            if (!settled) {
+              settled = true;
+              reject(error);
+            }
+          },
+        );
+    });
   };
 
   const verifyPhoneOtp = async (verificationId: string, code: string) => {
