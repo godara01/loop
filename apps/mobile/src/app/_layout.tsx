@@ -111,6 +111,10 @@ export default function RootLayout() {
                     <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="ledger/filter" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="coins" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="accounts/index" />
+                    <Stack.Screen name="accounts/[id]/index" />
+                    <Stack.Screen name="accounts/new" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="accounts/[id]/edit" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="inbox" />
                     <Stack.Screen name="settings/reset" />
                     <Stack.Screen name="settings/auto-capture" />

@@ -2,6 +2,9 @@ import { type Account, type Expense, type Money, accountBalance } from '@loop/sh
 import { useEffect, useMemo, useState } from 'react';
 
 import { useSession } from '@/core/providers/bootstrap-provider';
+// Deep path on purpose: the expenses index re-exports Orbit, which renders this
+// feature's card, and importing the index here would make a cycle.
+import { useRecentExpenses } from '@/features/expenses/hooks/use-expenses';
 
 import {
   type AccountBalancesSnapshot,
@@ -100,4 +103,18 @@ export function useAccountBalances(pendingDocs: readonly Expense[]): AccountBala
       asOf: balances.fromCache ? balances.serverAsOf : null,
     };
   }, [accounts, balances, error, markers, pendingDocs]);
+}
+
+/**
+ * Accounts with balances for screens that don't already hold the ledger: the
+ * pending-write docs come from the recent-expenses cache. A pending write older
+ * than that window is rare (it would need hundreds of newer offline entries).
+ */
+export function useAccountsOverview(): AccountBalancesState {
+  const recent = useRecentExpenses(200);
+  const pendingDocs = useMemo(
+    () => (recent.status === 'ready' ? recent.snapshot.expenses.filter((tx) => recent.snapshot.pendingIds.has(tx.id)) : []),
+    [recent],
+  );
+  return useAccountBalances(pendingDocs);
 }

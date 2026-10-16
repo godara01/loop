@@ -38,6 +38,7 @@ describe('empty-state copy', () => {
     insightsThinData: 'Insights, <3 days of data',
     insightsUpdatingHistory: 'Insights, past period before the v2 migration (v1.2)',
     inbox: 'Inbox',
+    accounts: 'Accounts (v1.2)',
   };
 
   for (const [key, surface] of Object.entries(expected) as [keyof typeof EMPTY_STATES, string][]) {

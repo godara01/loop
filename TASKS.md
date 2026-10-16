@@ -930,7 +930,7 @@ changes no behaviour and may start now.
 | K12 | `merchantKey` normaliser | — | done |
 | AC1 | `accounts.ts` (pure) | K4 | done |
 | AC2 | Accounts repository + rules | AC1, K3 | done |
-| AC3 | Accounts screens + Orbit card | AC2 | todo |
+| AC3 | Accounts screens + Orbit card | AC2 | done |
 | AC4 | Entry account chip | AC2, K9 | todo |
 | AC5 | Transfers | AC4 | todo |
 | SM1 | Credit / reversal / cashback / card-bill parsing + fixtures | K1 | done |

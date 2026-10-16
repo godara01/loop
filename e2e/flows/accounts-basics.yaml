@@ -1,0 +1,61 @@
+# Accounts (docs/18 § Screens): suggested Cash, a card owed at the start, the
+# list with OUTSTANDING and the total, the Orbit card, detail and archive.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
+
+# No accounts yet: Orbit has no Accounts card
+- assertNotVisible: { id: "orbit-accounts-card" }
+
+- tapOn: { id: "tab-profile" }
+- scrollUntilVisible: { element: { id: "profile-accounts" }, centerElement: true }
+- tapOn: { id: "profile-accounts" }
+- extendedWaitUntil: { visible: { id: "accounts-empty" }, timeout: 15000 }
+
+# Cash is suggested, not seeded
+- tapOn: { id: "accounts-add-cash" }
+- extendedWaitUntil: { visible: { id: "account-editor-name" }, timeout: 15000 }
+- tapOn: { id: "account-editor-opening" }
+- inputText: "1500"
+- hideKeyboard
+- tapOn: { id: "account-editor-save" }
+- extendedWaitUntil: { visible: { id: "screen-accounts" }, timeout: 15000 }
+- assertVisible: { text: "Cash" }
+
+# A credit card owed ₹2,500 at the start
+- tapOn: { id: "accounts-add" }
+- extendedWaitUntil: { visible: { id: "account-editor-name" }, timeout: 15000 }
+- tapOn: { id: "account-editor-name" }
+- inputText: "HDFC Card"
+- tapOn: { id: "account-type-card" }
+- tapOn: { id: "account-editor-last4" }
+- inputText: "1234"
+- tapOn: { id: "account-editor-owed" }
+- tapOn: { id: "account-editor-opening" }
+- inputText: "2500"
+- hideKeyboard
+- tapOn: { id: "account-editor-save" }
+- extendedWaitUntil: { visible: { id: "screen-accounts" }, timeout: 15000 }
+- assertVisible: { text: "OUTSTANDING" }
+- assertVisible: { text: "₹2,500.00" }
+- assertVisible: { text: "••1234" }
+# Total: 1,500 − 2,500
+- assertVisible: { id: "accounts-total", text: "-₹1,000.00" }
+
+# Detail, then archive the card: it leaves the total
+- tapOn: { text: "HDFC Card" }
+- extendedWaitUntil: { visible: { id: "account-detail-balance" }, timeout: 15000 }
+- assertVisible: { id: "account-detail-delete" }
+- tapOn: { id: "account-detail-archive" }
+- tapOn: { text: "ARCHIVE" }
+- tapOn: { id: "account-detail-close" }
+- extendedWaitUntil: { visible: { id: "screen-accounts" }, timeout: 15000 }
+- assertVisible: { id: "accounts-total", text: "₹1,500.00" }
+- assertVisible: { id: "accounts-toggle-archived" }
+
+# Orbit shows the card once an account exists
+- tapOn: { id: "accounts-close" }
+- tapOn: { id: "tab-index" }
+- extendedWaitUntil: { visible: { id: "orbit-accounts-card" }, timeout: 15000 }
+- assertVisible: { id: "orbit-accounts-total", text: "₹1,500.00" }

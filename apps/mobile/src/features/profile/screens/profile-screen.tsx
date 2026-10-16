@@ -205,6 +205,18 @@ export function ProfileScreen() {
 
       <Card>
         <Pressable
+          testID="profile-accounts"
+          accessibilityRole="link"
+          accessibilityLabel="Accounts"
+          onPress={() => {
+            haptic('tap');
+            router.push('/accounts' as never);
+          }}
+          style={styles.manageLink}>
+          <Text style={styles.manageLinkText}>Accounts →</Text>
+        </Pressable>
+        <Perforation />
+        <Pressable
           testID="profile-inbox"
           accessibilityRole="link"
           accessibilityLabel="Inbox"
