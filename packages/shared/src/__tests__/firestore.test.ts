@@ -550,3 +550,16 @@ describe('account documents (v1.2)', () => {
     assert.deepEqual(parseMarkerFlows(UID, 'e1', undefined), []);
   });
 });
+
+describe('settings: lastAccountByKind (v1.2)', () => {
+  it('round-trips, and a v1 settings doc parses without it', () => {
+    const settings = { ...DEFAULT_SETTINGS, lastAccountByKind: { expense: 'acc-card', income: 'acc-bank' } };
+    assert.deepEqual(parseSettings(UID, settingsToDoc(settings, NOW)), settings);
+    const v1 = parseSettings(UID, settingsToDoc(DEFAULT_SETTINGS, NOW));
+    assert.equal('lastAccountByKind' in v1, false);
+  });
+  it('drops unknown kinds and refuses a non-string id', () => {
+    assert.deepEqual(parseSettings(UID, { lastAccountByKind: { expense: 'a', squad: 'b' } }).lastAccountByKind, { expense: 'a' });
+    assert.throws(() => parseSettings(UID, { lastAccountByKind: { expense: 42 } }), DocumentShapeError);
+  });
+});

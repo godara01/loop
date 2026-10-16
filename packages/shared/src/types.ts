@@ -31,6 +31,9 @@ export interface UserProfile {
   readonly updatedAt: string;
 }
 
+/** The kinds whose last-used account the entry sheet remembers. */
+export type AccountChoiceKind = 'expense' | 'income' | 'transfer';
+
 export interface UserSettings {
   readonly hapticsEnabled: boolean;
   /** Hides coins, the streak capsule and celebrations. See docs/06-gamification.md. */
@@ -46,6 +49,11 @@ export interface UserSettings {
    * account from before this existed. See docs/02-onboarding.md.
    */
   readonly onboardingStep: OnboardingStep | null;
+  /**
+   * v1.2: the account last used per kind, the entry sheet's default
+   * (docs/18 § Entry sheet integration). Optional: v1 settings have none.
+   */
+  readonly lastAccountByKind?: Readonly<Partial<Record<AccountChoiceKind, string>>>;
 }
 
 /** The five onboarding routes, in order, then done. */

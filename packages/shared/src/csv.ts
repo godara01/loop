@@ -80,8 +80,13 @@ function textCell(value: string): string {
   return quote(FORMULA_START.test(value) ? `'${value}` : value);
 }
 
-/** Live expenses only, oldest first. Soft-deleted expenses are never exported. */
-export function buildExpensesCsv(expenses: readonly Expense[]): string {
+/**
+ * Live expenses only, oldest first. Soft-deleted expenses are never exported.
+ * `accountNames` maps account id → name for the `account` / `toAccount`
+ * columns (docs/08 § Export); an unknown or absent id exports empty.
+ */
+export function buildExpensesCsv(expenses: readonly Expense[], accountNames: ReadonlyMap<string, string> = new Map()): string {
+  const nameOf = (accountId: string | null | undefined) => (accountId ? textCell(accountNames.get(accountId) ?? '') : '');
   const rows = expenses
     .filter((e) => e.deletedAt === null)
     .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id))
@@ -93,8 +98,8 @@ export function buildExpensesCsv(expenses: readonly Expense[]): string {
         e.total.currency,
         majorUnits(e.total.minor, e.total.currency),
         e.kind ?? '',
-        '', // account name (populated when accounts repo exists, or via accountId map if passed)
-        '', // toAccount name
+        nameOf(e.accountId),
+        nameOf(e.toAccountId),
         e.refundOf ?? '',
         e.merchant ?? '',
         e.tagIds ? e.tagIds.join(';') : '',

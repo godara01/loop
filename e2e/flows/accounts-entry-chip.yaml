@@ -1,0 +1,61 @@
+# The entry sheet's account chip (docs/18 § Entry sheet integration): hidden
+# with no accounts, None by default, remembered per kind, and the balance moves.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
+
+# No accounts: no chip
+- tapOn: { id: "dock-add" }
+- extendedWaitUntil: { visible: { id: "entry-amount" }, timeout: 15000 }
+- assertNotVisible: { id: "entry-account" }
+- tapOn: { id: "entry-close" }
+
+# Add a bank account with ₹10,000
+- tapOn: { id: "tab-profile" }
+- scrollUntilVisible: { element: { id: "profile-accounts" }, centerElement: true }
+- tapOn: { id: "profile-accounts" }
+- extendedWaitUntil: { visible: { id: "accounts-add" }, timeout: 15000 }
+- tapOn: { id: "accounts-add" }
+- extendedWaitUntil: { visible: { id: "account-editor-name" }, timeout: 15000 }
+- tapOn: { id: "account-editor-name" }
+- inputText: "HDFC"
+- tapOn: { id: "account-editor-opening" }
+- inputText: "10000"
+- hideKeyboard
+- tapOn: { id: "account-editor-save" }
+- extendedWaitUntil: { visible: { id: "screen-accounts" }, timeout: 15000 }
+- tapOn: { id: "accounts-close" }
+- tapOn: { id: "tab-index" }
+
+# Spend ₹250 on HDFC: the chip shows, starts at None, pick HDFC
+- tapOn: { id: "dock-add" }
+- extendedWaitUntil: { visible: { id: "entry-account" }, timeout: 15000 }
+- assertVisible: { text: "No account" }
+- tapOn: { id: "pad-key-2" }
+- tapOn: { id: "pad-key-5" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "category-chip-FOOD" }
+- tapOn: { id: "entry-account" }
+- tapOn: { text: "HDFC" }
+- assertVisible: { id: "entry-account", text: ".*HDFC.*" }
+- tapOn: { id: "entry-save" }
+- extendedWaitUntil: { visible: { id: "screen-orbit" }, timeout: 15000 }
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "expenses"
+- assertTrue: ${output.docs.length == 1}
+- assertTrue: ${output.docs[0].accountId != null}
+
+# The next spend remembers HDFC; income does not (per kind)
+- tapOn: { id: "dock-add" }
+- extendedWaitUntil: { visible: { id: "entry-account" }, timeout: 15000 }
+- assertVisible: { text: "HDFC" }
+- tapOn: { id: "kind-switch-income" }
+- assertVisible: { text: "No account" }
+- tapOn: { id: "entry-close" }
+
+# Orbit's card: 10,000 − 250
+- extendedWaitUntil: { visible: { id: "orbit-accounts-card" }, timeout: 15000 }
+- assertVisible: { id: "orbit-accounts-total", text: "₹9,750.00" }

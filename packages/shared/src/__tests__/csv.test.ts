@@ -108,6 +108,26 @@ describe('CSV export', () => {
     assert.equal(row!.lines, 'cat-1:500|cat-2:734');
   });
 
+  it('exports account and toAccount by name, empty for none or an unknown id (AC4)', () => {
+    const names = new Map([['acc-1', 'HDFC, Salary'], ['acc-2', 'Cash']]);
+    const rows = parseExpensesCsv(
+      buildExpensesCsv(
+        [
+          { ...expense('t', 100, 'INR', 'Top up'), kind: 'transfer' as const, accountId: 'acc-1', toAccountId: 'acc-2' },
+          { ...expense('u', 200, 'INR', 'Unassigned') },
+          { ...expense('g', 300, 'INR', 'Gone'), accountId: 'acc-deleted' },
+        ],
+        names,
+      ),
+    );
+    // Same instant, so rows come out in id order: g, t, u.
+    assert.deepEqual(rows.map((r) => [r.description, r.account, r.toAccount]), [
+      ['Gone', '', ''],
+      ['Top up', 'HDFC, Salary', 'Cash'],
+      ['Unassigned', '', ''],
+    ]);
+  });
+
   it('parses legacy v1 CSV files successfully', () => {
     const v1Csv = 'occurredAt,localDate,amountMinor,currency,amount,categoryId,description,note,source\r\n2026-09-10T08:00:00.000Z,2026-09-10,1000,INR,10.00,cat-food,Biryani,,manual\r\n';
     const rows = parseExpensesCsv(v1Csv);
