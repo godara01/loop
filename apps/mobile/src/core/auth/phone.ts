@@ -3,13 +3,24 @@ export function normalizePhone(input: string, defaultCountry = 'IN'): string | n
     return null;
   }
 
-  const trimmed = input.trim();
+  // The field starts as "+91", so a typed or pasted "+91…" number arrives as
+  // "+91+91…". Drop the prefilled prefix when another "+" follows it; any
+  // other second "+" is malformed.
+  const trimmed = input.trim().replace(/^\+91[\s-]*(?=\+)/, '');
   if (trimmed === '') {
     return null;
   }
+  if (trimmed.indexOf('+', 1) !== -1) {
+    return null;
+  }
 
-  // Remove all non-digit characters
-  const digitsOnly = trimmed.replace(/\D/g, '');
+  // Remove all non-digit characters. A doubled Indian country code with a
+  // full 10-digit number ("91 91 98765 43210") is the same slip without the
+  // second "+": keep one. 14 digits is never a valid +91 number.
+  let digitsOnly = trimmed.replace(/\D/g, '');
+  if (defaultCountry.toUpperCase() === 'IN' && digitsOnly.length === 14 && digitsOnly.startsWith('9191')) {
+    digitsOnly = digitsOnly.slice(2);
+  }
   
   if (digitsOnly.length === 0) {
     return null; // No digits at all
@@ -43,6 +54,10 @@ export function normalizePhone(input: string, defaultCountry = 'IN'): string | n
         return fullWithPlus;
       }
     } 
+    // A +91 number is exactly 10 national digits; anything else under +91 is wrong.
+    else if (digitsWithoutPlus.startsWith(countryCode)) {
+      return null;
+    }
     // For other international numbers, accept if total length is reasonable
     else if (digitsWithoutPlus.length >= 2 && digitsWithoutPlus.length <= 15) {
       return '+' + digitsWithoutPlus;

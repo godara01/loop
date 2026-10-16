@@ -57,4 +57,23 @@ describe('normalizePhone', () => {
     assert.strictEqual(normalizePhone('+91-98765-43210'), '+919876543210');
     assert.strictEqual(normalizePhone('+91 98765 43210'), '+919876543210');
   });
+
+  // D10 bug: the field starts as "+91", so typing a full "+91…" number gave
+  // "+91+919999900001", which normalised to "+91919999900001" (a 14-digit number).
+  it('collapses a country code typed after the prefilled +91', () => {
+    assert.strictEqual(normalizePhone('+91+919999900001'), '+919999900001');
+    assert.strictEqual(normalizePhone('+91 +91 99999 00001'), '+919999900001');
+    assert.strictEqual(normalizePhone('+91919999900001'), '+919999900001');
+    assert.strictEqual(normalizePhone('91919999900001'), '+919999900001');
+    assert.strictEqual(normalizePhone('+9109999900001'), null);
+  });
+
+  it('keeps a real number whose national part starts with 91', () => {
+    assert.strictEqual(normalizePhone('9123456789'), '+919123456789');
+    assert.strictEqual(normalizePhone('+919123456789'), '+919123456789');
+  });
+
+  it('refuses a second plus anywhere but right after the prefix', () => {
+    assert.strictEqual(normalizePhone('+9198765+43210'), null);
+  });
 });
