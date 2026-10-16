@@ -1,3 +1,4 @@
+import type { Account, AccountFlow, AccountType } from '../accounts';
 import type { CoinRuleId } from '../coins';
 /**
  * Stored document shapes, and the converters between them and domain types.
@@ -733,4 +734,86 @@ export function parsePendingExpense(uid: string, pendingExpenseId: string, data:
     createdAt: instant(path, d, 'createdAt'),
     updatedAt: instant(path, d, 'updatedAt'),
   };
+}
+
+// ── Accounts (v1.2, docs/18-accounts.md) ─────────────────────────────────
+
+export interface AccountDoc {
+  readonly name: string;
+  readonly type: AccountType;
+  readonly last4: string | null;
+  /** Ledger currency, minor units; may be negative (a card owed at the start). */
+  readonly openingBalance: { readonly amountMinor: number; readonly currency: CurrencyCode };
+  readonly openingDate: string;
+  readonly colorToken: Account['colorToken'];
+  readonly sortOrder: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly archivedAt: string | null;
+}
+
+const ACCOUNT_TYPES: readonly AccountType[] = ['cash', 'bank', 'card', 'wallet'];
+const LAST4 = /^[0-9]{4}$/;
+
+export function accountToDoc(account: Account, updatedAt: string): AccountDoc {
+  return {
+    name: account.name,
+    type: account.type,
+    last4: account.last4,
+    openingBalance: { amountMinor: account.openingBalance.minor, currency: account.openingBalance.currency },
+    openingDate: account.openingDate,
+    colorToken: account.colorToken,
+    sortOrder: account.sortOrder,
+    createdAt: account.createdAt,
+    updatedAt,
+    archivedAt: account.archivedAt,
+  };
+}
+
+export function parseAccount(uid: string, accountId: string, data: unknown): Account {
+  const path = firestorePaths.account(uid, accountId);
+  const d = record(path, '(document)', data);
+  const opening = record(path, 'openingBalance', d.openingBalance);
+  const last4 = d.last4 === null || d.last4 === undefined ? null : d.last4;
+  if (last4 !== null && (typeof last4 !== 'string' || !LAST4.test(last4))) {
+    throw new DocumentShapeError(path, 'last4', 'must be 4 digits or null');
+  }
+  const openingDate = optionalLocalDate(path, d, 'openingDate');
+  if (openingDate === null) throw new DocumentShapeError(path, 'openingDate', 'must be a YYYY-MM-DD date');
+  return {
+    id: accountId,
+    name: text(path, d, 'name'),
+    type: oneOf(path, d, 'type', ACCOUNT_TYPES),
+    last4,
+    openingBalance: money(integer(`${path}#openingBalance`, opening, 'amountMinor'), oneOf(`${path}#openingBalance`, opening, 'currency', CURRENCIES)),
+    openingDate,
+    colorToken: oneOf(path, d, 'colorToken', CATEGORY_COLOR_TOKENS),
+    sortOrder: integer(path, d, 'sortOrder'),
+    createdAt: instant(path, d, 'createdAt'),
+    updatedAt: instant(path, d, 'updatedAt'),
+    archivedAt: optionalInstant(path, d, 'archivedAt'),
+  };
+}
+
+/** `accountBalances/{id}`: the Function-maintained signed flow. A missing doc is a zero flow. */
+export function parseAccountBalance(uid: string, accountId: string, data: unknown): AccountFlow {
+  if (data === undefined || data === null) return { accountId, deltaMinor: 0 };
+  const path = firestorePaths.accountBalance(uid, accountId);
+  return { accountId, deltaMinor: integer(path, record(path, '(document)', data), 'flowMinor') };
+}
+
+/**
+ * The account flows a `rollupApplied/{expenseId}` marker last applied. A v1
+ * marker (no `flows`) predates accounts, so it applied none.
+ */
+export function parseMarkerFlows(uid: string, expenseId: string, data: unknown): readonly AccountFlow[] {
+  if (data === undefined || data === null) return [];
+  const path = firestorePaths.rollupApplied(uid, expenseId);
+  const d = record(path, '(document)', data);
+  if (d.flows === undefined) return [];
+  if (!Array.isArray(d.flows)) throw new DocumentShapeError(path, 'flows', 'must be a list');
+  return d.flows.map((value, index) => {
+    const flow = record(path, `flows[${index}]`, value);
+    return { accountId: text(path, flow, 'accountId'), deltaMinor: integer(path, flow, 'deltaMinor') };
+  });
 }

@@ -13,11 +13,15 @@ import { money } from '../money';
 import {
   DEFAULT_SETTINGS,
   DocumentShapeError,
+  accountToDoc,
   categoryToDoc,
   expenseToDoc,
   newProfile,
+  parseAccount,
+  parseAccountBalance,
   parseCategory,
   parseExpense,
+  parseMarkerFlows,
   parsePendingExpense,
   pendingExpenseToDoc,
   parseProfile,
@@ -26,6 +30,7 @@ import {
   settingsToDoc,
 } from '../firestore/documents';
 import { firestorePaths } from '../firestore/paths';
+import type { Account } from '../accounts';
 import type { PendingExpense } from '../sms/types';
 
 const UID = 'user-1';
@@ -495,5 +500,53 @@ describe('undefined value omission', () => {
     const doc = pendingExpenseToDoc(v1Pending as unknown as PendingExpense);
     const values: unknown[] = Object.values(doc);
     assert.equal(values.includes(undefined), false);
+  });
+});
+
+describe('account documents (v1.2)', () => {
+  const account: Account = {
+    id: 'acc-hdfc',
+    name: 'HDFC card',
+    type: 'card',
+    last4: '1234',
+    openingBalance: money(-250000, 'INR'),
+    openingDate: '2026-10-01',
+    colorToken: 'violet',
+    sortOrder: 0,
+    createdAt: NOW,
+    updatedAt: NOW,
+    archivedAt: null,
+  };
+
+  it('round-trips exactly, including a negative opening balance', () => {
+    const stored = accountToDoc(account, NOW);
+    assert.deepEqual(stored.openingBalance, { amountMinor: -250000, currency: 'INR' });
+    assert.deepEqual(parseAccount(UID, account.id, stored), account);
+  });
+
+  it('round-trips a cash account with no last4', () => {
+    const cash: Account = { ...account, id: 'acc-cash', type: 'cash', last4: null };
+    assert.deepEqual(parseAccount(UID, cash.id, accountToDoc(cash, NOW)), cash);
+  });
+
+  it('refuses a bad last4, type, float balance or missing opening date', () => {
+    const stored = accountToDoc(account, NOW);
+    assert.throws(() => parseAccount(UID, account.id, { ...stored, last4: '12a4' }), DocumentShapeError);
+    assert.throws(() => parseAccount(UID, account.id, { ...stored, type: 'crypto' }), DocumentShapeError);
+    assert.throws(() => parseAccount(UID, account.id, { ...stored, openingBalance: { amountMinor: 1.5, currency: 'INR' } }), DocumentShapeError);
+    assert.throws(() => parseAccount(UID, account.id, { ...stored, openingDate: null }), DocumentShapeError);
+  });
+
+  it('reads an account balance, a missing one as zero', () => {
+    assert.deepEqual(parseAccountBalance(UID, 'acc-hdfc', { flowMinor: -1300 }), { accountId: 'acc-hdfc', deltaMinor: -1300 });
+    assert.deepEqual(parseAccountBalance(UID, 'acc-hdfc', undefined), { accountId: 'acc-hdfc', deltaMinor: 0 });
+    assert.throws(() => parseAccountBalance(UID, 'acc-hdfc', { flowMinor: '12' }), DocumentShapeError);
+  });
+
+  it('reads marker flows; a v1 marker applied none', () => {
+    const v2 = { localDate: '2026-10-02', kind: 'transfer', contributions: [], flows: [{ accountId: 'a', deltaMinor: -500 }, { accountId: 'b', deltaMinor: 500 }] };
+    assert.deepEqual(parseMarkerFlows(UID, 'e1', v2), [{ accountId: 'a', deltaMinor: -500 }, { accountId: 'b', deltaMinor: 500 }]);
+    assert.deepEqual(parseMarkerFlows(UID, 'e1', { localDate: '2026-10-02', categoryId: 'food', amountMinor: 100, currency: 'INR' }), []);
+    assert.deepEqual(parseMarkerFlows(UID, 'e1', undefined), []);
   });
 });
