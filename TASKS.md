@@ -17,11 +17,11 @@ started.
 
 
 > **Agent session 2026-10-15 — state for whoever resumes.** `work/device` is merged into `master`, plus SM2, K5 (parts A and B) and K10 (`666335d`). The old known red is gone: on `f604a0c`, `test:functions` 74/74, `test:rules` 64/64, typecheck, unit tests, invariants, testids and a11y all passed. **Not yet checked (do these first next session):**
-> 1. **K10 was not re-run against `test:rules` / `test:functions` on top of K5.** Only typecheck, `npm test` (mobile 266, shared 538, 0 failed), invariants, testids and `check:a11y -- --max 0` ran on `666335d`. K10 doesn't touch rules or functions, but run both once to confirm.
+> 1. ~~K10 was not re-run against `test:rules` / `test:functions` on top of K5.~~ Checked 2026-10-16 on `aa19e69`: `test:rules` 64/64, `test:functions` 74/74.
 > 2. **No device run of refunds yet:** Record refund from the edit screen, the prefilled remainder, "X of Y refunded", the overspend note, and "Original deleted". These belong with K13 / D11.
 > 3. **K5 known limit, unfixed:** a span `rebuildUserLedger` can't repair an expense whose move *out* of the span the trigger never processed (see the K5 commit body). Decide whether that needs a task.
 > 4. **K5 part B and SM2 haven't run on a device.** Their parity and pairing tests passed only in unit and functions tests.
-> 5. **Local cleanup left on the dev machine:** remove worktree `../loop-w3` and branch `task/k10-wip` (local and `origin`), then `git worktree prune`. The auto-mode check blocked these from the agent. `../loop-wip/` only holds backup patches.
+> 5. ~~Local cleanup~~ (gone as of 2026-10-16). Was: remove worktree `../loop-w3` and branch `task/k10-wip` (local and `origin`), then `git worktree prune`. The auto-mode check blocked these from the agent. `../loop-wip/` only holds backup patches.
 >
 > Next ready tasks: K8, AC2, K6 (after K5, now unblocked), then SM3 once AC2 and K3 are done. opencode notes: the `opencode-delegate` skill was patched for opencode v2.0.29 (no `--dir`, `model#variant`, `--standalone`); the kr/claude-sonnet provider ran out of credit on 2026-10-15, and the Nemotron models worked but are slow.
 
@@ -921,7 +921,7 @@ changes no behaviour and may start now.
 | K5 | `onExpenseWrite` v2 + trigger matrix + `rebuildUserLedger` | K2, K4, DP2 | done |
 | K6 | Migration script + `meta/schema` + client "updating" state | K5 | todo |
 | K7 | Income categories + versioned seed | K1 | done |
-| K8 | Insights kinds (pure) + Spend/Income/Net UI | K4, K7 | todo |
+| K8 | Insights kinds (pure) + Spend/Income/Net UI | K4, K7 | done |
 | K9 | Entry kind switch + income | K2, K7 | done |
 | K10 | Refunds | K9 | done |
 | K11 | CSV v2 export | K2 | done |

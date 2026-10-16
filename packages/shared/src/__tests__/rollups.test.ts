@@ -216,3 +216,13 @@ describe('rollups', () => {
     assert.deepEqual(day.byCategory, { food: 800, drink: 400 });
   });
 
+
+describe('excluded squad mirrors', () => {
+  it('add nothing to the buckets, and flipping the flag moves them in and out exactly', () => {
+    const mirror = expense({ id: 'mirror-1', source: 'group', excludeFromSpend: true, total: money(3000, INR) });
+    assert.deepEqual(buildRollups([mirror]), { daily: {}, monthly: {} });
+    const counted = { ...mirror, excludeFromSpend: false };
+    assert.deepEqual(applyToRollups(buildRollups([mirror]), mirror, counted), buildRollups([counted]));
+    assert.deepEqual(applyToRollups(buildRollups([counted]), counted, mirror), buildRollups([mirror]));
+  });
+});

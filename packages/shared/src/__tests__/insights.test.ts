@@ -13,8 +13,16 @@ import {
   customPeriod,
   daysInPeriod,
   displayPercentages,
+  clampRefunds,
+  deltaTone,
   intensityStep,
   mergePeriodSources,
+  mergePeriodSourcesForView,
+  periodIncome,
+  periodNet,
+  periodSpend,
+  totalsByCategoryForKind,
+  totalsByDayForView,
   periodOf,
   periodStats,
   periodTotal,
@@ -359,5 +367,197 @@ describe('rollups + cache merge', () => {
     const stale = [...records, spend('2026-08-22', 'food', 1_000_000)];
     const result = mergePeriodSources({ period: PERIOD, currency: INR, cacheFrom: CACHE_FROM, rollups, cached: stale });
     assert.deepEqual(result.total, merged.total);
+  });
+});
+
+// ── v1.2: Spend, Income, Net (docs/05 acceptance fixture) ─────────────────
+
+describe('spend / income / net (v1.2)', () => {
+  const MARCH = { startDate: '2026-03-01', endDate: '2026-04-01' };
+  const FEBRUARY = { startDate: '2026-02-01', endDate: '2026-03-01' };
+  const tx = (id: string, kind: SpendRecord['kind'], localDate: string, categoryId: string, minor: number, extra: Partial<SpendRecord> = {}): SpendRecord => ({
+    id,
+    kind,
+    localDate,
+    categoryId,
+    total: money(minor, INR),
+    deletedAt: null,
+    ...extra,
+  });
+
+  // Hand-computed below. Spend = 250,000 + 100,000 + 20,000 + 40,000 − 200,000 − 40,000 = 170,000.
+  const FIXTURE: SpendRecord[] = [
+    tx('e1', 'expense', '2026-03-02', 'FOOD', 250000),
+    tx('e2', 'expense', '2026-02-10', 'SHOPPING', 300000),
+    tx('r1', 'refund', '2026-03-05', 'SHOPPING', 200000, { refundOf: 'e2' }), // refund a period later
+    tx('e3', 'expense', '2026-03-08', 'TRAVEL', 100000),
+    tx('r2', 'refund', '2026-03-09', 'TRAVEL', 40000, { refundOf: 'e3' }), // same period
+    tx('i1', 'income', '2026-03-01', 'SALARY', 5000000),
+    tx('i2', 'income', '2026-03-15', 'CASHBACK', 2500),
+    tx('t1', 'transfer', '2026-03-10', 'sys-transfer', 1000000),
+    tx('m1', 'expense', '2026-03-12', 'FOOD', 30000, { excludeFromSpend: true }), // excluded mirror
+    tx('m2', 'expense', '2026-03-13', 'FOOD', 20000, { excludeFromSpend: false }), // included mirror
+    tx('e4', 'expense', '2026-03-20', 'FOOD', 10000, { deletedAt: '2026-03-21T00:00:00.000Z' }),
+    tx('e5', 'expense', '2026-03-21', 'FOOD', 40000, { lines: [{ categoryId: 'FOOD', amountMinor: 15000 }, { categoryId: 'HOME', amountMinor: 25000 }] }),
+  ];
+
+  it('computes spend, income and net by hand', () => {
+    assert.deepEqual(periodSpend(FIXTURE, MARCH, INR), money(170000, INR));
+    assert.deepEqual(periodIncome(FIXTURE, MARCH, INR), money(5002500, INR));
+    assert.deepEqual(periodNet(FIXTURE, MARCH, INR), money(4832500, INR));
+  });
+
+  it('counts a refund in its own period, not the purchase\'s', () => {
+    assert.deepEqual(periodSpend(FIXTURE, FEBRUARY, INR), money(300000, INR));
+  });
+
+  it('nets categories, keeps a net-refund category negative and last', () => {
+    const rows = totalsByCategoryForKind(FIXTURE, MARCH, 'spend', INR);
+    assert.deepEqual(rows.map((r) => [r.categoryId, r.total.minor]), [['FOOD', 285000], ['TRAVEL', 60000], ['HOME', 25000], ['SHOPPING', -200000]]);
+    assert.equal(rows[0]!.count, 3);
+    assert.equal(rows.reduce((sum, r) => sum + r.total.minor, 0), 170000);
+    assert.equal(rows[3]!.share, 0);
+    assert.equal(rows[0]!.share, 285000 / 370000);
+  });
+
+  it('keeps percentages summing to 100 with a net-negative category present', () => {
+    const percentages = displayPercentages(totalsByCategoryForKind(FIXTURE, MARCH, 'spend', INR));
+    assert.deepEqual(percentages, [77, 16, 7, 0]);
+    assert.equal(percentages.reduce((a, b) => a + b, 0), 100);
+  });
+
+  it('lists income categories only in Income', () => {
+    const rows = totalsByCategoryForKind(FIXTURE, MARCH, 'income', INR);
+    assert.deepEqual(rows.map((r) => [r.categoryId, r.total.minor]), [['SALARY', 5000000], ['CASHBACK', 2500]]);
+  });
+
+  it('gives per-day spend, income and net that add up to the headlines', () => {
+    const spendDays = totalsByDayForView(FIXTURE, MARCH, 'spend', INR);
+    assert.equal(spendDays.length, 31);
+    assert.equal(spendDays.find((d) => d.date === '2026-03-05')!.total.minor, -200000);
+    assert.equal(spendDays.find((d) => d.date === '2026-03-10')!.total.minor, 0);
+    assert.equal(spendDays.find((d) => d.date === '2026-03-10')!.count, 0);
+    assert.equal(spendDays.reduce((sum, d) => sum + d.total.minor, 0), 170000);
+    assert.equal(totalsByDayForView(FIXTURE, MARCH, 'income', INR).reduce((sum, d) => sum + d.total.minor, 0), 5002500);
+    assert.equal(totalsByDayForView(FIXTURE, MARCH, 'net', INR).reduce((sum, d) => sum + d.total.minor, 0), 4832500);
+  });
+
+  it('treats a v1 record (no kind) as an expense', () => {
+    assert.deepEqual(periodSpend([spend('2026-03-03', 'food', 1234)], MARCH, INR), money(1234, INR));
+    assert.deepEqual(periodIncome([spend('2026-03-03', 'food', 1234)], MARCH, INR), money(0, INR));
+  });
+
+  it('colours deltas by view', () => {
+    const up = compareToPrevious(money(200, INR), money(100, INR));
+    const down = compareToPrevious(money(100, INR), money(200, INR));
+    const flat = compareToPrevious(money(100, INR), money(100, INR));
+    assert.deepEqual([deltaTone('spend', up), deltaTone('spend', down), deltaTone('spend', flat)], ['bad', 'good', 'neutral']);
+    assert.deepEqual([deltaTone('income', up), deltaTone('income', down), deltaTone('income', flat)], ['good', 'bad', 'neutral']);
+    assert.deepEqual([deltaTone('net', up), deltaTone('net', down), deltaTone('net', flat)], ['good', 'bad', 'neutral']);
+  });
+
+  describe('clampRefunds', () => {
+    const original = tx('e6', 'expense', '2026-03-01', 'SHOPPING', 100000);
+    const ra = tx('ra', 'refund', '2026-03-05', 'SHOPPING', 100000, { refundOf: 'e6' });
+    const rb = tx('rb', 'refund', '2026-03-06', 'SHOPPING', 100000, { refundOf: 'e6' });
+
+    it('caps a double refund at the original, later refund first to go', () => {
+      const input = [rb, original, ra];
+      const out = clampRefunds(input);
+      assert.equal(out.length, 3);
+      assert.deepEqual(out.map((r) => [r.id, r.total.minor]), [['rb', 0], ['e6', 100000], ['ra', 100000]]);
+      assert.equal(out[2], ra, 'an unchanged refund is the same object');
+      assert.deepEqual(periodSpend(input, MARCH, INR), money(0, INR));
+    });
+
+    it('leaves a refund alone when its original is not loaded', () => {
+      const out = clampRefunds([rb]);
+      assert.equal(out[0], rb);
+      assert.deepEqual(periodSpend([rb], MARCH, INR), money(-100000, INR));
+    });
+
+    it('ignores refunds of a deleted original and deleted refunds', () => {
+      const deletedOriginal = { ...original, deletedAt: '2026-03-07T00:00:00.000Z' };
+      assert.deepEqual(clampRefunds([deletedOriginal, ra, rb]).map((r) => r.total.minor), [100000, 100000, 100000]);
+      const deletedRa = { ...ra, deletedAt: '2026-03-07T00:00:00.000Z' };
+      assert.deepEqual(clampRefunds([original, deletedRa, rb]).map((r) => r.total.minor), [100000, 100000, 100000]);
+    });
+
+    it('re-apportions a clamped split refund so its lines still sum exactly', () => {
+      const split = tx('rs', 'refund', '2026-03-05', 'SHOPPING', 120001, {
+        refundOf: 'e6',
+        lines: [{ categoryId: 'SHOPPING', amountMinor: 60001 }, { categoryId: 'HOME', amountMinor: 60000 }],
+      });
+      const [, clamped] = clampRefunds([original, split]);
+      assert.equal(clamped!.total.minor, 100000);
+      assert.equal(clamped!.lines!.reduce((sum, l) => sum + l.amountMinor, 0), 100000);
+    });
+
+    it('never mutates its input', () => {
+      const input = [original, ra, rb];
+      const before = structuredClone(input);
+      clampRefunds(input);
+      assert.deepEqual(input, before);
+    });
+  });
+});
+
+describe('rollups + cache merge per view (v1.2)', () => {
+  const MARCH = { startDate: '2026-03-01', endDate: '2026-04-01' };
+  const doc = (id: string, kind: SpendRecord['kind'], localDate: string, categoryId: string, minor: number, extra: Partial<SpendRecord> = {}): SpendRecord => ({
+    id, kind, localDate, categoryId, total: money(minor, INR), deletedAt: null, ...extra,
+  });
+  const DOCS: SpendRecord[] = [
+    doc('e1', 'expense', '2026-03-02', 'FOOD', 250000),
+    doc('e2', 'expense', '2026-02-10', 'SHOPPING', 300000),
+    doc('r1', 'refund', '2026-03-05', 'SHOPPING', 200000, { refundOf: 'e2' }),
+    doc('e3', 'expense', '2026-03-08', 'TRAVEL', 100000),
+    doc('r2', 'refund', '2026-03-12', 'TRAVEL', 40000, { refundOf: 'e3' }),
+    doc('i1', 'income', '2026-03-01', 'SALARY', 5000000),
+    doc('i2', 'income', '2026-03-15', 'CASHBACK', 2500),
+    doc('t1', 'transfer', '2026-03-10', 'sys-transfer', 1000000),
+    doc('m1', 'expense', '2026-03-12', 'FOOD', 30000, { excludeFromSpend: true }),
+    doc('m2', 'expense', '2026-03-13', 'FOOD', 20000),
+    doc('e4', 'expense', '2026-03-20', 'FOOD', 10000, { deletedAt: '2026-03-21T00:00:00.000Z' }),
+    doc('e5', 'expense', '2026-03-21', 'FOOD', 40000, { lines: [{ categoryId: 'FOOD', amountMinor: 15000 }, { categoryId: 'HOME', amountMinor: 25000 }] }),
+  ];
+  const rollups = buildRollups(DOCS as unknown as Expense[]).daily;
+  const merge = (cacheFrom: string, view: 'spend' | 'income' | 'net') =>
+    mergePeriodSourcesForView({ period: MARCH, currency: INR, cacheFrom, rollups, cached: DOCS }, view);
+  const EXPECTED = { spend: 170000, income: 5002500, net: 4832500 } as const;
+  const strip = (rows: readonly { categoryId: string; total: { minor: number } }[]) => rows.map((r) => [r.categoryId, r.total.minor]);
+
+  for (const view of ['spend', 'income', 'net'] as const) {
+    it(`${view}: rollups, cache and a mix of both agree exactly`, () => {
+      const allCache = merge(MARCH.startDate, view);
+      const mixed = merge('2026-03-10', view);
+      const allRollups = merge(MARCH.endDate, view);
+      for (const result of [allCache, mixed, allRollups]) {
+        assert.equal(result.total.minor, EXPECTED[view]);
+        assert.deepEqual(result.days.map((d) => d.total), allCache.days.map((d) => d.total));
+        assert.deepEqual(strip(result.totals), strip(allCache.totals));
+        assert.deepEqual(result.days.map((d) => d.count), allCache.days.map((d) => d.count));
+      }
+      assert.equal(allCache.categoryCountsExact, true);
+      assert.equal(mixed.categoryCountsExact, false);
+    });
+  }
+
+  it('matches the document-only functions for the cached path', () => {
+    const allCache = merge(MARCH.startDate, 'spend');
+    assert.deepEqual(strip(allCache.totals), strip(totalsByCategoryForKind(DOCS, MARCH, 'spend', INR)));
+    assert.deepEqual(allCache.days, totalsByDayForView(DOCS, MARCH, 'spend', INR));
+  });
+
+  it('gives Net two rows, in and out', () => {
+    assert.deepEqual(strip(merge('2026-03-10', 'net').totals), [['in', 5002500], ['out', 170000]]);
+  });
+
+  it('reads a v1 rollup (no refund or income buckets) as expense-only', () => {
+    const v1 = { '2026-03-02': { totalMinor: 5000, count: 2, byCategory: { food: 5000 } } };
+    const sources = { period: MARCH, currency: INR, cacheFrom: MARCH.endDate, rollups: v1, cached: [] };
+    assert.equal(mergePeriodSourcesForView(sources, 'spend').total.minor, 5000);
+    assert.equal(mergePeriodSourcesForView(sources, 'income').total.minor, 0);
+    assert.equal(mergePeriodSourcesForView(sources, 'net').total.minor, -5000);
   });
 });
