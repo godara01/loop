@@ -23,7 +23,9 @@ started.
 > 4. **K5 part B and SM2 haven't run on a device.** Their parity and pairing tests passed only in unit and functions tests.
 > 5. ~~Local cleanup~~ (gone as of 2026-10-16). Was: remove worktree `../loop-w3` and branch `task/k10-wip` (local and `origin`), then `git worktree prune`. The auto-mode check blocked these from the agent. `../loop-wip/` only holds backup patches.
 >
-> Next ready tasks: K8, AC2, K6 (after K5, now unblocked), then SM3 once AC2 and K3 are done. opencode notes: the `opencode-delegate` skill was patched for opencode v2.0.29 (no `--dir`, `model#variant`, `--standalone`); the kr/claude-sonnet provider ran out of credit on 2026-10-15, and the Nemotron models worked but are slow.
+> **2026-10-16:** K8, AC2 and K6 landed (written by Claude directly: every reachable opencode model failed or timed out that day; `cc/*` and `kr/*` had no credentials). Next ready: AC3, AC4, SM3, DP8. The v2 migration still has to be *run* per environment (`npx tsx scripts/migrate-v2.ts --project <id> --yes`) — rehearse it on an emulator export first (docs/27 P2 gate).
+>
+> Older note: next ready tasks were K8, AC2, K6 (after K5, now unblocked), then SM3 once AC2 and K3 are done. opencode notes: the `opencode-delegate` skill was patched for opencode v2.0.29 (no `--dir`, `model#variant`, `--standalone`); the kr/claude-sonnet provider ran out of credit on 2026-10-15, and the Nemotron models worked but are slow.
 
 ---
 
