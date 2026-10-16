@@ -16,6 +16,8 @@ import { useSession } from '@/core/providers/bootstrap-provider';
 import { useCategories } from '@/features/categories';
 import { ExpenseRow } from '@/features/expenses/components/expense-row';
 import { useRecentExpenses } from '@/features/expenses/hooks/use-expenses';
+import { EMPTY_FILTER } from '@/features/expenses/model/ledger-filter';
+import { useLedgerFilterStore } from '@/features/expenses/state/ledger-filter-store';
 import { haptic } from '@/lib/haptics';
 
 import { archiveAccount, deleteAccount } from '../api/account-repository';
@@ -142,7 +144,21 @@ export function AccountDetailScreen({ accountId }: { accountId: string }) {
         ) : null}
       </View>
 
-      <Text style={styles.section}>TRANSACTIONS</Text>
+      <View style={styles.sectionRow}>
+        <Text style={styles.section}>RECENT TRANSACTIONS</Text>
+        <Pressable
+          testID="account-detail-ledger"
+          accessibilityRole="link"
+          accessibilityLabel="See all of this account's transactions in the ledger"
+          hitSlop={8}
+          onPress={() => {
+            haptic('tap');
+            useLedgerFilterStore.getState().setFilter({ ...EMPTY_FILTER, accountIds: [account.id] });
+            router.push('/(tabs)/activity');
+          }}>
+          <Text style={styles.action}>SEE ALL →</Text>
+        </Pressable>
+      </View>
       <Card>
         {transactions.length === 0 ? (
           <Text testID="account-detail-empty" style={styles.muted}>Nothing on this account yet.</Text>
@@ -175,5 +191,6 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   action: { ...type.monoSm, color: colors.credit },
   danger: { color: colors.debit },
-  section: { ...type.monoSm, color: colors.textMuted, marginTop: space.sm },
+  section: { ...type.monoSm, color: colors.textMuted },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.sm },
 });

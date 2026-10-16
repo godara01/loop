@@ -123,3 +123,19 @@ describe('seeded categories', () => {
     assert.ok(categories.some((category) => category.id === 'cat-food'));
   });
 });
+
+describe('summary with v1.2 kinds (DP8 device run)', () => {
+  it('states spend and income separately and never adds them', () => {
+    const rows = [
+      expense('a', 4_000),
+      { ...expense('s', 100_000), kind: 'income' as const },
+      { ...expense('r', 1_000), kind: 'refund' as const },
+      { ...expense('t', 50_000), kind: 'transfer' as const },
+    ];
+    const summary = ledgerSummary(rows, 'INR', true);
+    assert.deepEqual(summary.total, money(3_000, 'INR'));
+    assert.deepEqual(summary.income, money(100_000, 'INR'));
+    assert.equal(summaryLine(summary), '4 transactions · ₹30.00 spent · ₹1,000.00 in');
+    assert.equal(summaryLine({ ...summary, complete: false }), '≥ 4 transactions · ≥ ₹30.00 spent · ≥ ₹1,000.00 in');
+  });
+});

@@ -15,6 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MonoTag } from '@/components/ui/surface';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { useSession } from '@/core/providers/bootstrap-provider';
+// Deep paths: the expenses index re-exports Orbit, which renders this feature.
+import { EMPTY_FILTER } from '@/features/expenses/model/ledger-filter';
+import { useLedgerFilterStore } from '@/features/expenses/state/ledger-filter-store';
 import { EMPTY_STATES } from '@/lib/empty-states';
 import { haptic } from '@/lib/haptics';
 
@@ -118,6 +121,7 @@ export function AccountsScreen() {
             accessibilityLabel="Unassigned: transactions with no account. Opens the ledger."
             onPress={() => {
               haptic('tap');
+              useLedgerFilterStore.getState().setFilter({ ...EMPTY_FILTER, accountIds: ['none'] });
               router.push('/(tabs)/activity');
             }}
             style={[styles.row, styles.rowMuted]}>

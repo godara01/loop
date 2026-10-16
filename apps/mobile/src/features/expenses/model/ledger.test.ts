@@ -78,3 +78,17 @@ describe('usage counts', () => {
     assert.equal(counts.has('cat-groceries'), false);
   });
 });
+
+describe('day total with v1.2 kinds', () => {
+  it("is the day's spend: income and transfers are not summed in, refunds come off", () => {
+    const day = '2026-09-16';
+    const base = EXPENSES[0]!;
+    const rows = [
+      { ...base, id: 'x1', localDate: day, total: money(4_000, 'INR') },
+      { ...base, id: 'x2', localDate: day, kind: 'income' as const, total: money(100_000, 'INR') },
+      { ...base, id: 'x3', localDate: day, kind: 'refund' as const, total: money(1_000, 'INR') },
+      { ...base, id: 'x4', localDate: day, kind: 'transfer' as const, total: money(50_000, 'INR') },
+    ];
+    assert.deepEqual(groupByDay(rows, 'INR')[0]!.total, money(3_000, 'INR'));
+  });
+});

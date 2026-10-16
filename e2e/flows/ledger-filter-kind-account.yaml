@@ -1,0 +1,97 @@
+# DP8: the ledger's Type and Account facets (docs/03 § Ledger filters), and the
+# accounts screens that open the ledger filtered.
+appId: com.getter.loop
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
+
+# An account "HDFC"
+- tapOn: { id: "tab-profile" }
+- scrollUntilVisible: { element: { id: "profile-accounts" }, centerElement: true }
+- tapOn: { id: "profile-accounts" }
+- extendedWaitUntil: { visible: { id: "accounts-add" }, timeout: 15000 }
+- tapOn: { id: "accounts-add" }
+- extendedWaitUntil: { visible: { id: "account-editor-name" }, timeout: 15000 }
+- tapOn: { id: "account-editor-name" }
+- inputText: "HDFC"
+- hideKeyboard
+- tapOn: { id: "account-editor-save" }
+- extendedWaitUntil: { visible: { id: "screen-accounts" }, timeout: 15000 }
+- tapOn: { id: "accounts-close" }
+- tapOn: { id: "tab-index" }
+
+# "Lunch" ₹300 on HDFC
+- tapOn: { id: "dock-add" }
+- extendedWaitUntil: { visible: { id: "entry-account" }, timeout: 15000 }
+- tapOn: { id: "pad-key-3" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "category-chip-FOOD" }
+- tapOn: { id: "entry-description" }
+- inputText: "Lunch"
+- runFlow: ../subflows/dismiss-stylus-tip.yaml
+- tapOn: { id: "entry-account" }
+- tapOn: { text: "HDFC" }
+- tapOn: { id: "entry-save" }
+- extendedWaitUntil: { visible: { id: "screen-orbit" }, timeout: 15000 }
+
+# "Snacks" ₹40, set to no account
+- tapOn: { id: "dock-add" }
+- extendedWaitUntil: { visible: { id: "entry-account" }, timeout: 15000 }
+- tapOn: { id: "pad-key-4" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "category-chip-FOOD" }
+- tapOn: { id: "entry-description" }
+- inputText: "Snacks"
+- tapOn: { id: "entry-account" }
+- tapOn: { id: "entry-account-option-none" }
+- tapOn: { id: "entry-save" }
+- extendedWaitUntil: { visible: { id: "screen-orbit" }, timeout: 15000 }
+
+# "Salary" ₹1,000 income, no account
+- tapOn: { id: "dock-add" }
+- extendedWaitUntil: { visible: { id: "entry-amount" }, timeout: 15000 }
+- tapOn: { id: "kind-switch-income" }
+- tapOn: { id: "pad-key-1" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "pad-key-0" }
+- tapOn: { id: "category-chip-SALARY" }
+- tapOn: { id: "entry-save" }
+- extendedWaitUntil: { visible: { id: "screen-orbit" }, timeout: 15000 }
+
+# Type: Income -> only the salary
+- tapOn: { id: "tab-activity" }
+- extendedWaitUntil: { visible: { id: "screen-ledger" }, timeout: 15000 }
+- tapOn: { id: "ledger-filter-open" }
+- extendedWaitUntil: { visible: { id: "ledger-filter-screen" }, timeout: 15000 }
+- scrollUntilVisible: { element: { id: "ledger-filter-kind-income" } }
+- tapOn: { id: "ledger-filter-kind-income" }
+- tapOn: { id: "ledger-filter-apply" }
+- extendedWaitUntil: { visible: { id: "screen-ledger" }, timeout: 15000 }
+- assertVisible: { text: "Income" }
+- assertVisible: { text: ".*1,000.*" }
+- assertNotVisible: { text: "Lunch" }
+- assertNotVisible: { text: "Snacks" }
+
+# Account: HDFC -> only lunch
+- tapOn: { id: "ledger-filter-open" }
+- extendedWaitUntil: { visible: { id: "ledger-filter-screen" }, timeout: 15000 }
+- tapOn: { id: "ledger-filter-reset" }
+- scrollUntilVisible: { element: { text: "HDFC" } }
+- tapOn: { text: "HDFC" }
+- tapOn: { id: "ledger-filter-apply" }
+- extendedWaitUntil: { visible: { id: "screen-ledger" }, timeout: 15000 }
+- assertVisible: { text: "Lunch" }
+- assertNotVisible: { text: "Snacks" }
+
+# Accounts -> Unassigned opens the ledger filtered to No account
+- tapOn: { id: "tab-profile" }
+- scrollUntilVisible: { element: { id: "profile-accounts" }, centerElement: true }
+- tapOn: { id: "profile-accounts" }
+- extendedWaitUntil: { visible: { id: "accounts-unassigned" }, timeout: 15000 }
+- tapOn: { id: "accounts-unassigned" }
+- extendedWaitUntil: { visible: { id: "screen-ledger" }, timeout: 15000 }
+- assertVisible: { text: "No account" }
+- assertVisible: { text: "Snacks" }
+- assertNotVisible: { text: "Lunch" }
