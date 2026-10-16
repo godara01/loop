@@ -17,6 +17,7 @@ import {
   categoryToDoc,
   essentialCategoriesToSeed,
   firestorePaths,
+  incomeCategoriesToSeed,
   newProfile,
   parseProfile,
   profileToDoc,
@@ -41,12 +42,21 @@ async function seedEssentials(uid: string): Promise<void> {
   const now = new Date().toISOString();
   const batch = writeBatch(db);
 
-  for (const category of essentialCategoriesToSeed(null, now)) {
+  const essentials = essentialCategoriesToSeed(null, now);
+  // v1.2: a new account gets the income essentials too (docs/04 § Income
+  // categories), or the Income switch has nothing to pick. Existing accounts get
+  // them from scripts/migrate-v2.ts, which applies the same collision rule.
+  const income = incomeCategoriesToSeed(undefined, essentials, now);
+  for (const category of [...essentials, ...income.categories]) {
     batch.set(doc(db, firestorePaths.category(uid, category.id)), categoryToDoc(category, now));
   }
   // Same batch as the categories: the marker can never say "seeded" while the
   // categories themselves failed to write, or the reverse.
-  batch.update(doc(db, firestorePaths.user(uid)), { categoriesSeededAt: now, updatedAt: now });
+  batch.update(doc(db, firestorePaths.user(uid)), {
+    categoriesSeededAt: now,
+    categoriesSeedVersion: income.newVersion,
+    updatedAt: now,
+  });
 
   await batch.commit();
 }
