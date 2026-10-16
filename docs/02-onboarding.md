@@ -149,6 +149,7 @@ These matter more than the onboarding screens — most users will see them.
 | Insights | *"Log a few days and this fills in."* | Add expense |
 | Insights, <3 days of data | Show real data, plus a muted note *"Trends need about a week."* — never fake a chart | — |
 | Inbox | *"Transaction messages will show up here for you to approve."* | Turn on auto-capture (Android) |
+| Insights, past period before the v2 migration (v1.2) | Instead of numbers, *"Updating your history…"* while `meta/schema.ledger < 2` ([27](27-full-ledger-plan.md#migration-script-p2-scriptsmigrate-v2ts)) | — |
 | Accounts (v1.2) | *"Add where your money lives — a bank, a card, cash."* | Add account (Cash suggested) |
 | Budgets (v1.4) | *"Set a monthly limit and see how close you are."* + categories with spend this month | Set a budget |
 | Recurring (v1.4) | *"Rent, subscriptions, salary — Loop will remind you when they're due."* | New rule, or **Make recurring** from any transaction |

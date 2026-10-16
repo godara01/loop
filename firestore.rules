@@ -178,6 +178,9 @@ service cloud.firestore {
       // an exact offline balance (docs/18 § The balance). Functions write both.
       match /accountBalances/{accountId} { allow read: if isOwner(uid); allow write: if false; }
       match /rollupApplied/{expenseId}   { allow read: if isOwner(uid); allow write: if false; }
+      // meta/schema: written only by scripts/migrate-v2.ts. Clients never
+      // decide that a migration ran (docs/27 § Migration script).
+      match /meta/{docId}                { allow read: if isOwner(uid); allow write: if false; }
 
       match /groupIndex/{groupId} { allow read: if isOwner(uid); allow write: if isOwner(uid); }
       match /devices/{deviceId}   { allow read, write: if isOwner(uid); }

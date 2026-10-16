@@ -46,7 +46,7 @@ import { EMPTY_STATES } from '@/lib/empty-states';
 import { haptic } from '@/lib/haptics';
 
 import { type ExpensesState, useExpensesForPeriod } from '../hooks/use-expenses';
-import { useDailyRollups } from '../hooks/use-rollups';
+import { useDailyRollups, useLedgerSchema } from '../hooks/use-rollups';
 import { fromDrillDown } from '../model/ledger-filter';
 import { useLedgerFilterStore } from '../state/ledger-filter-store';
 
@@ -103,6 +103,10 @@ export function InsightsScreen() {
   const previousExpenses = useExpensesForPeriod(cachedPart(previous, cacheFrom));
   const previousRollups = useDailyRollups(rollupPart(previous, cacheFrom));
   const categories = useCategories();
+  // Until the v2 migration reaches this user, rollups may predate refunds and
+  // income: past periods show a notice instead of numbers (docs/27).
+  const ledger = useLedgerSchema();
+  const historyUpdating = ledger.status === 'ready' && ledger.updating;
 
   const categoriesById = useMemo(
     () => new Map<string, Category>(categories.status === 'ready' ? categories.snapshot.categories.map((item) => [item.id, item]) : []),
@@ -173,7 +177,7 @@ export function InsightsScreen() {
     const cached = expenses.status === 'ready' ? expenses.snapshot.expenses.length : 0;
     console.log(`[perf] insights ready ${Math.round(performance.now() - mountedAt.current)}ms cached=${cached} rollupDays=${rollups.status === 'ready' ? Object.keys(rollups.rollups).length : 0}`);
   }, [sourcesReady, expenses, rollups]);
-  const delta = previousTotal ? compareToPrevious(model.stats.total, previousTotal) : null;
+  const delta = previousTotal && !historyUpdating ? compareToPrevious(model.stats.total, previousTotal) : null;
   const tone = delta ? deltaTone(view, delta) : 'neutral';
   const netNegative = view === 'net' && model.stats.total.minor < 0;
 
@@ -244,7 +248,9 @@ export function InsightsScreen() {
       {expenses.status === 'error' ? <Text style={styles.error}>{expenses.message}</Text> : null}
       {rollups.status === 'error' ? <Text style={styles.error}>{rollups.message}</Text> : null}
       {needsConnection ? <Text testID="insights-needs-connection" style={styles.thinData}>Needs a connection once.</Text> : null}
-      {expenses.status === 'ready' && rollups.status !== 'loading' && model.stats.count === 0 ? (
+      {historyUpdating && rollupPart(period, cacheFrom) !== null ? (
+        <Text testID="insights-updating-history" style={styles.empty}>{EMPTY_STATES.insightsUpdatingHistory}</Text>
+      ) : expenses.status === 'ready' && rollups.status !== 'loading' && model.stats.count === 0 ? (
         <Text testID="insights-empty" style={styles.empty}>{EMPTY_STATES.insights}</Text>
       ) : (
         <>

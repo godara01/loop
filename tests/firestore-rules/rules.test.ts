@@ -316,6 +316,18 @@ describe('server-authoritative data', () => {
   });
 });
 
+describe('meta/schema (v1.2)', () => {
+  it('is owner-readable and written by no client', async () => {
+    const path = p.metaSchema(ALICE);
+    await seedAsServer(path, { ledger: 2, migratedAt: '2026-10-16T00:00:00.000Z' });
+    await assertSucceeds(getDoc(doc(as(ALICE), path)));
+    await assertFails(getDoc(doc(as(BOB), path)));
+    await assertFails(setDoc(doc(as(ALICE), path), { ledger: 2 }));
+    await assertFails(setDoc(doc(as(ALICE), p.metaSchema(BOB)), { ledger: 2 }));
+    await assertFails(deleteDoc(doc(as(ALICE), path)));
+  });
+});
+
 describe('catalogue', () => {
   it('is readable by any signed-in user and writable by none', async () => {
     await seedAsServer('catalog/meta', { version: 1 });

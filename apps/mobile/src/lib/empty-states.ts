@@ -9,6 +9,8 @@ export const EMPTY_STATES = {
   insights: 'Log a few days and this fills in.',
   /** Shown under real data when fewer than 3 days have spending — never a fake chart. */
   insightsThinData: 'Trends need about a week.',
+  /** Past periods while meta/schema.ledger < 2 (docs/27 § Migration script). */
+  insightsUpdatingHistory: 'Updating your history…',
   inbox: 'Transaction messages will show up here for you to approve.',
 } as const;
 
