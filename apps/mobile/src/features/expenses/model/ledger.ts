@@ -3,7 +3,7 @@
  * ordering rules are tested without a device. See docs/03-expenses.md#the-ledger.
  */
 
-import { type Category, type CurrencyCode, type Expense, type Money, add, addDays, money } from '@loop/shared';
+import { type Category, type CurrencyCode, type Expense, type Money, addDays, periodSpend } from '@loop/shared';
 
 export interface LedgerDay {
   readonly date: string;
@@ -30,7 +30,9 @@ export function groupByDay(expenses: readonly Expense[], currency: CurrencyCode)
       return {
         date,
         expenses: ordered,
-        total: ordered.reduce((sum, e) => add(sum, e.total), money(0, currency)),
+        // The day's spend (expense − refund), like Insights: income and transfers
+        // are shown on their rows, never summed into "spent".
+        total: periodSpend(ordered, { startDate: date, endDate: addDays(date, 1) }, currency),
       };
     });
 }

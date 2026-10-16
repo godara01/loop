@@ -2,12 +2,12 @@
  * The ledger filter: a pure predicate model the filter sheet, the chips row and
  * the query planner all share. docs/03-expenses.md § "Ledger filters".
  *
- * P1 facets: text, date range, categories, amount, source. Later releases fill
- * in kinds (v1.2), accounts (v1.2), tags (v1.3) and merchant (v1.3); until then
- * those fields stay empty and `matches` ignores them.
+ * Facets: text, date range, categories, amount, source (v1.1); kind and
+ * account (v1.2). Tags and merchant (v1.3) stay empty and `matches` ignores
+ * them until then.
  */
 
-import { type Category, type CurrencyCode, type Expense, type ExpenseSource, addDays, formatMoney, money } from '@loop/shared';
+import { type Account, type Category, type CurrencyCode, type Expense, type ExpenseSource, type TransactionKind, addDays, formatMoney, money } from '@loop/shared';
 
 import { matchesText } from './ledger';
 
@@ -22,9 +22,9 @@ export interface LedgerFilter {
   readonly amountMax: number | null;
   /** Empty = all. */
   readonly sources: readonly ExpenseSource[];
-  /** v1.2 — ignored while empty. */
-  readonly kinds: readonly string[];
-  /** v1.2 — ignored while empty. 'none' = no account. */
+  /** v1.2. Empty = all. A v1 document with no `kind` is an expense. */
+  readonly kinds: readonly TransactionKind[];
+  /** v1.2. Empty = all. 'none' = no account. A transfer matches on either side. */
   readonly accountIds: readonly (string | 'none')[];
   /** v1.3 — ignored while empty. */
   readonly tagIds: readonly string[];
@@ -58,26 +58,50 @@ export function matches(filter: LedgerFilter, expense: Expense, ctx: MatchContex
   if (filter.amountMin !== null && expense.total.minor < filter.amountMin) return false;
   if (filter.amountMax !== null && expense.total.minor > filter.amountMax) return false;
   if (filter.sources.length > 0 && !filter.sources.includes(expense.source)) return false;
+  if (filter.kinds.length > 0 && !filter.kinds.includes(expense.kind ?? 'expense')) return false;
+  if (filter.accountIds.length > 0 && !matchesAccount(filter.accountIds, expense)) return false;
   return true;
+}
+
+function matchesAccount(accountIds: readonly (string | 'none')[], expense: Expense): boolean {
+  const from = expense.accountId ?? null;
+  const to = expense.toAccountId ?? null;
+  if (from === null && to === null) return accountIds.includes('none');
+  return (from !== null && accountIds.includes(from)) || (to !== null && accountIds.includes(to));
 }
 
 export interface ServerQuery {
   /** Half-open, for the existing `localDate` range query. */
   readonly dateRange: { readonly start: string; readonly endExclusive: string } | null;
   /** At most ONE equality constraint — Firestore index budget, docs/03 § Query strategy. */
-  readonly equality: { readonly field: 'categoryId'; readonly value: string } | null;
+  readonly equality: { readonly field: 'categoryId' | 'kind' | 'accountId'; readonly value: string } | null;
 }
 
 /**
  * The bounded server query for a filter. Everything it doesn't cover is
  * filtered on the client with `matches`. The date range always wins when set,
- * because it is what bounds the read; in P1 the only equality is a single
- * category (index: deletedAt, categoryId, localDate DESC).
+ * because it is what bounds the read. Then ONE equality, in priority order: a
+ * single category, a single kind, a single account — each with its index
+ * (deletedAt, <field>, localDate DESC).
+ *
+ * Two values can't be asked of the server: `kind == 'expense'` would miss v1
+ * documents, which have no `kind` field, and "no account" has no field to match.
+ * Those stay client-side.
  */
 export function serverQueryFor(filter: LedgerFilter): ServerQuery {
   const dateRange = filter.dateRange === null ? null : { start: filter.dateRange.start, endExclusive: addDays(filter.dateRange.end, 1) };
-  const only = filter.categoryIds.length === 1 ? filter.categoryIds[0] : undefined;
-  const equality = only === undefined ? null : ({ field: 'categoryId', value: only } as const);
+  const single = <T,>(values: readonly T[]) => (values.length === 1 ? values[0] : undefined);
+  const category = single(filter.categoryIds);
+  const kind = single(filter.kinds);
+  const account = single(filter.accountIds);
+  const equality: ServerQuery['equality'] =
+    category !== undefined
+      ? { field: 'categoryId', value: category }
+      : kind !== undefined && kind !== 'expense'
+        ? { field: 'kind', value: kind }
+        : account !== undefined && account !== 'none'
+          ? { field: 'accountId', value: account }
+          : null;
   return { dateRange, equality };
 }
 
@@ -147,7 +171,17 @@ export interface FilterChip {
 export interface ChipContext extends MatchContext {
   /** The ledger currency — amounts are labelled with formatMoney, never `minor / 100`. */
   readonly currency: CurrencyCode;
+  /** For account chip labels; archived accounts included. Optional: v1.1 callers have none. */
+  readonly accountsById?: ReadonlyMap<string, Account>;
 }
+
+/** The kinds the sheet offers; settlements and loans arrive with Squads (v1.5). */
+export const KIND_LABELS: Readonly<Partial<Record<TransactionKind, string>>> = {
+  expense: 'Spend',
+  income: 'Income',
+  refund: 'Refund',
+  transfer: 'Transfer',
+};
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const SOURCE_LABELS: Record<ExpenseSource, string> = { manual: 'Manual', sms: 'SMS', shared: 'Shared', group: 'Squad', import: 'Import' };
@@ -185,6 +219,15 @@ export function activeChips(filter: LedgerFilter, ctx: ChipContext): FilterChip[
 
   if (filter.sources.length > 0) {
     chips.push({ facet: 'sources', label: filter.sources.map((s) => SOURCE_LABELS[s]).join(', ') });
+  }
+  if (filter.kinds.length > 0) {
+    chips.push({ facet: 'kinds', label: filter.kinds.map((k) => KIND_LABELS[k] ?? k).join(', ') });
+  }
+  if (filter.accountIds.length === 1) {
+    const id = filter.accountIds[0] as string;
+    chips.push({ facet: 'accountIds', label: id === 'none' ? 'No account' : (ctx.accountsById?.get(id)?.name ?? 'Unknown account') });
+  } else if (filter.accountIds.length > 1) {
+    chips.push({ facet: 'accountIds', label: `${filter.accountIds.length} accounts` });
   }
   return chips;
 }

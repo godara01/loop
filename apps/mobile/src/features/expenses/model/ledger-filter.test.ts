@@ -210,3 +210,55 @@ describe('activeChips', () => {
     assert.deepEqual(activeChips(EMPTY_FILTER, chipCtx), []);
   });
 });
+
+describe('v1.2 facets: kind and account (DP8)', () => {
+  const v1 = coffee; // no kind field: a v1 expense
+  const salary: Expense = { ...make('s', 5_000_000, '2026-09-01', 'cat-food', 'Salary'), kind: 'income', accountId: 'acc-bank' };
+  const refund: Expense = { ...make('r', 2_000, '2026-09-02', 'cat-food', 'Refund'), kind: 'refund', refundOf: 'a', accountId: 'acc-card' };
+  const topUp: Expense = { ...make('t', 10_000, '2026-09-03', 'sys-transfer', 'Top up'), kind: 'transfer', accountId: 'acc-bank', toAccountId: 'acc-cash' };
+  const onCard: Expense = { ...make('k', 7_000, '2026-09-04', 'cat-food', 'Lunch'), accountId: 'acc-card' };
+  const TXS = [v1, salary, refund, topUp, onCard];
+  const pick = (filter: LedgerFilter) => TXS.filter((e) => matches(filter, e, ctx)).map((e) => e.id);
+
+  it('kind: a v1 expense with no kind counts as Spend', () => {
+    assert.deepEqual(pick(f({ kinds: ['expense'] })), ['a', 'k']);
+    assert.deepEqual(pick(f({ kinds: ['income', 'refund'] })), ['s', 'r']);
+    assert.deepEqual(pick(f({ kinds: ['transfer'] })), ['t']);
+  });
+
+  it('account: by id, a transfer on either side, and None for no account', () => {
+    assert.deepEqual(pick(f({ accountIds: ['acc-bank'] })), ['s', 't']);
+    assert.deepEqual(pick(f({ accountIds: ['acc-cash'] })), ['t']);
+    assert.deepEqual(pick(f({ accountIds: ['acc-card'] })), ['r', 'k']);
+    assert.deepEqual(pick(f({ accountIds: ['none'] })), ['a']);
+    assert.deepEqual(pick(f({ accountIds: ['none', 'acc-card'] })), ['a', 'r', 'k']);
+  });
+
+  it('kind and account combine with AND, and with the other facets', () => {
+    assert.deepEqual(pick(f({ kinds: ['expense'], accountIds: ['acc-card'] })), ['k']);
+    assert.deepEqual(pick(f({ kinds: ['expense'], accountIds: ['acc-card'], amountMin: 8_000 })), []);
+  });
+
+  it('server query: one equality, category > kind > account, never kind=expense or account=none', () => {
+    assert.deepEqual(serverQueryFor(f({ kinds: ['income'] })).equality, { field: 'kind', value: 'income' });
+    assert.deepEqual(serverQueryFor(f({ accountIds: ['acc-bank'] })).equality, { field: 'accountId', value: 'acc-bank' });
+    assert.deepEqual(serverQueryFor(f({ categoryIds: ['cat-food'], kinds: ['income'], accountIds: ['acc-bank'] })).equality, { field: 'categoryId', value: 'cat-food' });
+    assert.deepEqual(serverQueryFor(f({ kinds: ['income'], accountIds: ['acc-bank'] })).equality, { field: 'kind', value: 'income' });
+    assert.deepEqual(serverQueryFor(f({ kinds: ['expense'], accountIds: ['acc-bank'] })).equality, { field: 'accountId', value: 'acc-bank' });
+    assert.equal(serverQueryFor(f({ kinds: ['expense'] })).equality, null);
+    assert.equal(serverQueryFor(f({ accountIds: ['none'] })).equality, null);
+    assert.equal(serverQueryFor(f({ kinds: ['income', 'refund'] })).equality, null);
+  });
+
+  it('chips name the kinds and the account; removing a chip clears its facet', () => {
+    const accountsById = new Map([['acc-bank', { id: 'acc-bank', name: 'HDFC' } as never]]);
+    const chips = activeChips(f({ kinds: ['expense', 'income'], accountIds: ['acc-bank'] }), { ...chipCtx, accountsById });
+    assert.deepEqual(chips.map((c) => c.label), ['Spend, Income', 'HDFC']);
+    assert.deepEqual(activeChips(f({ accountIds: ['none'] }), chipCtx).map((c) => c.label), ['No account']);
+    assert.deepEqual(activeChips(f({ accountIds: ['gone'] }), chipCtx).map((c) => c.label), ['Unknown account']);
+    assert.deepEqual(activeChips(f({ accountIds: ['a', 'b'] }), chipCtx).map((c) => c.label), ['2 accounts']);
+    assert.deepEqual(withoutFacet(f({ kinds: ['income'], accountIds: ['x'] }), 'kinds'), f({ accountIds: ['x'] }));
+    assert.deepEqual(withoutFacet(f({ kinds: ['income'], accountIds: ['x'] }), 'accountIds'), f({ kinds: ['income'] }));
+    assert.equal(isEmpty(f({ kinds: ['income'] })), false);
+  });
+});

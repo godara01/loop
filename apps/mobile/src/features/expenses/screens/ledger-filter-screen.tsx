@@ -14,6 +14,7 @@ import {
   type Category,
   type CurrencyCode,
   type ExpenseSource,
+  type TransactionKind,
   categoryColors,
   colors,
   layout,
@@ -31,18 +32,27 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePickerSheet } from '@/components/ui/date-picker-sheet';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { useSession } from '@/core/providers/bootstrap-provider';
+import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { useCategories } from '@/features/categories';
 import { haptic } from '@/lib/haptics';
 
 import { inputFromMoney } from '../model/amount-input';
 import { PRESET_IDS, PRESET_LABELS, type DatePresetId, last30, matchingPreset, presetRange } from '../model/date-presets';
-import { EMPTY_FILTER, type LedgerFilter, validate } from '../model/ledger-filter';
+import { EMPTY_FILTER, KIND_LABELS, type LedgerFilter, validate } from '../model/ledger-filter';
 import { useLedgerFilterStore } from '../state/ledger-filter-store';
 
 /** The sources the sheet offers in P1; `shared` and `group` arrive with Squads. */
 const SOURCES: readonly { readonly id: Extract<ExpenseSource, 'manual' | 'sms'>; readonly label: string; readonly testID: string }[] = [
   { id: 'manual', label: 'Manual', testID: 'ledger-filter-source-manual' },
   { id: 'sms', label: 'SMS', testID: 'ledger-filter-source-sms' },
+];
+
+/** v1.2 kinds, ids spelled out for check:testids. */
+const KINDS: readonly { readonly id: TransactionKind; readonly testID: string }[] = [
+  { id: 'expense', testID: 'ledger-filter-kind-expense' },
+  { id: 'income', testID: 'ledger-filter-kind-income' },
+  { id: 'refund', testID: 'ledger-filter-kind-refund' },
+  { id: 'transfer', testID: 'ledger-filter-kind-transfer' },
 ];
 
 /**
@@ -96,6 +106,9 @@ export function LedgerFilterScreen() {
   const stored = useLedgerFilterStore((state) => state.filter);
   const setFilter = useLedgerFilterStore((state) => state.setFilter);
   const categoriesState = useCategories();
+  const accountsState = useAccounts();
+  // Archived accounts stay filterable, the way archived categories do.
+  const accounts = accountsState.status === 'ready' ? accountsState.snapshot.accounts : [];
 
   const [draft, setDraft] = useState<LedgerFilter>(stored);
   const [minText, setMinText] = useState(() => amountText(stored.amountMin, currency));
@@ -138,6 +151,16 @@ export function LedgerFilterScreen() {
   const toggleSource = (source: ExpenseSource) => {
     haptic('selection');
     setDraft((current) => ({ ...current, sources: toggled(current.sources, source) }));
+  };
+
+  const toggleKind = (kind: TransactionKind) => {
+    haptic('selection');
+    setDraft((current) => ({ ...current, kinds: toggled(current.kinds, kind) }));
+  };
+
+  const toggleAccount = (accountId: string | 'none') => {
+    haptic('selection');
+    setDraft((current) => ({ ...current, accountIds: toggled(current.accountIds, accountId) }));
   };
 
   const reset = () => {
@@ -266,6 +289,51 @@ export function LedgerFilterScreen() {
             );
           })}
         </View>
+
+        <Text style={styles.section}>TYPE</Text>
+        <View style={styles.chipRow}>
+          {KINDS.map(({ id, testID }) => {
+            const selected = draft.kinds.includes(id);
+            const label = KIND_LABELS[id] ?? id;
+            return (
+              <Pressable
+                key={id}
+                testID={testID}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: selected }}
+                accessibilityLabel={label}
+                onPress={() => toggleKind(id)}
+                style={[styles.chip, selected && styles.chipSelected]}>
+                <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {accounts.length > 0 ? (
+          <>
+            <Text style={styles.section}>ACCOUNT</Text>
+            <View style={styles.chipRow}>
+              {[...accounts.map((a) => ({ id: a.id, label: a.name, archived: a.archivedAt !== null })), { id: 'none', label: 'No account', archived: false }].map(
+                ({ id, label, archived: isArchived }) => {
+                  const selected = draft.accountIds.includes(id);
+                  return (
+                    <Pressable
+                      key={id}
+                      testID={id === 'none' ? 'ledger-filter-account-none' : `ledger-filter-account-${id}`}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: selected }}
+                      accessibilityLabel={isArchived ? `${label}, archived` : label}
+                      onPress={() => toggleAccount(id)}
+                      style={[styles.chip, selected && styles.chipSelected, isArchived && styles.archived]}>
+                      <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{label}</Text>
+                    </Pressable>
+                  );
+                },
+              )}
+            </View>
+          </>
+        ) : null}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + layout.thumbZoneOffset }]}>

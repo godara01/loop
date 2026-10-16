@@ -8,7 +8,7 @@
  * `Money`. Both are testable without Firestore or a device.
  */
 
-import { type CurrencyCode, type Expense, type Money, formatMoney, sum } from '@loop/shared';
+import { type CurrencyCode, type Expense, type Money, formatMoney, periodIncome, periodSpend } from '@loop/shared';
 
 import { type LedgerFilter, isEmpty, serverQueryFor } from './ledger-filter';
 
@@ -36,24 +36,37 @@ export function ledgerSource(filter: LedgerFilter): LedgerSource {
 
 export interface LedgerSummary {
   readonly count: number;
+  /** Spent: expense − refund (v1.2), the Insights Spend rule. Transfers and excluded mirrors add nothing. */
   readonly total: Money;
+  /** Money in (v1.2). Never added to `total` (docs/03 § In the ledger). Absent = none. */
+  readonly income?: Money;
   /** False when the scan stopped early, so the numbers are lower bounds. */
   readonly complete: boolean;
 }
 
+/** Every date, so the shared period functions sum the rows as given. */
+const ALL_DATES = { startDate: '0000-01-01', endDate: '9999-12-31' };
+
 export function ledgerSummary(rows: readonly Expense[], currency: CurrencyCode, complete: boolean): LedgerSummary {
-  return { count: rows.length, total: sum(rows.map((row) => row.total), currency), complete };
+  return {
+    count: rows.length,
+    total: periodSpend(rows, ALL_DATES, currency),
+    income: periodIncome(rows, ALL_DATES, currency),
+    complete,
+  };
 }
 
 /**
- * `42 transactions · ₹18,240.00 spent`. An incomplete scan prefixes **both**
- * numbers with `≥ `, because neither the count nor the total is final — the
- * ledger must never state a number it has not actually read.
+ * `42 transactions · ₹18,240.00 spent · ₹5,000.00 in`. Spend and income are
+ * stated separately and never added; the `in` part appears only when there is
+ * income. An incomplete scan prefixes **every** number with `≥ `, because none
+ * is final — the ledger must never state a number it has not actually read.
  */
 export function summaryLine(summary: LedgerSummary): string {
   const atLeast = summary.complete ? '' : '≥ ';
   const noun = summary.count === 1 ? 'transaction' : 'transactions';
-  return `${atLeast}${summary.count} ${noun} · ${atLeast}${formatMoney(summary.total)} spent`;
+  const income = summary.income && summary.income.minor > 0 ? ` · ${atLeast}${formatMoney(summary.income)} in` : '';
+  return `${atLeast}${summary.count} ${noun} · ${atLeast}${formatMoney(summary.total)} spent${income}`;
 }
 
 const SCANNED_BACK_FORMAT = new Intl.DateTimeFormat('en-IN', {

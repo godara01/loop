@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MonoTag } from '@/components/ui/surface';
 import { TactileButton } from '@/components/ui/tactile-button';
 import { useSession } from '@/core/providers/bootstrap-provider';
+import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { useCategories } from '@/features/categories';
 import { EMPTY_STATES } from '@/lib/empty-states';
 import { haptic } from '@/lib/haptics';
@@ -86,9 +87,14 @@ export function LedgerScreen() {
   const expenses = useFilteredLedger(filter, ctx, pageSize);
   const filtered = !isEmpty(filter);
   const source = ledgerSource(filter);
+  const accountsState = useAccounts();
+  const accountsById = useMemo(
+    () => new Map(accountsState.status === 'ready' ? accountsState.snapshot.accounts.map((a) => [a.id, a] as const) : []),
+    [accountsState],
+  );
   const chips = useMemo(
-    () => activeChips(filter, { categoriesById, currency: profile.currency }),
-    [filter, categoriesById, profile.currency],
+    () => activeChips(filter, { categoriesById, currency: profile.currency, accountsById }),
+    [filter, categoriesById, profile.currency, accountsById],
   );
 
   const matched = useMemo(
