@@ -305,12 +305,12 @@ describe('server-authoritative data', () => {
     }
   });
 
-  it('keeps the rollup bookkeeping marker out of reach, even for the owner', async () => {
-    // rollupApplied has no match of its own; the final catch-all denies it.
+  it('lets the owner read the rollup marker (v1.2, docs/18) but never write it', async () => {
     const path = `${p.user(ALICE)}/rollupApplied/expense-1`;
     await seedAsServer(path, { localDate: '2026-09-13', categoryId: 'cat-food', amountMinor: 18000, currency: 'INR' });
     const ref = doc(as(ALICE), path);
-    await assertFails(getDoc(ref));
+    await assertSucceeds(getDoc(ref));
+    await assertFails(getDoc(doc(as(BOB), path)));
     await assertFails(setDoc(ref, { localDate: '2026-09-13', categoryId: 'cat-food', amountMinor: 1, currency: 'INR' }));
     await assertFails(deleteDoc(ref));
   });

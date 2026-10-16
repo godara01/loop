@@ -98,6 +98,27 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Accounts (docs/18-accounts.md § Data and rules). Mirrors
+      // validateAccountDraft in accounts.ts, so the form and the rules agree.
+      // Rules can't count transactions, so "delete only with zero
+      // transactions" is the client's check; archive is the normal path.
+      match /accounts/{accountId} {
+        function validAccount(d) {
+          return d.name is string && d.name.size() > 0 && d.name.size() <= 24
+            && d.type in ['cash', 'bank', 'card', 'wallet']
+            && (d.last4 == null || (d.last4 is string && d.last4.matches('^[0-9]{4}$')))
+            && d.openingBalance is map
+            && d.openingBalance.amountMinor is int
+            && d.openingBalance.currency is string
+            && isLocalDate(d.openingDate)
+            && d.sortOrder is int && d.sortOrder >= 0;
+        }
+
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validAccount(request.resource.data);
+        allow delete: if isOwner(uid);
+      }
+
       // SMS-derived proposals (docs/12-sms-ingest.md). Never an expense until
       // approved, never deleted by a client (rejections are the post-MVP
       // training signal), and never carrying the raw message: the key set is
@@ -153,6 +174,10 @@ service cloud.firestore {
       match /coinLedger/{entryId} { allow read: if isOwner(uid); allow write: if false; }
       match /dailyRollups/{date}  { allow read: if isOwner(uid); allow write: if false; }
       match /monthlyRollups/{m}   { allow read: if isOwner(uid); allow write: if false; }
+      // v1.2: the account flows and the per-document marker the client needs for
+      // an exact offline balance (docs/18 § The balance). Functions write both.
+      match /accountBalances/{accountId} { allow read: if isOwner(uid); allow write: if false; }
+      match /rollupApplied/{expenseId}   { allow read: if isOwner(uid); allow write: if false; }
 
       match /groupIndex/{groupId} { allow read: if isOwner(uid); allow write: if isOwner(uid); }
       match /devices/{deviceId}   { allow read, write: if isOwner(uid); }
