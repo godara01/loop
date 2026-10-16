@@ -6,7 +6,7 @@
 import { type DailyRollup, type Period } from '@loop/shared';
 import { useEffect, useState } from 'react';
 
-import { subscribeToDailyRollups } from '@/features/expenses/api/rollup-repository';
+import { subscribeToDailyRollups, subscribeToLedgerVersion } from '@/features/expenses/api/rollup-repository';
 import { useSession } from '@/core/providers/bootstrap-provider';
 
 export type RollupsState =
@@ -38,5 +38,33 @@ export function useDailyRollups(range: Period | null): RollupsState {
     );
   }, [uid, start, end]);
 
+  return state;
+}
+
+/** The ledger version past-period numbers need: v1.2 rollups exist from 2 on. */
+export const LEDGER_VERSION = 2;
+
+export type LedgerSchemaState =
+  | { readonly status: 'loading' }
+  | { readonly status: 'ready'; readonly ledger: number; readonly updating: boolean }
+  | { readonly status: 'error'; readonly message: string };
+
+/**
+ * Whether the v2 migration has reached this user. Clients never decide that a
+ * migration ran (docs/27): while `ledger < 2`, past periods show "Updating your
+ * history…" instead of numbers that might be wrong.
+ */
+export function useLedgerSchema(): LedgerSchemaState {
+  const { uid } = useSession();
+  const [state, setState] = useState<LedgerSchemaState>({ status: 'loading' });
+  useEffect(
+    () =>
+      subscribeToLedgerVersion(
+        uid,
+        (ledger) => setState({ status: 'ready', ledger, updating: ledger < LEDGER_VERSION }),
+        (error) => setState({ status: 'error', message: error.message }),
+      ),
+    [uid],
+  );
   return state;
 }

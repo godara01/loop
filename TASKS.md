@@ -919,7 +919,7 @@ changes no behaviour and may start now.
 | K3 | Rules v2 (transactions, pending) + tests | K2 | done |
 | K4 | Rollups v2 + marker v2 maths (pure) | K1 | done |
 | K5 | `onExpenseWrite` v2 + trigger matrix + `rebuildUserLedger` | K2, K4, DP2 | done |
-| K6 | Migration script + `meta/schema` + client "updating" state | K5 | todo |
+| K6 | Migration script + `meta/schema` + client "updating" state | K5 | done |
 | K7 | Income categories + versioned seed | K1 | done |
 | K8 | Insights kinds (pure) + Spend/Income/Net UI | K4, K7 | done |
 | K9 | Entry kind switch + income | K2, K7 | done |

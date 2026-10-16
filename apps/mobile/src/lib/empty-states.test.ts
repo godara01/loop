@@ -36,6 +36,7 @@ describe('empty-state copy', () => {
     ledger: 'Ledger',
     insights: 'Insights',
     insightsThinData: 'Insights, <3 days of data',
+    insightsUpdatingHistory: 'Insights, past period before the v2 migration (v1.2)',
     inbox: 'Inbox',
   };
 
