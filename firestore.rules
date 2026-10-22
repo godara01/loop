@@ -130,12 +130,28 @@ service cloud.firestore {
                   'suggestedCategoryId', 'suggestionConfidence', 'suggestionModelVersion',
                   'expenseId', 'displayHint', 'createdAt', 'updatedAt'];
         }
+        // v1.2 (docs/12 § The pending expense): optional, so a v1 client's
+        // documents still pass. Still no `body`: the set stays exact.
+        function pendingKeysV2() {
+          return ['kind', 'merchantKey', 'suggestedAccountId', 'suggestedRefundOf', 'pairedPendingId'];
+        }
+        function optionalId(d, field) {
+          return !(field in d) || d[field] == null || d[field] is string;
+        }
+        function validV2(d) {
+          return (!('kind' in d) || d.kind in ['expense', 'income', 'refund', 'transfer'])
+            && optionalId(d, 'merchantKey')
+            && optionalId(d, 'suggestedAccountId')
+            && optionalId(d, 'suggestedRefundOf')
+            && optionalId(d, 'pairedPendingId');
+        }
 
         allow read: if isOwner(uid);
 
         allow create: if isOwner(uid)
-          && request.resource.data.keys().hasOnly(pendingKeys())
+          && request.resource.data.keys().hasOnly(pendingKeys().concat(pendingKeysV2()))
           && request.resource.data.keys().hasAll(pendingKeys())
+          && validV2(request.resource.data)
           && request.resource.data.status == 'pending'
           && request.resource.data.expenseId == null
           && request.resource.data.amountMinor is int

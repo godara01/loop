@@ -190,3 +190,29 @@ describe('pendingExpenses — decisions', () => {
     await assertFails(updateDoc(doc(as(ALICE), p.pendingExpense(ALICE, ID)), { merchant: 'OTHER', updatedAt: NOW }));
   });
 });
+
+describe('pendingExpenses — v1.2 fields (SM3)', () => {
+  const v2 = { kind: 'refund', merchantKey: 'AMAZON', suggestedAccountId: 'acc-1', suggestedRefundOf: 'e-9', pairedPendingId: null };
+
+  it("accepts the converter's v1.2 document", async () => {
+    await assertSucceeds(setDoc(doc(as(ALICE), p.pendingExpense(ALICE, ID)), { ...pendingExpenseToDoc({ ...pending, ...v2 } as PendingExpense) }));
+  });
+
+  it('still accepts a v1 document with none of them', async () => {
+    await assertSucceeds(setDoc(doc(as(ALICE), p.pendingExpense(ALICE, ID)), validDoc()));
+  });
+
+  it('refuses a kind that never comes from SMS', async () => {
+    await assertFails(setDoc(doc(as(ALICE), p.pendingExpense(ALICE, ID)), validDoc({ kind: 'settlement' })));
+    await assertFails(setDoc(doc(as(ALICE), p.pendingExpense(ALICE, ID)), validDoc({ kind: 'loan' })));
+  });
+
+  it('refuses a non-string suggestion id', async () => {
+    await assertFails(setDoc(doc(as(ALICE), p.pendingExpense(ALICE, ID)), validDoc({ suggestedRefundOf: 42 })));
+    await assertFails(setDoc(doc(as(ALICE), p.pendingExpense(ALICE, ID)), validDoc({ suggestedAccountId: { id: 'x' } })));
+  });
+
+  it('still refuses the raw message body alongside the new keys', async () => {
+    await assertFails(setDoc(doc(as(ALICE), p.pendingExpense(ALICE, ID)), validDoc({ ...v2, body: 'Refund of Rs 499 credited' })));
+  });
+});

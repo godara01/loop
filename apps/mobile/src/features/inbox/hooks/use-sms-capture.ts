@@ -25,7 +25,8 @@ import { type RawSmsMessage, getRecentSms, requestPermissions, startSmsListener 
 
 import { createPendingExpense, newPendingExpenseId } from '../api/pending-expenses-repository';
 import { BACKFILL_DAYS } from '../model/capture-prompt';
-import { ingestMessage } from '../model/ingest';
+import { type IngestContext, ingestMessage } from '../model/ingest';
+import { REFUND_WINDOW_DAYS, useIngestSuggestions } from './use-ingest-suggestions';
 import { usePendingExpenses } from './use-pending-expenses';
 
 export const SMS_CAPTURE_SUPPORTED = Platform.OS === 'android';
@@ -51,6 +52,8 @@ interface IngestInputs {
   readonly uid: string;
   readonly pending: readonly DedupePendingExpense[];
   readonly manual: readonly DedupeManualExpense[];
+  /** v1.2 suggestions: account by last4, income category, the purchase a refund refunds. */
+  readonly v2: Pick<IngestContext, 'accounts' | 'categories' | 'refundCandidates'>;
 }
 
 /**
@@ -70,6 +73,7 @@ function ingestAll(messages: readonly RawSmsMessage[], inputs: IngestInputs): nu
       registry,
       existingPending: pending,
       existingManual: inputs.manual,
+      ...inputs.v2,
     });
     if (!draft) continue;
     pending.push(draft);
@@ -86,7 +90,9 @@ function useIngestInputs(): React.MutableRefObject<IngestInputs> {
   const { uid } = useSession();
   const pending = usePendingExpenses();
   // Backfill reaches 30 days back; the manual-expense window is ±30 min around each message.
-  const recent = useExpensesForLastDays(BACKFILL_DAYS + 1);
+  // Refund matching looks 60 days back (docs/17 § Refund matching), which covers both.
+  const recent = useExpensesForLastDays(REFUND_WINDOW_DAYS);
+  const v2 = useIngestSuggestions(recent);
   const inputs = useMemo<IngestInputs>(
     () => ({
       uid,
@@ -95,8 +101,9 @@ function useIngestInputs(): React.MutableRefObject<IngestInputs> {
         recent.status === 'ready'
           ? recent.snapshot.expenses.map((e) => ({ amountMinor: e.total.minor, occurredAt: e.occurredAt, source: e.source }))
           : [],
+      v2,
     }),
-    [uid, pending, recent],
+    [uid, pending, recent, v2],
   );
   const ref = useRef(inputs);
   ref.current = inputs;

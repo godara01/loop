@@ -563,3 +563,41 @@ describe('settings: lastAccountByKind (v1.2)', () => {
     assert.throws(() => parseSettings(UID, { lastAccountByKind: { expense: 42 } }), DocumentShapeError);
   });
 });
+
+describe('pending expense documents: v1.2 fields (SM3)', () => {
+  const v1: PendingExpense = {
+    id: 'p-1',
+    status: 'pending',
+    amountMinor: 49_900,
+    currency: 'INR',
+    merchant: 'AMAZON',
+    accountLast4: '1234',
+    occurredAt: '2026-10-12T09:58:00.000Z',
+    receivedAt: NOW,
+    source: 'sms',
+    templateId: 'icici_refund_credited',
+    confidence: 0.9,
+    suggestedCategoryId: null,
+    suggestionConfidence: null,
+    suggestionModelVersion: null,
+    expenseId: null,
+    displayHint: 'ICICI ••1234 · AMAZON',
+    createdAt: NOW,
+    updatedAt: NOW,
+  };
+
+  it('round-trips the v1.2 fields', () => {
+    const v2: PendingExpense = { ...v1, kind: 'refund', merchantKey: 'AMAZON', suggestedAccountId: 'acc-1', suggestedRefundOf: 'e-9', pairedPendingId: null };
+    assert.deepEqual(parsePendingExpense(UID, v2.id, pendingExpenseToDoc(v2)), v2);
+  });
+
+  it('keeps a v1 doc free of the new keys, and parses it', () => {
+    const stored = pendingExpenseToDoc(v1);
+    for (const key of ['kind', 'merchantKey', 'suggestedAccountId', 'suggestedRefundOf', 'pairedPendingId']) assert.equal(key in stored, false);
+    assert.deepEqual(parsePendingExpense(UID, v1.id, stored), v1);
+  });
+
+  it('refuses a kind that never comes from SMS', () => {
+    assert.throws(() => parsePendingExpense(UID, v1.id, { ...pendingExpenseToDoc(v1), kind: 'settlement' }), DocumentShapeError);
+  });
+});

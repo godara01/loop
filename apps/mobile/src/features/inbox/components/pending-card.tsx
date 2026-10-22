@@ -1,35 +1,47 @@
-import { type Category, categoryColors, colors, formatMoney, money, radius, space, type } from '@loop/shared';
+import { type Account, type Category, categoryColors, colors, formatMoney, money, radius, space, type } from '@loop/shared';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/surface';
 import { TactileButton } from '@/components/ui/tactile-button';
+import { AccountChip } from '@/features/accounts/components/account-chip';
 import { haptic } from '@/lib/haptics';
 
 import type { PendingExpense } from '../model/approval';
 
 /**
  * One transaction waiting for a decision. The category is required in the MVP,
- * so Approve stays disabled until a chip is picked.
+ * so Approve stays disabled until a chip is picked. v1.2: an income card shows a
+ * lime `+` and income categories; both show the account chip, pre-selected from
+ * the message's last4 when exactly one account matches (docs/12 § The inbox).
  */
 export function PendingCard({
   item,
+  income = false,
   categories,
   categoryId,
   onPickCategory,
+  accounts = [],
+  accountId = null,
+  onPickAccount,
   onApprove,
   onEdit,
   onDismiss,
 }: {
   item: PendingExpense;
+  income?: boolean;
   categories: readonly Category[];
   categoryId: string | undefined;
   onPickCategory: (categoryId: string) => void;
+  /** Active accounts; the chip is hidden when there are none. */
+  accounts?: readonly Account[];
+  accountId?: string | null;
+  onPickAccount?: (accountId: string | null) => void;
   onApprove: () => void;
   onEdit: () => void;
   onDismiss: () => void;
 }) {
   const id = item.id;
-  const amount = formatMoney(money(item.amountMinor, item.currency));
+  const amount = `${income ? '+' : ''}${formatMoney(money(item.amountMinor, item.currency))}`;
   const time = new Date(item.occurredAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   const title = item.merchant ?? 'Unknown merchant';
 
@@ -46,7 +58,7 @@ export function PendingCard({
             </Text>
           </View>
           <View style={styles.right}>
-            <Text style={styles.amount} testID={`pending-card-${id}-amount`} accessibilityLabel={`Amount ${amount}`}>
+            <Text style={[styles.amount, income && styles.amountIn]} testID={`pending-card-${id}-amount`} accessibilityLabel={`${income ? 'Money in' : 'Amount'} ${amount}`}>
               {amount}
             </Text>
             <Text style={styles.time}>{time}</Text>
@@ -80,6 +92,10 @@ export function PendingCard({
             );
           })}
         </ScrollView>
+
+        {accounts.length > 0 && onPickAccount ? (
+          <AccountChip accounts={accounts} value={accountId} onChange={onPickAccount} testID={`pending-card-${id}-account`} />
+        ) : null}
 
         <View style={styles.actions}>
           <TactileButton
@@ -118,6 +134,7 @@ const styles = StyleSheet.create({
   hint: { ...type.monoSm, color: colors.textMuted },
   right: { alignItems: 'flex-end', gap: space.xs },
   amount: { ...type.monoLg, color: colors.text },
+  amountIn: { color: colors.credit },
   time: { ...type.monoSm, color: colors.textMuted },
   chips: { gap: space.sm, paddingVertical: space.xs },
   chip: {

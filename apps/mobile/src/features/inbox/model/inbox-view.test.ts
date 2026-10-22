@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import { money, newPersonalExpense } from '@loop/shared';
+
 import type { PendingExpense } from './approval';
-import { badgeCount, canApproveAll, groupByDay, localDateIn } from './inbox-view';
+import { badgeCount, bulkApprovable, bulkFromCards, canApproveAll, groupByDay, inboxCards, localDateIn } from './inbox-view';
 
 const item = (id: string, occurredAt: string, status: PendingExpense['status'] = 'pending'): PendingExpense => ({
   id,
@@ -101,5 +103,84 @@ describe('canApproveAll', () => {
     const mixed = [...items, item('done', '2026-09-16T06:00:00.000Z', 'approved')];
     assert.equal(canApproveAll(mixed, { a: 'cat-food', b: 'cat-food' }), true);
     assert.equal(canApproveAll([item('done', '2026-09-16T06:00:00.000Z', 'approved')], {}), false);
+  });
+});
+
+describe('inboxCards: one card per kind (v1.2, SM3)', () => {
+  const NOW = '2026-10-12T10:00:00.000Z';
+  const account = (id: string, last4: string) => ({
+    id, name: id.toUpperCase(), type: 'bank' as const, last4, openingBalance: money(0, 'INR'), openingDate: '2026-10-01',
+    colorToken: 'lime' as const, sortOrder: 0, createdAt: NOW, updatedAt: NOW, archivedAt: null,
+  });
+  const hdfc = account('hdfc', '1234');
+  const sbi = account('sbi', '9876');
+  const card = account('card', '5555');
+  const accounts = [hdfc, sbi, card];
+  const p = (id: string, at: string, overrides: Partial<PendingExpense> = {}): PendingExpense => ({
+    id, status: 'pending', amountMinor: 50_000, currency: 'INR', merchant: 'X', accountLast4: '1234', occurredAt: at, receivedAt: at,
+    source: 'sms', templateId: 't', confidence: 0.9, suggestedCategoryId: null, suggestionConfidence: null, suggestionModelVersion: null,
+    expenseId: null, displayHint: 'h', createdAt: at, updatedAt: at, ...overrides,
+  });
+  const original = newPersonalExpense({ id: 'e-1', uid: 'u', total: money(99_900, 'INR'), categoryId: 'cat-shopping', description: 'AMAZON', note: null, occurredAt: '2026-10-01T10:00:00.000Z', now: NOW });
+
+  const items = [
+    p('debit', '2026-10-12T09:00:00.000Z', { amountMinor: 500_000 }),
+    p('credit', '2026-10-12T09:04:00.000Z', { kind: 'income', amountMinor: 500_000, accountLast4: '9876' }),
+    p('salary', '2026-10-11T09:00:00.000Z', { kind: 'income', amountMinor: 5_000_000, accountLast4: '9876' }),
+    p('refund', '2026-10-10T09:00:00.000Z', { kind: 'refund', amountMinor: 49_900, suggestedRefundOf: 'e-1' }),
+    p('orphan-refund', '2026-10-09T09:00:00.000Z', { kind: 'refund', amountMinor: 10_000, suggestedRefundOf: 'e-gone' }),
+    p('bill', '2026-10-08T09:00:00.000Z', { kind: 'transfer', amountMinor: 1_200_000, accountLast4: '5555', suggestedAccountId: 'card' }),
+    p('lunch', '2026-10-07T09:00:00.000Z', { amountMinor: 30_000 }),
+    p('old-approved', '2026-10-06T09:00:00.000Z', { status: 'approved' }),
+  ];
+  const ctx = { accounts, expensesById: new Map([[original.id, original]]) };
+
+  it('gives each kind its card, newest first, the pair as ONE card', () => {
+    const cards = inboxCards(items, ctx);
+    assert.deepEqual(cards.map((c) => [c.type, c.id]), [
+      ['pair', 'debit|credit'],
+      ['income', 'salary'],
+      ['refund', 'refund'],
+      ['refund', 'orphan-refund'],
+      ['transfer', 'bill'],
+      ['expense', 'lunch'],
+    ]);
+  });
+
+  it('fills each card: pair accounts, matched account, refund original or none, the card to pay', () => {
+    const cards = inboxCards(items, ctx);
+    const byId = new Map(cards.map((c) => [c.id, c]));
+    const pair = byId.get('debit|credit')!;
+    assert.ok(pair.type === 'pair' && pair.from.id === 'hdfc' && pair.to.id === 'sbi');
+    const salary = byId.get('salary')!;
+    assert.ok(salary.type === 'income' && salary.account?.id === 'sbi');
+    const refund = byId.get('refund')!;
+    assert.ok(refund.type === 'refund' && refund.original?.id === 'e-1');
+    const orphan = byId.get('orphan-refund')!;
+    assert.ok(orphan.type === 'refund' && orphan.original === null);
+    const bill = byId.get('bill')!;
+    assert.ok(bill.type === 'transfer' && bill.toAccount?.id === 'card');
+  });
+
+  it('"Keep separate" splits the pair back into an expense and an income', () => {
+    const cards = inboxCards(items, { ...ctx, keptSeparate: new Set(['debit|credit']) });
+    assert.deepEqual(cards.slice(0, 2).map((c) => [c.type, c.id]), [['income', 'credit'], ['expense', 'debit']]);
+  });
+
+  it('no pair when either account is unknown', () => {
+    const cards = inboxCards(items, { ...ctx, accounts: [hdfc] });
+    assert.equal(cards.some((c) => c.type === 'pair'), false);
+  });
+
+  it('"Approve all" from cards leaves out both halves of a pair', () => {
+    assert.deepEqual(bulkFromCards(inboxCards(items, ctx)).map((i) => i.id), ['salary', 'lunch']);
+    assert.deepEqual(bulkFromCards(inboxCards(items, { ...ctx, keptSeparate: new Set(['debit|credit']) })).map((i) => i.id), ['credit', 'debit', 'salary', 'lunch']);
+  });
+
+  it('"Approve all" covers expenses and income only', () => {
+    assert.deepEqual(bulkApprovable(items).map((i) => i.id), ['debit', 'credit', 'salary', 'lunch']);
+    const choices = { debit: 'c', credit: 'c', salary: 'c', lunch: 'c' };
+    assert.equal(canApproveAll(items, choices), true);
+    assert.equal(canApproveAll(items, { ...choices, lunch: undefined }), false);
   });
 });
