@@ -22,7 +22,7 @@ import {
 } from '@react-native-firebase/firestore';
 import {
   DocumentShapeError,
-  expenseToDoc,
+  type Expense,
   firestorePaths,
   parsePendingExpense,
   pendingExpenseToDoc,
@@ -37,6 +37,10 @@ import {
   type PendingExpense,
   buildApproval,
   buildApproveAll,
+  buildMergeApproval,
+  buildRefundApproval,
+  buildTransferApproval,
+  planApprovalWrites,
 } from '../model/approval';
 
 export interface PendingExpensesSnapshot {
@@ -52,9 +56,6 @@ type OnError = (error: Error) => void;
 /** Items older than this leave the inbox; C2's sweep later marks them `expired`. */
 export const PENDING_MAX_AGE_DAYS = 30;
 const DAY_MS = 86_400_000;
-
-/** A write batch holds at most 500 operations, and each approval is two. */
-const APPROVALS_PER_BATCH = 250;
 
 const toError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
 
@@ -104,18 +105,17 @@ export function listenPendingExpenses(
   );
 }
 
-/** The expense and the pending update land together or not at all. */
+/** Each approval — expense plus every pending it settles — lands together or not at all. */
 function commitApprovals(uid: string, approvals: readonly Approval[]): Promise<void> {
   const { db } = firebase();
-  const commits: Promise<void>[] = [];
-  for (let start = 0; start < approvals.length; start += APPROVALS_PER_BATCH) {
+  const commits = planApprovalWrites(uid, approvals).map((ops) => {
     const batch = writeBatch(db);
-    for (const { expense, pendingUpdate } of approvals.slice(start, start + APPROVALS_PER_BATCH)) {
-      batch.set(doc(db, firestorePaths.expense(uid, expense.id)), expenseToDoc(expense));
-      batch.update(doc(db, firestorePaths.pendingExpense(uid, expense.pendingId!)), { ...pendingUpdate });
+    for (const write of ops) {
+      if (write.op === 'set') batch.set(doc(db, write.path), write.data);
+      else batch.update(doc(db, write.path), write.data);
     }
-    commits.push(batch.commit());
-  }
+    return batch.commit();
+  });
   return Promise.all(commits).then(() => undefined);
 }
 
@@ -145,6 +145,32 @@ export function approveAllPendingExpenses(
 ): Promise<void> {
   const approvals = buildApproveAll(uid, items, choices, new Date().toISOString());
   return commitApprovals(uid, approvals);
+}
+
+/** "Yes" / a picked purchase on a refund card: a refund linked to `original`. */
+export function approvePendingRefund(
+  uid: string,
+  pending: PendingExpense,
+  original: Expense,
+  refundsOfOriginal: readonly Expense[],
+  accountId?: string | null,
+): Promise<void> {
+  return commitApprovals(uid, [buildRefundApproval(uid, pending, original, refundsOfOriginal, new Date().toISOString(), accountId)]);
+}
+
+/** A card-bill payment approved as a transfer from the chosen account to the card. */
+export function approvePendingTransfer(uid: string, pending: PendingExpense, fromAccountId: string, toAccountId: string): Promise<void> {
+  return commitApprovals(uid, [buildTransferApproval(uid, pending, fromAccountId, toAccountId, new Date().toISOString())]);
+}
+
+/** "Merge": one transfer, both pendings approved, one batch. */
+export function mergePendingTransfer(
+  uid: string,
+  pair: { readonly debit: PendingExpense; readonly credit: PendingExpense },
+  fromAccountId: string,
+  toAccountId: string,
+): Promise<void> {
+  return commitApprovals(uid, [buildMergeApproval(uid, pair, fromAccountId, toAccountId, new Date().toISOString())]);
 }
 
 /**

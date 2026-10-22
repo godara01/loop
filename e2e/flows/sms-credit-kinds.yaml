@@ -1,0 +1,90 @@
+# v1.2 inbox cards per kind (docs/12 § The inbox, docs/17 § Credit SMS): a
+# debit + credit pair merges into ONE transfer, salary is income with SALARY
+# pre-selected, a failed-transaction refund with no matching purchase is kept
+# as income, and a card-bill payment becomes a transfer to the card.
+appId: com.getter.loop
+env:
+  SMS_SENDER: "AD-HDFCBK"
+  PAIR_DEBIT: "Rs.5000.00 spent on HDFC Bank Card x1234 at MYSELF on 2026-10-22:10:15:11.Avl bal: Rs.80,000.00"
+  PAIR_CREDIT: "Rs 5,000.00 credited to your A/c XX9876 on 22-10-26 by IMPS from MYSELF. -HDFC Bank"
+  SALARY_BODY: "Rs 50,000.00 credited to your A/c XX9876 on 22-10-26 by NEFT from ACME SALARY. -HDFC Bank"
+  REFUND_BODY: "Amount Rs 2,000 credited due to failed transaction"
+  BILL_BODY: "Payment of Rs 12,000 received towards your credit card xx1234"
+  SMS_AFTER: "Run \\.\\./subflows/sms-enable-capture\\.yaml\\.\\.\\. COMPLETED"
+  SMS_SEND: "PAIR_DEBIT,3,PAIR_CREDIT,3,SALARY_BODY,3,REFUND_BODY,3,BILL_BODY"
+---
+- runFlow: ../subflows/reset.yaml
+- runFlow: ../subflows/onboarded.yaml
+
+# Two accounts the messages name: the card ••1234 and savings ••9876
+- tapOn: { id: "tab-profile" }
+- scrollUntilVisible: { element: { id: "profile-accounts" }, centerElement: true }
+- tapOn: { id: "profile-accounts" }
+- extendedWaitUntil: { visible: { id: "accounts-add" }, timeout: 15000 }
+- tapOn: { id: "accounts-add" }
+- extendedWaitUntil: { visible: { id: "account-editor-name" }, timeout: 15000 }
+- tapOn: { id: "account-editor-name" }
+- inputText: "Card"
+- tapOn: { id: "account-type-card" }
+- tapOn: { id: "account-editor-last4" }
+- inputText: "1234"
+- hideKeyboard
+- tapOn: { id: "account-editor-save" }
+- extendedWaitUntil: { visible: { id: "screen-accounts" }, timeout: 15000 }
+- tapOn: { id: "accounts-add" }
+- extendedWaitUntil: { visible: { id: "account-editor-name" }, timeout: 15000 }
+- tapOn: { id: "account-editor-name" }
+- inputText: "Savings"
+- tapOn: { id: "account-editor-last4" }
+- inputText: "9876"
+- hideKeyboard
+- tapOn: { id: "account-editor-save" }
+- extendedWaitUntil: { visible: { id: "screen-accounts" }, timeout: 15000 }
+- tapOn: { id: "accounts-close" }
+
+- runFlow: ../subflows/sms-enable-capture.yaml
+- extendedWaitUntil: { visible: { id: "orbit-inbox-badge" }, timeout: 60000 }
+# Let all five arrive
+- extendedWaitUntil: { visible: { id: "orbit-inbox-badge", text: ".*5.*" }, timeout: 60000 }
+- tapOn: { id: "orbit-inbox-badge" }
+- extendedWaitUntil: { visible: { id: "screen-inbox" }, timeout: 10000 }
+
+# Newest first: card bill, refund, salary, then the pair (its time is the debit's).
+# "Approve all" leaves the two paired halves out: only the salary counts.
+- assertVisible: { id: "inbox-approve-all", text: "Approve all · 1" }
+
+# 1. The card bill: pay the card from Savings -> Approve
+- assertVisible: { text: "Paying Card ••1234 from:" }
+- tapOn: { id: "pending-card-.*-from" }
+- tapOn: { text: "Savings" }
+- tapOn: { id: "pending-card-.*-approve", index: 0 }
+- assertNotVisible: { text: "Paying Card ••1234 from:" }
+
+# 2. The failed-transaction refund has no purchase to match -> It's income
+- assertVisible: { text: "No matching purchase found.*" }
+- tapOn: { text: "It.s income" }
+- assertNotVisible: { text: "No matching purchase found.*" }
+
+# 3. Salary: income, SALARY pre-selected, on Savings -> Approve
+- scrollUntilVisible: { element: { text: "\\+₹50,000.00" } }
+- tapOn: { id: "pending-card-.*-approve", index: 0 }
+
+# 4. The debit + credit pair is ONE card -> Merge
+- scrollUntilVisible: { element: { text: "Looks like a transfer: Card ••1234 → Savings ••9876" } }
+- tapOn: { text: "Merge" }
+- extendedWaitUntil: { visible: { id: "inbox-empty" }, timeout: 15000 }
+
+# Server truth: 4 documents — 2 transfers, 2 income — and all 5 pendings approved
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "expenses"
+- assertTrue: ${output.docs.length == 4}
+- assertTrue: ${output.docs.filter(function (d) { return d.kind == 'transfer'; }).length == 2}
+- assertTrue: ${output.docs.filter(function (d) { return d.kind == 'income'; }).length == 2}
+- runScript:
+    file: ../scripts/query.js
+    env:
+      COLLECTION: "pendingExpenses"
+- assertTrue: ${output.docs.length == 5}
+- assertTrue: ${output.docs.every(function (d) { return d.status == 'approved'; })}

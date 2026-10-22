@@ -682,7 +682,16 @@ const PENDING_KEYS: ReadonlySet<string> = new Set<keyof PendingExpenseDoc>([
   'displayHint',
   'createdAt',
   'updatedAt',
+  // v1.2, optional (docs/12 § The pending expense): a v1 doc has none of them.
+  'kind',
+  'merchantKey',
+  'suggestedAccountId',
+  'suggestedRefundOf',
+  'pairedPendingId',
 ]);
+
+/** A pending item proposes one of these; settlements and loans never come from SMS. */
+const PENDING_KINDS = ['expense', 'income', 'refund', 'transfer'] as const;
 
 function unit(path: string, d: Fields, field: string): number {
   const value = d[field];
@@ -716,6 +725,11 @@ export function pendingExpenseToDoc(pending: PendingExpense): PendingExpenseDoc 
     displayHint: pending.displayHint,
     createdAt: pending.createdAt,
     updatedAt: pending.updatedAt,
+    kind: pending.kind,
+    merchantKey: pending.merchantKey,
+    suggestedAccountId: pending.suggestedAccountId,
+    suggestedRefundOf: pending.suggestedRefundOf,
+    pairedPendingId: pending.pairedPendingId,
   });
 }
 
@@ -749,6 +763,11 @@ export function parsePendingExpense(uid: string, pendingExpenseId: string, data:
     displayHint: text(path, d, 'displayHint'),
     createdAt: instant(path, d, 'createdAt'),
     updatedAt: instant(path, d, 'updatedAt'),
+    ...(d.kind !== undefined ? { kind: oneOf(path, d, 'kind', PENDING_KINDS) } : {}),
+    ...(d.merchantKey !== undefined ? { merchantKey: optionalText(path, d, 'merchantKey') } : {}),
+    ...(d.suggestedAccountId !== undefined ? { suggestedAccountId: optionalText(path, d, 'suggestedAccountId') } : {}),
+    ...(d.suggestedRefundOf !== undefined ? { suggestedRefundOf: optionalText(path, d, 'suggestedRefundOf') } : {}),
+    ...(d.pairedPendingId !== undefined ? { pairedPendingId: optionalText(path, d, 'pairedPendingId') } : {}),
   };
 }
 
